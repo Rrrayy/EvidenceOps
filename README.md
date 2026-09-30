@@ -239,7 +239,9 @@ EvidenceOps 出现真实问题
 ## 当前状态
 
 ```text
-项目状态：V1 领域层已起步，Diagnosis Service 尚未实现
-已完成：DiagnosisRun、Evidence、DiagnosisReport；领域测试 11 passed
-下一步：使用 Mock 依赖实现最小 Diagnosis Service 闭环
+项目状态：V1 Mock 诊断闭环已完成，真实 Tool Runtime 尚未实现
+已完成：领域对象、Mock Diagnosis Service、响应转换、Mock FastAPI 入口、请求日志 Evidence 提取
+测试结果：24 passed；存在 1 条 FastAPI/Starlette/httpx 弃用警告
+当前限制：Collector、Report Generator 和 HTTP 入口仍是 Mock；尚未接入真实 Provider、Tool Registry、Agent Loop、数据库或持久化
+下一步：从受控只读工具调用开始实现 Tool Runtime，再逐步实现 Agent Loop
 ```
