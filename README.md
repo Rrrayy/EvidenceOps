@@ -203,9 +203,9 @@ Redis、pgvector、MCP、OpenTelemetry、LangSmith、LangGraph 和 Kubernetes �
 
 ### V1：证据诊断 MVP
 
-实现单租户、PostgreSQL、三个只读 Evidence Connector、自研 Agent Runtime、普通 JSON、SSE 和基础 Trace。
+实现单租户、PostgreSQL、三个只读 Evidence Connector、自研 Agent Runtime、普通 JSON、SSE 和基础 Trace，并接入一个可用的模型 Provider。
 
-验收：输入一个脱敏 C++ RPC 故障案例，系统能收集证据，生成带 Evidence ID 的报告，保存到 PostgreSQL，并通过测试验证正常、失败、超时和取消路径。
+验收：输入一个脱敏 C++ RPC 故障案例，系统能通过模型选择受控只读工具，收集证据，生成带 Evidence ID 的报告，保存到 PostgreSQL，并通过测试验证正常、失败、超时和取消路径。
 
 ### V1.5：可靠性与可观测性
 
@@ -239,9 +239,9 @@ EvidenceOps 出现真实问题
 ## 当前状态
 
 ```text
-项目状态：V1 Mock 诊断闭环已完成，真实 Tool Runtime 尚未实现
-已完成：领域对象、Mock Diagnosis Service、响应转换、Mock FastAPI 入口、请求日志 Evidence 提取
-测试结果：24 passed；存在 1 条 FastAPI/Starlette/httpx 弃用警告
-当前限制：Collector、Report Generator 和 HTTP 入口仍是 Mock；尚未接入真实 Provider、Tool Registry、Agent Loop、数据库或持久化
-下一步：从受控只读工具调用开始实现 Tool Runtime，再逐步实现 Agent Loop
+项目状态：V1 的 Mock 核心闭环和 Agent Runtime 实验已完成，真实模型与外部依赖尚未接入
+已完成：领域对象、Mock Diagnosis Service、响应转换、Mock FastAPI 入口、请求日志 Evidence 提取、Tool Runtime、工具超时与错误协议、Mock Agent Loop、Agent 结果转 Evidence
+测试结果：40 passed；存在 1 条 FastAPI/Starlette/httpx 弃用警告
+当前限制：Agent Loop 尚未正式接入 DiagnosisService；Collector、Report Generator 和 HTTP 入口仍包含 Mock 实现；尚未接入真实模型 Provider、真实 Evidence Connector、PostgreSQL、持久化、取消和 Trace
+下一步：将 AgentEvidenceCollector 接入 DiagnosisService，完成 Agent 驱动的 Mock 报告闭环，再接入真实模型 Provider
 ```
