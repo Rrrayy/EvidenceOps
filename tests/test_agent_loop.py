@@ -1,23 +1,36 @@
 from evidenceops.application.agent_loop import AgentLoop
 from evidenceops.application.llm_gateway import LLMGateway
-from evidenceops.application.model_protocol import FinalAnswer,ToolCall
+from evidenceops.application.model_protocol import (
+	FinalAnswer,
+	StructuredFinalAnswer,
+	ToolCall,
+)
 from evidenceops.application.tool_runtime import ToolRuntime
 from evidenceops.infrastructure.providers.mock_provider import MockProvider
 from evidenceops.mocks.thread_pool import build_thread_pool_tool
 
 
 def build_runtime()->ToolRuntime:
-	return ToolRuntime((build_thread_pool_tool(),),timeout_seconds=1.0)
+	return ToolRuntime(
+		(build_thread_pool_tool(),),
+		timeout_seconds=1.0,
+	)
 
 
 def build_loop(
 	responses:tuple,
 	max_steps:int=3,
+	response_format:str="text",
 )->tuple[AgentLoop,ToolRuntime]:
 	runtime=build_runtime()
 	provider=MockProvider(responses)
 	gateway=LLMGateway(provider,"mock")
-	loop=AgentLoop(gateway,runtime,max_steps=max_steps)
+	loop=AgentLoop(
+		gateway,
+		runtime,
+		max_steps=max_steps,
+		response_format=response_format,
+	)
 	return loop,runtime
 
 
@@ -32,15 +45,79 @@ def test_agent_loop_calls_tool_then_returns_final_answer()->None:
 	))
 
 	try:
-		result=loop.run("分析订单服务RPC超时",run_id="run-001")
+		result=loop.run(
+			"分析订单服务RPC超时",
+			run_id="run-001",
+		)
 	finally:
 		runtime.close()
 
 	assert result.error_code is None
-	assert result.final_answer=="线程池满载并存在任务积压"
+	assert isinstance(result.final_answer,FinalAnswer)
+	assert result.final_answer.text=="线程池满载并存在任务积压"
 	assert len(result.tool_results)==1
 	assert result.tool_results[0].ok is True
 	assert result.tool_results[0].tool_call_id=="call-001"
+
+
+def test_agent_loop_preserves_structured_final_answer()->None:
+	loop,runtime=build_loop(
+		(
+			StructuredFinalAnswer(
+				{
+					"root_cause":{
+						"text":"线程池耗尽导致RPC请求排队",
+						"evidence_ids":["run-structured-001-thread-pool"],
+					},
+					"recommendations":[
+						{
+							"text":"扩大线程池容量",
+							"evidence_ids":["run-structured-001-thread-pool"],
+						},
+					],
+					"confidence":0.91,
+					"limitations":"当前只检查了线程池指标",
+				},
+			),
+		),
+		response_format="json_object",
+	)
+
+	try:
+		result=loop.run(
+			"分析订单服务RPC超时",
+			run_id="run-structured-001",
+		)
+	finally:
+		runtime.close()
+
+	assert result.error_code is None
+	assert isinstance(result.final_answer,StructuredFinalAnswer)
+	assert result.final_answer.data["confidence"]==0.91
+	assert result.final_answer.data["root_cause"]["evidence_ids"]==[
+		"run-structured-001-thread-pool",
+	]
+	assert result.tool_results==()
+
+
+def test_agent_loop_rejects_invalid_response_format()->None:
+	runtime=build_runtime()
+	provider=MockProvider((FinalAnswer("完成"),))
+	gateway=LLMGateway(provider,"mock")
+
+	try:
+		try:
+			AgentLoop(
+				gateway,
+				runtime,
+				response_format="xml",
+			)
+		except ValueError as error:
+			assert str(error)=="response_format必须是text或json_object"
+		else:
+			raise AssertionError("非法response_format应该失败")
+	finally:
+		runtime.close()
 
 
 def test_agent_loop_returns_tool_failure()->None:
@@ -53,7 +130,10 @@ def test_agent_loop_returns_tool_failure()->None:
 	))
 
 	try:
-		result=loop.run("分析支付服务RPC超时",run_id="run-002")
+		result=loop.run(
+			"分析支付服务RPC超时",
+			run_id="run-002",
+		)
 	finally:
 		runtime.close()
 
@@ -78,7 +158,10 @@ def test_agent_loop_stops_after_max_steps()->None:
 	),max_steps=2)
 
 	try:
-		result=loop.run("持续分析订单服务",run_id="run-003")
+		result=loop.run(
+			"持续分析订单服务",
+			run_id="run-003",
+		)
 	finally:
 		runtime.close()
 
@@ -89,7 +172,11 @@ def test_agent_loop_stops_after_max_steps()->None:
 
 def test_tool_call_rejects_empty_tool_call_id()->None:
 	try:
-		ToolCall("","query_thread_pool_snapshot",{})
+		ToolCall(
+			"",
+			"query_thread_pool_snapshot",
+			{},
+		)
 	except ValueError as error:
 		assert str(error)=="tool_call_id不能为空"
 	else:

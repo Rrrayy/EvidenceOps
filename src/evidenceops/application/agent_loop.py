@@ -9,6 +9,7 @@ from evidenceops.application.llm_gateway import (
 from evidenceops.application.model_protocol import (
 	FinalAnswer,
 	ModelRequest,
+	StructuredFinalAnswer,
 	ToolCall,
 )
 from evidenceops.application.tool_runtime import ToolResult,ToolRuntime
@@ -16,7 +17,7 @@ from evidenceops.application.tool_runtime import ToolResult,ToolRuntime
 
 @dataclass(frozen=True,slots=True)
 class AgentLoopResult:
-	final_answer:str|None
+	final_answer:FinalAnswer|StructuredFinalAnswer|None
 	tool_results:tuple[ToolResult,...]
 	error_code:str|None
 
@@ -30,6 +31,7 @@ class AgentLoop:
 		model:str="mock-model",
 		timeout_seconds:float=10.0,
 		max_steps:int=3,
+		response_format:str="text",
 	)->None:
 		if not isinstance(model,str) or not model.strip():
 			raise ValueError("model不能为空")
@@ -40,12 +42,18 @@ class AgentLoop:
 		if max_steps<=0:
 			raise ValueError("max_steps必须大于0")
 
+		if response_format not in ("text","json_object"):
+			raise ValueError(
+				"response_format必须是text或json_object"
+			)
+
 		self._gateway=gateway
 		self._runtime=runtime
 		self._tools=tools
 		self._model=model
 		self._timeout_seconds=timeout_seconds
 		self._max_steps=max_steps
+		self._response_format=response_format
 
 	def run(self,prompt:str,run_id:str|None=None)->AgentLoopResult:
 		if not isinstance(prompt,str) or not prompt.strip():
@@ -74,6 +82,7 @@ class AgentLoop:
 				timeout_seconds=self._timeout_seconds,
 				request_id=str(uuid4()),
 				run_id=run_id,
+				response_format=self._response_format,
 			)
 
 			try:
@@ -93,9 +102,9 @@ class AgentLoop:
 
 			response=call_result.response
 
-			if isinstance(response,FinalAnswer):
+			if isinstance(response,(FinalAnswer,StructuredFinalAnswer)):
 				return AgentLoopResult(
-					final_answer=response.text,
+					final_answer=response,
 					tool_results=tuple(tool_results),
 					error_code=None,
 				)
