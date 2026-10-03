@@ -3,9 +3,9 @@ import time
 from evidenceops.application.model_protocol import (
 	ModelCallResult,
 	ModelProvider,
+	ModelProviderError,
 	ModelRequest,
 )
-
 
 class ModelGatewayError(RuntimeError):
 	def __init__(self,error_code:str,error_message:str)->None:
@@ -26,7 +26,12 @@ class LLMGateway:
 		start_time=time.perf_counter()
 
 		try:
-			provider_response=self._provider.complete(request)
+			provider_response = self._provider.complete(request)
+		except ModelProviderError as error:
+			raise ModelGatewayError(
+				error.error_code,
+				error.error_message,
+			) from error
 		except TimeoutError as error:
 			raise ModelGatewayError(
 				"MODEL_TIMEOUT",

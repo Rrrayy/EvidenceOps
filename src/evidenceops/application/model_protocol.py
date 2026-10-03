@@ -28,7 +28,19 @@ class FinalAnswer:
 			raise ValueError("最终答案不能为空")
 
 
-ModelResponse=ToolCall|FinalAnswer
+@dataclass(frozen=True,slots=True)
+class StructuredFinalAnswer:
+	data:dict[str,Any]
+
+	def __post_init__(self)->None:
+		if not isinstance(self.data,dict):
+			raise TypeError("结构化最终答案必须是JSON对象")
+
+		if not self.data:
+			raise ValueError("结构化最终答案不能为空")
+
+
+ModelResponse=ToolCall|FinalAnswer|StructuredFinalAnswer
 
 
 @dataclass(frozen=True,slots=True)
@@ -39,6 +51,7 @@ class ModelRequest:
 	timeout_seconds:float
 	request_id:str
 	run_id:str
+	response_format:str="text"
 
 	def __post_init__(self)->None:
 		if not isinstance(self.messages,tuple):
@@ -59,6 +72,10 @@ class ModelRequest:
 		if not isinstance(self.run_id,str) or not self.run_id.strip():
 			raise ValueError("run_id不能为空")
 
+		if self.response_format not in ("text","json_object"):
+			raise ValueError(
+				"response_format必须是text或json_object"
+			)
 
 @dataclass(frozen=True,slots=True)
 class ModelUsage:
@@ -83,8 +100,13 @@ class ProviderResponse:
 	usage:ModelUsage|None
 
 	def __post_init__(self)->None:
-		if not isinstance(self.response,(ToolCall,FinalAnswer)):
-			raise TypeError("response必须是ToolCall或FinalAnswer")
+		if not isinstance(
+			self.response,
+			(ToolCall,FinalAnswer,StructuredFinalAnswer),
+		):
+			raise TypeError(
+				"response必须是ToolCall、FinalAnswer或StructuredFinalAnswer"
+			)
 
 		if not isinstance(self.model,str) or not self.model.strip():
 			raise ValueError("model不能为空")
@@ -100,8 +122,13 @@ class ModelCallResult:
 	request_id:str
 
 	def __post_init__(self)->None:
-		if not isinstance(self.response,(ToolCall,FinalAnswer)):
-			raise TypeError("response必须是ToolCall或FinalAnswer")
+		if not isinstance(
+			self.response,
+			(ToolCall,FinalAnswer,StructuredFinalAnswer),
+		):
+			raise TypeError(
+				"response必须是ToolCall、FinalAnswer或StructuredFinalAnswer"
+			)
 
 		if not isinstance(self.provider,str) or not self.provider.strip():
 			raise ValueError("provider不能为空")
@@ -114,6 +141,13 @@ class ModelCallResult:
 
 		if not isinstance(self.request_id,str) or not self.request_id.strip():
 			raise ValueError("request_id不能为空")
+
+
+class ModelProviderError(RuntimeError):
+	def __init__(self,error_code:str,error_message:str)->None:
+		super().__init__(error_message)
+		self.error_code=error_code
+		self.error_message=error_message
 
 
 class ModelProvider(Protocol):
