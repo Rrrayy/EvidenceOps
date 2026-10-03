@@ -1,28 +1,27 @@
 from evidenceops.application.agent_evidence_collector import AgentEvidenceCollector
-from evidenceops.application.agent_loop import AgentLoop,FinalAnswer,ToolCall
+from evidenceops.application.agent_loop import AgentLoop
+from evidenceops.application.llm_gateway import LLMGateway
+from evidenceops.application.model_protocol import FinalAnswer,ToolCall
 from evidenceops.application.tool_evidence_collector import ToolEvidenceCollector
 from evidenceops.application.tool_runtime import ToolRuntime
 from evidenceops.domain.diagnosis_run import DiagnosisRun
-from evidenceops.mocks.mock_agent_model import ScriptedAgentModel
+from evidenceops.infrastructure.providers.mock_provider import MockProvider
 from evidenceops.mocks.thread_pool import build_thread_pool_tool
 
 
 def test_agent_loop_result_becomes_evidence()->None:
 	runtime=ToolRuntime((build_thread_pool_tool(),),timeout_seconds=1.0)
-
-	model=ScriptedAgentModel((
+	provider=MockProvider((
 		ToolCall(
+			"call-001",
 			"query_thread_pool_snapshot",
 			{"service_name":"order-service"},
 		),
 		FinalAnswer("线程池满载并存在任务积压"),
 	))
-
-	loop=AgentLoop(model,runtime)
-
+	loop=AgentLoop(LLMGateway(provider,"mock"),runtime)
 	tool_collector=ToolEvidenceCollector(runtime,"order-service")
 	collector=AgentEvidenceCollector(loop,tool_collector)
-
 	run=DiagnosisRun(
 		"run-agent-evidence-001",
 		"req-agent-evidence-001",
