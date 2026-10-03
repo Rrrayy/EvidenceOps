@@ -12,10 +12,16 @@ class ToolResult:
 	data:Any=None
 	error_code:str|None=None
 	error_message:str|None=None
+	tool_call_id:str|None=None
 
 	def __post_init__(self)->None:
 		if not self.tool_name.strip():
 			raise ValueError("tool_name不能为空")
+
+		if self.tool_call_id is not None and (
+			not isinstance(self.tool_call_id,str) or not self.tool_call_id.strip()
+		):
+			raise ValueError("tool_call_id不能为空")
 
 		if self.ok and self.error_code is not None:
 			raise ValueError("成功结果不能携带error_code")
@@ -62,6 +68,7 @@ class ToolRuntime:
 		self,
 		tool_name:str,
 		arguments:dict[str,Any],
+		tool_call_id:str|None=None,
 	)->ToolResult:
 		tool=self._tools.get(tool_name)
 
@@ -71,6 +78,7 @@ class ToolRuntime:
 				False,
 				error_code="UNKNOWN_TOOL",
 				error_message="工具不存在",
+				tool_call_id=tool_call_id,
 			)
 
 		if not isinstance(arguments,dict):
@@ -79,6 +87,7 @@ class ToolRuntime:
 				False,
 				error_code="INVALID_ARGUMENTS",
 				error_message="工具参数必须是JSON对象",
+				tool_call_id=tool_call_id,
 			)
 
 		if not tool.read_only:
@@ -87,6 +96,7 @@ class ToolRuntime:
 				False,
 				error_code="TOOL_POLICY_DENIED",
 				error_message="当前运行时只允许只读工具",
+				tool_call_id=tool_call_id,
 			)
 
 		try:
@@ -97,6 +107,7 @@ class ToolRuntime:
 				False,
 				error_code="INVALID_ARGUMENTS",
 				error_message=str(error),
+				tool_call_id=tool_call_id,
 			)
 
 		future=self._executor.submit(
@@ -114,6 +125,7 @@ class ToolRuntime:
 				False,
 				error_code="TOOL_TIMEOUT",
 				error_message="工具执行超过时间限制",
+				tool_call_id=tool_call_id,
 			)
 		except Exception as error:
 			return ToolResult(
@@ -121,12 +133,14 @@ class ToolRuntime:
 				False,
 				error_code="TOOL_EXECUTION_FAILED",
 				error_message=str(error),
+				tool_call_id=tool_call_id,
 			)
 
 		return ToolResult(
 			tool_name,
 			True,
 			data=data,
+			tool_call_id=tool_call_id,
 		)
 
 	def close(self)->None:

@@ -1,37 +1,17 @@
 from dataclasses import dataclass
-from typing import Any,Protocol
+from typing import Any
+from uuid import uuid4
 
+from evidenceops.application.llm_gateway import (
+	LLMGateway,
+	ModelGatewayError,
+)
+from evidenceops.application.model_protocol import (
+	FinalAnswer,
+	ModelRequest,
+	ToolCall,
+)
 from evidenceops.application.tool_runtime import ToolResult,ToolRuntime
-
-
-@dataclass(frozen=True,slots=True)
-class ToolCall:
-	tool_name:str
-	arguments:dict[str,Any]
-
-	def __post_init__(self)->None:
-		if not isinstance(self.tool_name,str) or not self.tool_name.strip():
-			raise ValueError("tool_name不能为空")
-
-		if not isinstance(self.arguments,dict):
-			raise TypeError("arguments必须是字典")
-
-
-@dataclass(frozen=True,slots=True)
-class FinalAnswer:
-	text:str
-
-	def __post_init__(self)->None:
-		if not isinstance(self.text,str) or not self.text.strip():
-			raise ValueError("最终答案不能为空")
-
-
-ModelResponse=ToolCall|FinalAnswer
-
-
-class AgentModel(Protocol):
-	def respond(self,history:tuple[dict[str,Any],...])->ModelResponse:
-		...
 
 
 @dataclass(frozen=True,slots=True)
@@ -42,17 +22,40 @@ class AgentLoopResult:
 
 
 class AgentLoop:
-	def __init__(self,model:AgentModel,runtime:ToolRuntime,max_steps:int=3)->None:
+	def __init__(
+		self,
+		gateway:LLMGateway,
+		runtime:ToolRuntime,
+		tools:tuple[dict[str,Any],...]=(),
+		model:str="mock-model",
+		timeout_seconds:float=10.0,
+		max_steps:int=3,
+	)->None:
+		if not isinstance(model,str) or not model.strip():
+			raise ValueError("model不能为空")
+
+		if timeout_seconds<=0:
+			raise ValueError("timeout_seconds必须大于0")
+
 		if max_steps<=0:
 			raise ValueError("max_steps必须大于0")
 
-		self._model=model
+		self._gateway=gateway
 		self._runtime=runtime
+		self._tools=tools
+		self._model=model
+		self._timeout_seconds=timeout_seconds
 		self._max_steps=max_steps
 
-	def run(self,prompt:str)->AgentLoopResult:
-		if not prompt.strip():
+	def run(self,prompt:str,run_id:str|None=None)->AgentLoopResult:
+		if not isinstance(prompt,str) or not prompt.strip():
 			raise ValueError("prompt不能为空")
+
+		if run_id is None:
+			run_id=str(uuid4())
+
+		if not isinstance(run_id,str) or not run_id.strip():
+			raise ValueError("run_id不能为空")
 
 		history:tuple[dict[str,Any],...]=(
 			{
@@ -64,14 +67,31 @@ class AgentLoop:
 		tool_results:list[ToolResult]=[]
 
 		for _ in range(self._max_steps):
+			request=ModelRequest(
+				messages=history,
+				tools=self._tools,
+				model=self._model,
+				timeout_seconds=self._timeout_seconds,
+				request_id=str(uuid4()),
+				run_id=run_id,
+			)
+
 			try:
-				response=self._model.respond(history)
+				call_result=self._gateway.complete(request)
+			except ModelGatewayError as error:
+				return AgentLoopResult(
+					final_answer=None,
+					tool_results=tuple(tool_results),
+					error_code=error.error_code,
+				)
 			except Exception:
 				return AgentLoopResult(
 					final_answer=None,
 					tool_results=tuple(tool_results),
 					error_code="MODEL_EXECUTION_FAILED",
 				)
+
+			response=call_result.response
 
 			if isinstance(response,FinalAnswer):
 				return AgentLoopResult(
@@ -90,6 +110,7 @@ class AgentLoop:
 			tool_result=self._runtime.execute(
 				response.tool_name,
 				response.arguments,
+				tool_call_id=response.tool_call_id,
 			)
 
 			tool_results.append(tool_result)
@@ -97,11 +118,13 @@ class AgentLoop:
 			history+=(
 				{
 					"role":"assistant",
+					"tool_call_id":response.tool_call_id,
 					"tool_name":response.tool_name,
 					"arguments":response.arguments,
 				},
 				{
 					"role":"tool",
+					"tool_call_id":tool_result.tool_call_id,
 					"tool_name":tool_result.tool_name,
 					"ok":tool_result.ok,
 					"data":tool_result.data,

@@ -10,7 +10,10 @@ class AgentEvidenceCollector:
 		self._tool_collector=tool_collector
 
 	def collect(self,run:DiagnosisRun)->tuple[Evidence,...]:
-		loop_result=self._agent_loop.run(run.description)
+		loop_result=self._agent_loop.run(
+			run.description,
+			run_id=run.run_id,
+		)
 
 		if loop_result.error_code is not None:
 			raise RuntimeError(
