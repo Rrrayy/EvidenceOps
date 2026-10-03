@@ -239,9 +239,9 @@ EvidenceOps 出现真实问题
 ## 当前状态
 
 ```text
-项目状态：V1 的 Mock 核心闭环和 Agent Runtime 实验已完成，真实模型与外部依赖尚未接入
-已完成：领域对象、Mock Diagnosis Service、响应转换、Mock FastAPI 入口、请求日志 Evidence 提取、Tool Runtime、工具超时与错误协议、Mock Agent Loop、Agent 结果转 Evidence
-测试结果：40 passed；存在 1 条 FastAPI/Starlette/httpx 弃用警告
-当前限制：Agent Loop 尚未正式接入 DiagnosisService；Collector、Report Generator 和 HTTP 入口仍包含 Mock 实现；尚未接入真实模型 Provider、真实 Evidence Connector、PostgreSQL、持久化、取消和 Trace
-下一步：将 AgentEvidenceCollector 接入 DiagnosisService，完成 Agent 驱动的 Mock 报告闭环，再接入真实模型 Provider
+项目状态：V1 的 Mock 核心闭环和 Agent Runtime 实验已完成，模型协议与 OpenAI-compatible Provider 已建立，生产主链尚未接通
+已完成：领域对象、Mock Diagnosis Service、响应转换、Mock FastAPI 入口、请求日志 Evidence 提取、Tool Runtime、工具超时与错误协议、Mock Agent Loop、Agent 结果转 Evidence、LLM Gateway、Mock Provider、OpenAI-compatible Provider、结构化模型响应协议、DiagnosisDraft、报告构建器、Agent 依赖组装器
+测试结果：69 passed；存在 1 条 FastAPI/Starlette/httpx 弃用警告
+当前限制：AgentEvidenceCollector 尚未正式接入 DiagnosisService；结构化模型结果尚未贯通到正式 ReportGenerator；真实模型 Provider 尚未在 HTTP 主链启用；尚未接入真实 Evidence Connector、PostgreSQL、持久化、取消和 Trace
+下一步：让 AgentEvidenceCollector 同时传递工具 Evidence 与 DiagnosisDraft，接入 DiagnosisService 的报告生成阶段，再进行真实模型端到端验证
 ```
