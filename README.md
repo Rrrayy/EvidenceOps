@@ -77,10 +77,13 @@ ToolCall -> ToolRuntime -> ToolResult -> Evidence
 - mock agent loop with `tool_call_id` pairing and deterministic results;
 - provider-independent model protocol and LLM gateway;
 - mock provider and OpenAI-compatible provider adapter;
-- text and JSON-object model responses;
+- explicit Mock/OpenAI-compatible provider selection through environment variables;
+- provider URL validation, timeout classification, and upstream error propagation;
+- standard Chat Completions tool-call history and JSON-object model responses;
 - `DiagnosisDraft` validation before report construction;
 - report-level validation that evidence IDs exist and belong to the current run;
-- FastAPI response mapping for JSON and the mock diagnosis workflow.
+- FastAPI response mapping for JSON and the Agent diagnosis workflow;
+- a real Qwen model connected to the Agent HTTP path with Mock evidence tools.
 
 ## Quick start
 
@@ -91,7 +94,19 @@ $env:PYTHONPATH="src"
 python -m pytest
 ```
 
-The repository currently uses deterministic mocks for the learning and integration boundary. Provider credentials, PostgreSQL persistence, real evidence connectors, and the production HTTP path are intentionally introduced as separate steps.
+The repository uses deterministic Mock tools for the current evidence boundary while allowing a real OpenAI-compatible model Provider. Provider credentials are supplied through environment variables; PostgreSQL persistence and real log, metric, and configuration Connectors remain separate follow-up work.
+
+For the current Qwen-compatible endpoint, configure the Provider before starting the API:
+
+```powershell
+$env:EVIDENCEOPS_PROVIDER="openai-compatible"
+$env:EVIDENCEOPS_MODEL_BASE_URL="https://maas.qianwenaiapi.com/compatible-mode/v1"
+$env:EVIDENCEOPS_MODEL_API_KEY="your-api-key"
+$env:EVIDENCEOPS_MODEL_NAME="qwen3.8-flash"
+$env:EVIDENCEOPS_MODEL_TIMEOUT_SECONDS="60"
+```
+
+The API exposes `POST /api/v1/agent/diagnosis`. The current end-to-end path uses a real model and a deterministic read-only thread-pool tool; the returned report must reference the Evidence ID produced during that run.
 
 ## Example contract
 
