@@ -66,7 +66,7 @@ ToolCall -> ToolRuntime -> ToolResult -> Evidence
 | Domain | `DiagnosisRun`、`Evidence` 和报告证据引用规则 |
 | Application | 诊断编排、Agent Loop、模型协议、Gateway、草稿校验和报告构建 |
 | Infrastructure | 模型 Provider 适配器和外部集成 |
-| API | HTTP 响应转换和当前 Mock 诊断入口 |
+| API | HTTP 响应转换和 Agent 诊断入口 |
 | Mocks | RPC 超时、请求日志、线程池和 Provider 的确定性场景 |
 
 ## 已实现基础
@@ -77,10 +77,13 @@ ToolCall -> ToolRuntime -> ToolResult -> Evidence
 - 支持 `tool_call_id` 配对和确定性结果的 Mock Agent Loop；
 - 与 Provider 解耦的模型协议和 LLM Gateway；
 - Mock Provider 与 OpenAI-compatible Provider 适配器；
-- 文本响应和 JSON Object 响应；
+- 通过环境变量显式选择 Mock 或 OpenAI-compatible Provider；
+- Provider URL 校验、超时分类和上游错误传递；
+- 标准 Chat Completions 工具调用历史和 JSON Object 响应；
 - 报告构建前的 `DiagnosisDraft` 校验；
 - 报告级 Evidence ID 存在性和当前 run 归属校验；
-- 当前 Mock 诊断流程的 FastAPI 响应转换。
+- Agent 诊断流程的 FastAPI 响应转换；
+- 真实 Qwen 模型接入 Agent HTTP 主链，证据工具仍使用 Mock 实现。
 
 ## 快速开始
 
@@ -91,7 +94,19 @@ $env:PYTHONPATH="src"
 python -m pytest
 ```
 
-当前仓库使用确定性 Mock 验证学习和集成边界。Provider 凭据、PostgreSQL 持久化、真实 Evidence Connector 和生产 HTTP 主链会按独立阶段接入。
+当前仓库使用确定性 Mock 工具验证证据边界，同时支持真实 OpenAI-compatible 模型 Provider。Provider 凭据通过环境变量提供；PostgreSQL 持久化以及真实日志、指标和配置 Connector 仍作为后续阶段接入。
+
+当前 Qwen 兼容接口的配置方式：
+
+```powershell
+$env:EVIDENCEOPS_PROVIDER="openai-compatible"
+$env:EVIDENCEOPS_MODEL_BASE_URL="https://maas.qianwenaiapi.com/compatible-mode/v1"
+$env:EVIDENCEOPS_MODEL_API_KEY="your-api-key"
+$env:EVIDENCEOPS_MODEL_NAME="qwen3.8-flash"
+$env:EVIDENCEOPS_MODEL_TIMEOUT_SECONDS="60"
+```
+
+API 接口为 `POST /api/v1/agent/diagnosis`。当前端到端流程使用真实模型和确定性的只读线程池工具，返回报告必须引用本次运行实际生成的 Evidence ID。
 
 ## 设计原则
 
