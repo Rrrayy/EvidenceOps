@@ -11,6 +11,15 @@ from evidenceops.domain.diagnosis_run import DiagnosisRun
 from evidenceops.domain.evidence import Evidence
 
 
+class DraftReportGenerator:
+	def generate(
+		self,
+		run:DiagnosisRun,
+		evidences:tuple[Evidence,...],
+		draft:DiagnosisDraft,
+	)->DiagnosisReport:
+		return build_diagnosis_report(run,draft,evidences)
+
 def build_diagnosis_report(
 	run:DiagnosisRun,
 	draft:DiagnosisDraft,

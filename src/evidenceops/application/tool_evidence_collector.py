@@ -1,4 +1,5 @@
 import json
+from dataclasses import replace
 
 from datetime import datetime
 from hashlib import sha256
@@ -23,6 +24,11 @@ class ToolEvidenceCollector:
 			"query_thread_pool_snapshot",
 			{"service_name":self._service_name},
 		)
+		if result.ok:
+			result=replace(
+				result,
+				evidence_id=f"{run.run_id}-direct-tool-collector",
+			)
 
 		return (self._evidence_from_result(run,result),)
 
@@ -56,8 +62,16 @@ class ToolEvidenceCollector:
 			f"待处理任务 {data['pending_tasks']}"
 		)
 
+		evidence_id = result.evidence_id
+
+		if not isinstance(evidence_id, str) or not evidence_id.strip():
+			raise ToolCollectionError(
+				error_code="MISSING_EVIDENCE_ID",
+				error_message="工具结果缺少Evidence ID",
+			)
+
 		return Evidence(
-			evidence_id=f"{run.run_id}-thread-pool",
+			evidence_id=evidence_id,
 			run_id=run.run_id,
 			source=EvidenceSource.METRIC,
 			observed_at=observed_at,

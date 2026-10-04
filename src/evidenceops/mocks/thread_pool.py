@@ -44,4 +44,15 @@ def build_thread_pool_tool()->ToolSpec:
 		read_only=True,
 		validate_arguments=ThreadPoolSnapshotRequest.from_arguments,
 		handler=query_thread_pool_snapshot,
+		parameters_schema={
+			"type":"object",
+			"properties":{
+				"service_name":{
+					"type":"string",
+					"description":"需要查询线程池状态的后端服务名称",
+				},
+			},
+			"required":["service_name"],
+			"additionalProperties":False,
+		},
 	)

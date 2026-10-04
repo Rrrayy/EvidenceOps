@@ -1,18 +1,12 @@
-from dataclasses import dataclass
+import json
+
+from dataclasses import dataclass,replace
 from typing import Any
 from uuid import uuid4
 
-from evidenceops.application.llm_gateway import (
-	LLMGateway,
-	ModelGatewayError,
-)
-from evidenceops.application.model_protocol import (
-	FinalAnswer,
-	ModelRequest,
-	StructuredFinalAnswer,
-	ToolCall,
-)
-from evidenceops.application.tool_runtime import ToolResult,ToolRuntime
+from evidenceops.application.llm_gateway import LLMGateway,ModelGatewayError
+from evidenceops.application.model_protocol import FinalAnswer,ModelRequest,StructuredFinalAnswer,ToolCall
+from evidenceops.application.tool_runtime import ToolResult,ToolRuntime,ToolSpec
 
 
 @dataclass(frozen=True,slots=True)
@@ -20,6 +14,7 @@ class AgentLoopResult:
 	final_answer:FinalAnswer|StructuredFinalAnswer|None
 	tool_results:tuple[ToolResult,...]
 	error_code:str|None
+	error_message:str|None=None
 
 
 class AgentLoop:
@@ -27,7 +22,7 @@ class AgentLoop:
 		self,
 		gateway:LLMGateway,
 		runtime:ToolRuntime,
-		tools:tuple[dict[str,Any],...]=(),
+		tools:tuple[ToolSpec,...]|tuple[dict[str,Any],...]=(),
 		model:str="mock-model",
 		timeout_seconds:float=10.0,
 		max_steps:int=3,
@@ -49,7 +44,12 @@ class AgentLoop:
 
 		self._gateway=gateway
 		self._runtime=runtime
-		self._tools=tools
+		self._tools=tuple(
+			tool.to_model_schema()
+			if isinstance(tool,ToolSpec)
+			else tool
+			for tool in tools
+		)
 		self._model=model
 		self._timeout_seconds=timeout_seconds
 		self._max_steps=max_steps
@@ -65,7 +65,27 @@ class AgentLoop:
 		if not isinstance(run_id,str) or not run_id.strip():
 			raise ValueError("run_id不能为空")
 
-		history:tuple[dict[str,Any],...]=(
+		if self._response_format=="json_object":
+				history:tuple[dict[str,Any],...]=(
+				{
+					"role":"system",
+					"content":(
+						"最终回答必须是合法JSON对象，并严格使用以下字段："
+						"root_cause、recommendations、confidence、limitations。"
+						"root_cause必须包含text和evidence_ids；"
+						"recommendations必须是数组，数组项必须包含text和evidence_ids；"
+						"confidence必须是0到1之间的数字；"
+						"limitations必须是非空字符串；"
+						"evidence_ids只能填写工具结果中出现过的Evidence ID。"
+					),
+				},
+				{
+					"role":"user",
+					"content":prompt,
+				},
+			)
+		else:
+			history=(
 			{
 				"role":"user",
 				"content":prompt,
@@ -92,12 +112,14 @@ class AgentLoop:
 					final_answer=None,
 					tool_results=tuple(tool_results),
 					error_code=error.error_code,
+					error_message=error.error_message,
 				)
 			except Exception:
 				return AgentLoopResult(
 					final_answer=None,
 					tool_results=tuple(tool_results),
 					error_code="MODEL_EXECUTION_FAILED",
+					error_message="模型调用失败",
 				)
 
 			response=call_result.response
@@ -114,31 +136,56 @@ class AgentLoop:
 					final_answer=None,
 					tool_results=tuple(tool_results),
 					error_code="INVALID_MODEL_RESPONSE",
+					error_message="模型返回了无法识别的响应类型",
 				)
 
-			tool_result=self._runtime.execute(
+			tool_result = self._runtime.execute(
 				response.tool_name,
 				response.arguments,
 				tool_call_id=response.tool_call_id,
 			)
 
+			if tool_result.ok:
+				evidence_id = f"{run_id}-{response.tool_call_id}"
+				tool_result = replace(
+					tool_result,
+					evidence_id=evidence_id,
+				)
+
 			tool_results.append(tool_result)
 
-			history+=(
+			history += (
 				{
 					"role":"assistant",
-					"tool_call_id":response.tool_call_id,
-					"tool_name":response.tool_name,
-					"arguments":response.arguments,
+					"tool_calls":[
+						{
+							"id":response.tool_call_id,
+							"type":"function",
+							"function":{
+								"name":response.tool_name,
+								"arguments":json.dumps(
+									response.arguments,
+									ensure_ascii=False,
+									separators=(",",":"),
+								),
+							},
+						},
+					],
 				},
 				{
 					"role":"tool",
 					"tool_call_id":tool_result.tool_call_id,
-					"tool_name":tool_result.tool_name,
-					"ok":tool_result.ok,
-					"data":tool_result.data,
-					"error_code":tool_result.error_code,
-					"error_message":tool_result.error_message,
+					"content":json.dumps(
+						{
+							"evidence_id":tool_result.evidence_id,
+							"ok":tool_result.ok,
+							"data":tool_result.data,
+							"error_code":tool_result.error_code,
+							"error_message":tool_result.error_message,
+						},
+						ensure_ascii=False,
+						separators=(",",":"),
+					),
 				},
 			)
 
@@ -147,10 +194,12 @@ class AgentLoop:
 					final_answer=None,
 					tool_results=tuple(tool_results),
 					error_code=tool_result.error_code,
+					error_message=tool_result.error_message,
 				)
 
 		return AgentLoopResult(
 			final_answer=None,
 			tool_results=tuple(tool_results),
 			error_code="AGENT_MAX_STEPS",
+			error_message="Agent Loop达到最大执行步数",
 		)

@@ -1,7 +1,7 @@
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FutureTimeout
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass,field
 from typing import Any
 
 
@@ -13,15 +13,21 @@ class ToolResult:
 	error_code:str|None=None
 	error_message:str|None=None
 	tool_call_id:str|None=None
+	evidence_id:str|None=None
 
-	def __post_init__(self)->None:
+	def __post_init__(self) -> None:
 		if not self.tool_name.strip():
 			raise ValueError("tool_name不能为空")
 
 		if self.tool_call_id is not None and (
-			not isinstance(self.tool_call_id,str) or not self.tool_call_id.strip()
+				not isinstance(self.tool_call_id, str) or not self.tool_call_id.strip()
 		):
 			raise ValueError("tool_call_id不能为空")
+
+		if self.evidence_id is not None and (
+				not isinstance(self.evidence_id, str) or not self.evidence_id.strip()
+		):
+			raise ValueError("evidence_id不能为空")
 
 		if self.ok and self.error_code is not None:
 			raise ValueError("成功结果不能携带error_code")
@@ -32,13 +38,13 @@ class ToolResult:
 		if not self.ok and not self.error_code:
 			raise ValueError("失败结果必须携带error_code")
 
-
 @dataclass(frozen=True,slots=True)
 class ToolSpec:
 	name:str
 	read_only:bool
 	validate_arguments:Callable[[dict[str,Any]],dict[str,Any]]
 	handler:Callable[[dict[str,Any]],Any]
+	parameters_schema:dict[str,Any]=field(default_factory=dict)
 
 	def __post_init__(self)->None:
 		if not self.name.strip():
@@ -49,6 +55,18 @@ class ToolSpec:
 
 		if not callable(self.handler):
 			raise TypeError("handler必须可调用")
+
+		if not isinstance(self.parameters_schema,dict):
+			raise TypeError("parameters_schema必须是字典")
+
+	def to_model_schema(self)->dict[str,Any]:
+		return {
+			"type":"function",
+			"function":{
+				"name":self.name,
+				"parameters":self.parameters_schema,
+			},
+		}
 
 
 class ToolRuntime:
