@@ -1,5 +1,6 @@
 import json
 from typing import Any
+from urllib.parse import urlparse
 
 import httpx
 
@@ -21,14 +22,23 @@ class OpenAICompatibleProvider:
 		api_key:str,
 		client:httpx.Client|None=None,
 	)->None:
-		if not base_url.strip():
+		if not isinstance(base_url,str) or not base_url.strip():
 			raise ValueError("base_url不能为空")
 
-		if not api_key.strip():
+		if not isinstance(api_key,str) or not api_key.strip():
 			raise ValueError("api_key不能为空")
 
-		self._url=f"{base_url.rstrip('/')}/chat/completions"
-		self._api_key=api_key
+		normalized_base_url=base_url.strip()
+		parsed_url=urlparse(normalized_base_url)
+
+		if parsed_url.scheme not in ("http","https"):
+			raise ValueError("base_url必须使用http或https协议")
+
+		if not parsed_url.netloc:
+			raise ValueError("base_url必须包含有效主机地址")
+
+		self._url=f"{normalized_base_url.rstrip('/')}/chat/completions"
+		self._api_key=api_key.strip()
 		self._client=client or httpx.Client()
 
 	def complete(self,request:ModelRequest)->ProviderResponse:
@@ -65,6 +75,11 @@ class OpenAICompatibleProvider:
 				"MODEL_NETWORK_ERROR",
 				"模型网络请求失败",
 			) from error
+		except httpx.HTTPError as error:
+			raise ModelProviderError(
+				"MODEL_HTTP_ERROR",
+				"模型HTTP请求失败",
+			) from error
 
 		if response.status_code in (401,403):
 			raise ModelProviderError(
@@ -81,13 +96,13 @@ class OpenAICompatibleProvider:
 		if response.status_code>=500:
 			raise ModelProviderError(
 				"MODEL_SERVER_ERROR",
-				"模型服务端错误",
+				OpenAICompatibleProvider._build_http_error_message(response),
 			)
 
 		if response.status_code>=400:
 			raise ModelProviderError(
 				"MODEL_HTTP_ERROR",
-				f"模型请求失败，HTTP状态码：{response.status_code}",
+				OpenAICompatibleProvider._build_http_error_message(response),
 			)
 
 		try:
@@ -99,6 +114,16 @@ class OpenAICompatibleProvider:
 			) from error
 
 		return self._parse_response(payload,request)
+
+	@staticmethod
+	def _build_http_error_message(response:httpx.Response)->str:
+		message=f"模型请求失败，HTTP状态码：{response.status_code}"
+		response_text=getattr(response,"text","").strip()
+
+		if response_text:
+			message=f"{message}，响应：{response_text[:500]}"
+
+		return message
 
 	def close(self)->None:
 		self._client.close()
