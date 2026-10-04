@@ -1,4 +1,5 @@
-from evidenceops.application.tool_runtime import ToolRuntime,ToolSpec
+import pytest
+from evidenceops.application.tool_runtime import ToolResult,ToolRuntime,ToolSpec
 from evidenceops.mocks.thread_pool import build_thread_pool_tool
 
 
@@ -88,3 +89,25 @@ def test_runtime_rejects_non_read_only_tool()->None:
 
 	assert result.ok is False
 	assert result.error_code=="TOOL_POLICY_DENIED"
+
+
+def test_tool_result_accepts_evidence_id()->None:
+	result=ToolResult(
+		tool_name="test-tool",
+		ok=True,
+		data={"value":1},
+		tool_call_id="call-001",
+		evidence_id="run-001-call-001",
+	)
+
+	assert result.evidence_id=="run-001-call-001"
+
+
+def test_tool_result_rejects_blank_evidence_id()->None:
+	with pytest.raises(ValueError):
+		ToolResult(
+			tool_name="test-tool",
+			ok=True,
+			data={"value":1},
+			evidence_id="   ",
+		)
