@@ -83,7 +83,9 @@ ToolCall -> ToolRuntime -> ToolResult -> Evidence
 - 报告构建前的 `DiagnosisDraft` 校验；
 - 报告级 Evidence ID 存在性和当前 run 归属校验；
 - Agent 诊断流程的 FastAPI 响应转换；
-- 真实 Qwen 模型接入 Agent HTTP 主链，证据工具仍使用 Mock 实现。
+- 真实 Qwen 模型接入 Agent HTTP 主链，并接入本地只读日志、指标和历史配置 Connector；
+- 支持一轮多个工具调用、受限并发执行和 `tool_call_id` 结果配对；
+- HTTP 响应返回模型与工具执行记录，用于检查耗时、参数和失败位置。
 
 ## 快速开始
 
@@ -94,7 +96,7 @@ $env:PYTHONPATH="src"
 python -m pytest
 ```
 
-当前仓库使用确定性 Mock 工具验证证据边界，同时支持真实 OpenAI-compatible 模型 Provider。Provider 凭据通过环境变量提供；PostgreSQL 持久化以及真实日志、指标和配置 Connector 仍作为后续阶段接入。
+当前仓库使用本地 JSONL 样本提供可重复的只读证据查询，同时支持真实 OpenAI-compatible 模型 Provider。Provider 凭据通过环境变量提供；PostgreSQL 持久化、SSE 流式接口以及生产日志、指标和配置平台仍待接入。
 
 当前 Qwen 兼容接口的配置方式：
 
@@ -106,7 +108,7 @@ $env:EVIDENCEOPS_MODEL_NAME="qwen3.8-flash"
 $env:EVIDENCEOPS_MODEL_TIMEOUT_SECONDS="60"
 ```
 
-API 接口为 `POST /api/v1/agent/diagnosis`。当前端到端流程使用真实模型和确定性的只读线程池工具，返回报告必须引用本次运行实际生成的 Evidence ID。
+API 接口为 `POST /api/v1/agent/diagnosis`。当前端到端流程可以使用真实模型和三个本地只读 Connector，返回报告必须引用本次运行实际生成的 Evidence ID；响应还包含模型轮次和工具调用的执行记录。
 
 ## 设计原则
 

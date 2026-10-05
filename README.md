@@ -83,7 +83,9 @@ ToolCall -> ToolRuntime -> ToolResult -> Evidence
 - `DiagnosisDraft` validation before report construction;
 - report-level validation that evidence IDs exist and belong to the current run;
 - FastAPI response mapping for JSON and the Agent diagnosis workflow;
-- a real Qwen model connected to the Agent HTTP path with Mock evidence tools.
+- a real Qwen model connected to the Agent HTTP path with local read-only log, metric, and historical configuration Connectors;
+- multi-tool responses with bounded concurrent execution and `tool_call_id` correlation;
+- model/tool execution records returned with each diagnosis for latency and failure inspection.
 
 ## Quick start
 
@@ -94,7 +96,7 @@ $env:PYTHONPATH="src"
 python -m pytest
 ```
 
-The repository uses deterministic Mock tools for the current evidence boundary while allowing a real OpenAI-compatible model Provider. Provider credentials are supplied through environment variables; PostgreSQL persistence and real log, metric, and configuration Connectors remain separate follow-up work.
+The repository uses deterministic local JSONL fixtures for repeatable evidence tests while allowing a real OpenAI-compatible model Provider. Provider credentials are supplied through environment variables; PostgreSQL persistence, SSE streaming, and production log/metric/configuration platforms remain follow-up work.
 
 For the current Qwen-compatible endpoint, configure the Provider before starting the API:
 
@@ -106,7 +108,7 @@ $env:EVIDENCEOPS_MODEL_NAME="qwen3.8-flash"
 $env:EVIDENCEOPS_MODEL_TIMEOUT_SECONDS="60"
 ```
 
-The API exposes `POST /api/v1/agent/diagnosis`. The current end-to-end path uses a real model and a deterministic read-only thread-pool tool; the returned report must reference the Evidence ID produced during that run.
+The API exposes `POST /api/v1/agent/diagnosis`. The current end-to-end path can use a real model with three local read-only Connectors; the returned report must reference Evidence IDs produced during that run. The response also includes bounded execution records for the model rounds and tool calls.
 
 ## Example contract
 
