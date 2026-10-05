@@ -2,7 +2,8 @@ from evidenceops.application.agent_collection_result import (
 	AgentCollectionError,
 	AgentCollectionResult,
 )
-from evidenceops.application.agent_loop import AgentLoop
+from evidenceops.application.agent_loop import AgentLoop,AgentLoopResult
+from evidenceops.application.tool_errors import ToolCollectionError
 from evidenceops.application.diagnosis_draft import DiagnosisDraft
 from evidenceops.application.model_protocol import StructuredFinalAnswer
 from evidenceops.application.tool_evidence_collector import ToolEvidenceCollector
@@ -21,6 +22,15 @@ class AgentEvidenceCollector:
 			run_id=run.run_id,
 		)
 
+		try:
+			return self._convert_result(run,loop_result)
+		except (AgentCollectionError,ToolCollectionError) as error:
+			error.execution_records=loop_result.execution_records
+			raise
+		except Exception as error:
+			raise AgentCollectionError("EVIDENCE_COLLECTION_FAILED","Agent结果转换失败",loop_result.execution_records) from error
+
+	def _convert_result(self,run:DiagnosisRun,loop_result:AgentLoopResult)->AgentCollectionResult:
 		if loop_result.error_code is not None:
 			raise AgentCollectionError(
 				loop_result.error_code,
@@ -56,4 +66,5 @@ class AgentEvidenceCollector:
 		return AgentCollectionResult(
 			evidences=tuple(evidences),
 			draft=draft,
+			execution_records=loop_result.execution_records,
 		)

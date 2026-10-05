@@ -49,4 +49,14 @@ def to_response(result:DiagnosisExecution)->dict[str,Any]:
 		"finished_at":run.finished_at.isoformat() if run.finished_at is not None else None,
 		"evidences":evidence_items,
 		"report":report_item,
+		"execution_records":[{
+			"kind":record.kind,"run_id":record.run_id,"model_round":record.model_round,
+			"model_request_id":record.model_request_id,"tool_name":record.tool_name,
+			"tool_call_id":record.tool_call_id,
+			"query_arguments":record.query_arguments,
+			"started_at":record.started_at.isoformat(),"finished_at":record.finished_at.isoformat(),
+			"duration_ms":record.duration_ms,"status":record.status,"error_code":record.error_code,
+			"handler_started_at":record.handler_started_at.isoformat() if record.handler_started_at else None,
+			"handler_finished_at":record.handler_finished_at.isoformat() if record.handler_finished_at else None,
+		} for record in result.execution_records],
 	}

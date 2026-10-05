@@ -1,3 +1,4 @@
+from evidenceops.application.execution_record import ExecutionRecord
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Protocol
@@ -41,6 +42,7 @@ class DiagnosisExecution:
 	evidences:tuple[Evidence,...]
 	report:DiagnosisReport|None
 	error_detail:dict[str,str]|None
+	execution_records:tuple[ExecutionRecord,...]=()
 
 
 class DiagnosisService:
@@ -66,6 +68,10 @@ class DiagnosisService:
 		)
 		run.transition(RunStatus.RUNNING)
 
+		records:tuple[ExecutionRecord,...]=()
+		def finish(*args):
+			return DiagnosisExecution(*args,execution_records=records)
+
 		evidences:tuple[Evidence,...]=()
 		draft:DiagnosisDraft|None=None
 
@@ -73,6 +79,7 @@ class DiagnosisService:
 			collection=self._evidence_collector.collect(run)
 
 			if isinstance(collection,AgentCollectionResult):
+				records=collection.execution_records
 				evidences=collection.evidences
 				draft=collection.draft
 			else:
@@ -81,11 +88,12 @@ class DiagnosisService:
 			self._validate_collected_evidences(run,evidences)
 
 		except AgentCollectionError as error:
+			records=error.execution_records
 			run.transition(
 				RunStatus.FAILED,
 				error_code=error.error_code,
 			)
-			return DiagnosisExecution(
+			return finish(
 				run,
 				evidences,
 				None,
@@ -96,11 +104,12 @@ class DiagnosisService:
 			)
 
 		except ToolCollectionError as error:
+			records=getattr(error,"execution_records",records)
 			run.transition(
 				RunStatus.FAILED,
 				error_code="EVIDENCE_COLLECTION_FAILED",
 			)
-			return DiagnosisExecution(
+			return finish(
 				run,
 				evidences,
 				None,
@@ -110,12 +119,13 @@ class DiagnosisService:
 				},
 			)
 
-		except Exception:
+		except Exception as error:
+			records=getattr(error,"execution_records",records)
 			run.transition(
 				RunStatus.FAILED,
 				error_code="EVIDENCE_COLLECTION_FAILED",
 			)
-			return DiagnosisExecution(
+			return finish(
 				run,
 				evidences,
 				None,
@@ -127,7 +137,7 @@ class DiagnosisService:
 				RunStatus.FAILED,
 				error_code="EVIDENCE_INSUFFICIENT",
 			)
-			return DiagnosisExecution(
+			return finish(
 				run,
 				evidences,
 				None,
@@ -142,7 +152,7 @@ class DiagnosisService:
 					RunStatus.FAILED,
 					error_code="INVALID_REPORT_EVIDENCE",
 				)
-				return DiagnosisExecution(run,evidences,None,{
+				return finish(run,evidences,None,{
 					"code":"INVALID_REPORT_EVIDENCE",
 					"message":"Draft引用的证据无效",
 				})
@@ -165,7 +175,7 @@ class DiagnosisService:
 				RunStatus.FAILED,
 				error_code="REPORT_GENERATION_FAILED",
 			)
-			return DiagnosisExecution(
+			return finish(
 				run,
 				evidences,
 				None,
@@ -183,7 +193,7 @@ class DiagnosisService:
 				RunStatus.FAILED,
 				error_code="INVALID_REPORT_EVIDENCE",
 			)
-			return DiagnosisExecution(
+			return finish(
 				run,
 				evidences,
 				None,
@@ -195,7 +205,7 @@ class DiagnosisService:
 
 		run.transition(RunStatus.SUCCEEDED)
 
-		return DiagnosisExecution(
+		return finish(
 			run,
 			evidences,
 			report,
