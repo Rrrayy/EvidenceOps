@@ -1,11 +1,15 @@
 import json
 
+from datetime import datetime,timezone
+from time import perf_counter
+from evidenceops.application.execution_record import ExecutionRecord
+
 from dataclasses import dataclass,replace
 from typing import Any
 from uuid import uuid4
 
 from evidenceops.application.llm_gateway import LLMGateway,ModelGatewayError
-from evidenceops.application.model_protocol import FinalAnswer,ModelRequest,StructuredFinalAnswer,ToolCall
+from evidenceops.application.model_protocol import FinalAnswer,ModelRequest,StructuredFinalAnswer,ToolCall,ToolCallBatch
 from evidenceops.application.tool_runtime import ToolResult,ToolRuntime,ToolSpec
 
 
@@ -15,6 +19,7 @@ class AgentLoopResult:
 	tool_results:tuple[ToolResult,...]
 	error_code:str|None
 	error_message:str|None=None
+	execution_records:tuple[ExecutionRecord,...]=()
 
 
 class AgentLoop:
@@ -77,6 +82,9 @@ class AgentLoop:
 						"confidence必须是0到1之间的数字；"
 						"limitations必须是非空字符串；"
 						"evidence_ids只能填写工具结果中出现过的Evidence ID。"
+						"工具查询必须忠实保留用户指定的服务、环境、日期和时区，不得擅自改写月份或年份。"
+						"时间参数使用带时区的ISO 8601字符串，如2026-10-05T10:00:00+08:00；"
+						"同一故障窗口的日志与指标使用相同start_time和end_time。"
 					),
 				},
 				{
@@ -92,9 +100,13 @@ class AgentLoop:
 			},
 		)
 
+		records:list[ExecutionRecord]=[]
+		def finish(final_answer,tool_results,error_code,error_message=None):
+			return AgentLoopResult(final_answer,tool_results,error_code,error_message,tuple(records))
+
 		tool_results:list[ToolResult]=[]
 
-		for _ in range(self._max_steps):
+		for model_round in range(1,self._max_steps+1):
 			request=ModelRequest(
 				messages=history,
 				tools=self._tools,
@@ -105,99 +117,98 @@ class AgentLoop:
 				response_format=self._response_format,
 			)
 
+			started_at=datetime.now(timezone.utc)
+			started_clock=perf_counter()
+			def record_model(error_code=None):
+				records.append(ExecutionRecord(
+					kind="model",started_at=started_at,finished_at=datetime.now(timezone.utc),
+					duration_ms=(perf_counter()-started_clock)*1000,
+					status="succeeded" if error_code is None else "failed",error_code=error_code,
+					run_id=run_id,model_round=model_round,model_request_id=request.request_id,
+				))
+
 			try:
 				call_result=self._gateway.complete(request)
 			except ModelGatewayError as error:
-				return AgentLoopResult(
+				record_model(error.error_code)
+				return finish(
 					final_answer=None,
 					tool_results=tuple(tool_results),
 					error_code=error.error_code,
 					error_message=error.error_message,
 				)
 			except Exception:
-				return AgentLoopResult(
+				record_model("MODEL_EXECUTION_FAILED")
+				return finish(
 					final_answer=None,
 					tool_results=tuple(tool_results),
 					error_code="MODEL_EXECUTION_FAILED",
 					error_message="模型调用失败",
 				)
 
+			record_model()
 			response=call_result.response
 
 			if isinstance(response,(FinalAnswer,StructuredFinalAnswer)):
-				return AgentLoopResult(
+				return finish(
 					final_answer=response,
 					tool_results=tuple(tool_results),
 					error_code=None,
 				)
 
-			if not isinstance(response,ToolCall):
-				return AgentLoopResult(
-					final_answer=None,
-					tool_results=tuple(tool_results),
-					error_code="INVALID_MODEL_RESPONSE",
-					error_message="模型返回了无法识别的响应类型",
-				)
+			if not isinstance(response,(ToolCall,ToolCallBatch)):
+				return finish(None,tuple(tool_results),"INVALID_MODEL_RESPONSE","模型返回了无法识别的响应类型")
 
-			tool_result = self._runtime.execute(
-				response.tool_name,
-				response.arguments,
-				tool_call_id=response.tool_call_id,
+			calls=(response,) if isinstance(response,ToolCall) else response.calls
+			seen_ids={result.tool_call_id for result in tool_results}
+			if any(call.tool_call_id in seen_ids for call in calls):
+				return finish(None,tuple(tool_results),"MODEL_PROTOCOL_ERROR","工具调用ID不能跨轮重复")
+
+			if len(calls)==1:
+				call=calls[0]
+				batch_results=(self._runtime.execute(call.tool_name,call.arguments,tool_call_id=call.tool_call_id),)
+			else:
+				batch_results=self._runtime.execute_many(calls)
+
+			records.extend(
+				replace(result.execution_record,run_id=run_id,model_round=model_round)
+				for result in batch_results if result.execution_record is not None
 			)
 
-			if tool_result.ok:
-				evidence_id = f"{run_id}-{response.tool_call_id}"
-				tool_result = replace(
-					tool_result,
-					evidence_id=evidence_id,
-				)
-
-			tool_results.append(tool_result)
-
-			history += (
-				{
-					"role":"assistant",
-					"tool_calls":[
-						{
-							"id":response.tool_call_id,
-							"type":"function",
-							"function":{
-								"name":response.tool_name,
-								"arguments":json.dumps(
-									response.arguments,
-									ensure_ascii=False,
-									separators=(",",":"),
-								),
-							},
-						},
-					],
-				},
-				{
-					"role":"tool",
-					"tool_call_id":tool_result.tool_call_id,
-					"content":json.dumps(
-						{
-							"evidence_id":tool_result.evidence_id,
-							"ok":tool_result.ok,
-							"data":tool_result.data,
-							"error_code":tool_result.error_code,
-							"error_message":tool_result.error_message,
-						},
-						ensure_ascii=False,
-						separators=(",",":"),
-					),
-				},
+			bound_results=tuple(
+				replace(result,evidence_id=f"{run_id}-{result.tool_call_id}") if result.ok else result
+				for result in batch_results
 			)
+			tool_results.extend(bound_results)
+			# 一条assistant消息声明全部调用，再为每个调用追加对应的tool消息。
+			history+=({
+				"role":"assistant",
+				"tool_calls":[{
+					"id":call.tool_call_id,
+					"type":"function",
+					"function":{
+						"name":call.tool_name,
+						"arguments":json.dumps(call.arguments,ensure_ascii=False,separators=(",",":")),
+					},
+				} for call in calls],
+			},)
+			history+=tuple({
+				"role":"tool",
+				"tool_call_id":result.tool_call_id,
+				"content":json.dumps({
+					"evidence_id":result.evidence_id,
+					"ok":result.ok,
+					"data":result.data,
+					"error_code":result.error_code,
+					"error_message":result.error_message,
+				},ensure_ascii=False,separators=(",",":")),
+			} for result in bound_results)
 
-			if not tool_result.ok:
-				return AgentLoopResult(
-					final_answer=None,
-					tool_results=tuple(tool_results),
-					error_code=tool_result.error_code,
-					error_message=tool_result.error_message,
-				)
-
-		return AgentLoopResult(
+			# 保留现有失败策略：完整收齐本批结果后停止诊断，不生成残缺报告。
+			failed=next((result for result in bound_results if not result.ok),None)
+			if failed is not None:
+				return finish(None,tuple(tool_results),failed.error_code,failed.error_message)
+		return finish(
 			final_answer=None,
 			tool_results=tuple(tool_results),
 			error_code="AGENT_MAX_STEPS",

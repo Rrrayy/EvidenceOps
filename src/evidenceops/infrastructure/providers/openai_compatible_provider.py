@@ -12,6 +12,7 @@ from evidenceops.application.model_protocol import (
 	ProviderResponse,
 	StructuredFinalAnswer,
 	ToolCall,
+	ToolCallBatch,
 )
 
 
@@ -231,13 +232,25 @@ class OpenAICompatibleProvider:
 		payload:dict[str,Any],
 		request:ModelRequest,
 	)->ProviderResponse:
-		if not isinstance(tool_calls,list) or len(tool_calls)!=1:
+		if not isinstance(tool_calls,list) or not 1<=len(tool_calls)<=16:
 			raise ModelProviderError(
 				"MODEL_PROTOCOL_ERROR",
-				"当前内部协议只支持一次一个工具调用",
+				"每轮工具调用必须包含1至16项",
 			)
 
-		tool_call=tool_calls[0]
+		calls=tuple(OpenAICompatibleProvider._parse_single_tool_call(item) for item in tool_calls)
+		try:
+			batch=ToolCallBatch(calls)
+		except (ValueError,TypeError) as error:
+			raise ModelProviderError("MODEL_PROTOCOL_ERROR",str(error)) from error
+		return ProviderResponse(
+			response=calls[0] if len(calls)==1 else batch,
+			model=OpenAICompatibleProvider._parse_model(payload,request.model),
+			usage=OpenAICompatibleProvider._parse_usage(payload),
+		)
+
+	@staticmethod
+	def _parse_single_tool_call(tool_call:Any)->ToolCall:
 
 		if not isinstance(tool_call,dict):
 			raise ModelProviderError(
@@ -271,18 +284,7 @@ class OpenAICompatibleProvider:
 
 		arguments=OpenAICompatibleProvider._parse_arguments(raw_arguments)
 
-		return ProviderResponse(
-			response=ToolCall(
-				tool_call_id=tool_call_id,
-				tool_name=tool_name,
-				arguments=arguments,
-			),
-			model=OpenAICompatibleProvider._parse_model(
-				payload,
-				request.model,
-			),
-			usage=OpenAICompatibleProvider._parse_usage(payload),
-		)
+		return ToolCall(tool_call_id,tool_name,arguments)
 
 	@staticmethod
 	def _parse_arguments(raw_arguments:Any)->dict[str,Any]:

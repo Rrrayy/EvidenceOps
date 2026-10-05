@@ -7,6 +7,7 @@ from evidenceops.application.model_protocol import (
 	ModelRequest,
 	StructuredFinalAnswer,
 	ToolCall,
+	ToolCallBatch,
 )
 from evidenceops.infrastructure.providers.openai_compatible_provider import (
 	OpenAICompatibleProvider,
@@ -286,6 +287,33 @@ def test_provider_rejects_invalid_tool_arguments()->None:
 		build_provider(client).complete(build_request())
 
 	assert error_info.value.error_code=="MODEL_PROTOCOL_ERROR"
+
+def test_provider_parses_multiple_tool_calls()->None:
+	calls=[{
+		"id":f"call-{index}",
+		"function":{"name":"query","arguments":f'{{"value":{index}}}'},
+	} for index in range(3)]
+	client=FakeClient(FakeResponse(200,{"choices":[{"message":{"tool_calls":calls}}]}))
+	result=build_provider(client).complete(build_request())
+	assert isinstance(result.response,ToolCallBatch)
+	assert [call.arguments for call in result.response.calls]==[{"value":index} for index in range(3)]
+	assert [call.tool_call_id for call in result.response.calls]==[f"call-{index}" for index in range(3)]
+
+
+@pytest.mark.parametrize("fault",["duplicate_id","invalid_second_arguments","too_many"])
+def test_provider_rejects_invalid_batch_before_execution(fault)->None:
+	calls=[{"id":f"call-{index}","function":{"name":"query","arguments":"{}"}} for index in range(2)]
+	if fault=="duplicate_id":
+		calls[1]["id"]=calls[0]["id"]
+	elif fault=="invalid_second_arguments":
+		calls[1]["function"]["arguments"]="not-json"
+	else:
+		calls=[{"id":str(index),"function":{"name":"query","arguments":"{}"}} for index in range(17)]
+	client=FakeClient(FakeResponse(200,{"choices":[{"message":{"tool_calls":calls}}]}))
+	with pytest.raises(ModelProviderError) as error_info:
+		build_provider(client).complete(build_request())
+	assert error_info.value.error_code=="MODEL_PROTOCOL_ERROR"
+
 
 def test_provider_parses_structured_final_answer()->None:
 	client=FakeClient(

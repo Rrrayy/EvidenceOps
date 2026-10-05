@@ -40,7 +40,20 @@ class StructuredFinalAnswer:
 			raise ValueError("结构化最终答案不能为空")
 
 
-ModelResponse=ToolCall|FinalAnswer|StructuredFinalAnswer
+@dataclass(frozen=True,slots=True)
+class ToolCallBatch:
+	calls:tuple[ToolCall,...]
+
+	def __post_init__(self)->None:
+		if not isinstance(self.calls,tuple) or not 1<=len(self.calls)<=16:
+			raise ValueError("每轮工具调用必须是包含1至16项的元组")
+		if any(not isinstance(call,ToolCall) for call in self.calls):
+			raise TypeError("工具调用批次只能包含ToolCall")
+		if len({call.tool_call_id for call in self.calls})!=len(self.calls):
+			raise ValueError("同一批次的工具调用ID不能重复")
+
+
+ModelResponse=ToolCall|ToolCallBatch|FinalAnswer|StructuredFinalAnswer
 
 
 @dataclass(frozen=True,slots=True)
@@ -102,10 +115,10 @@ class ProviderResponse:
 	def __post_init__(self)->None:
 		if not isinstance(
 			self.response,
-			(ToolCall,FinalAnswer,StructuredFinalAnswer),
+			(ToolCall,ToolCallBatch,FinalAnswer,StructuredFinalAnswer),
 		):
 			raise TypeError(
-				"response必须是ToolCall、FinalAnswer或StructuredFinalAnswer"
+				"response必须是ToolCall、ToolCallBatch、FinalAnswer或StructuredFinalAnswer"
 			)
 
 		if not isinstance(self.model,str) or not self.model.strip():
@@ -124,10 +137,10 @@ class ModelCallResult:
 	def __post_init__(self)->None:
 		if not isinstance(
 			self.response,
-			(ToolCall,FinalAnswer,StructuredFinalAnswer),
+			(ToolCall,ToolCallBatch,FinalAnswer,StructuredFinalAnswer),
 		):
 			raise TypeError(
-				"response必须是ToolCall、FinalAnswer或StructuredFinalAnswer"
+				"response必须是ToolCall、ToolCallBatch、FinalAnswer或StructuredFinalAnswer"
 			)
 
 		if not isinstance(self.provider,str) or not self.provider.strip():
