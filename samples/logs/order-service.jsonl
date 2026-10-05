@@ -1,0 +1,3 @@
+{"timestamp":"2026-10-05T10:02:00+08:00","level":"ERROR","service_name":"order-service","error_type":"rpc_timeout","message":"RPC timeout while calling inventory-service","dependency":"inventory-service","active_threads":64,"thread_limit":64,"pending_tasks":12}
+{"timestamp":"2026-10-05T10:03:00+08:00","level":"ERROR","service_name":"order-service","error_type":"rpc_timeout","message":"RPC timeout while calling inventory-service","dependency":"inventory-service","active_threads":64,"thread_limit":64,"pending_tasks":15}
+{"timestamp":"2026-10-05T10:04:00+08:00","level":"INFO","service_name":"order-service","error_type":null,"message":"request completed","dependency":"inventory-service","active_threads":40,"thread_limit":64,"pending_tasks":0}

@@ -1,0 +1,2 @@
+{"service_name":"order-service","environment":"production","config_version":"order-config-v1","effective_from":"2026-10-01T00:00:00+08:00","effective_until":"2026-10-06T00:00:00+08:00","thread_pool_size":64,"rpc_timeout_ms":1000,"max_retries":2}
+{"service_name":"order-service","environment":"production","config_version":"order-config-v2","effective_from":"2026-10-06T00:00:00+08:00","effective_until":null,"thread_pool_size":64,"rpc_timeout_ms":3000,"max_retries":0}
