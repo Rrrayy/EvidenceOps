@@ -9,47 +9,81 @@ from evidenceops.application.model_protocol import (
 	ToolCall,
 )
 from evidenceops.api.agent_diagnosis import create_app
+from evidenceops.connectors.local_config import build_local_config_tool
+from evidenceops.connectors.local_log import build_local_log_tool
+from evidenceops.connectors.local_metric import build_local_metric_tool
 from evidenceops.infrastructure.providers.mock_provider import MockProvider
 from evidenceops.infrastructure.providers.openai_compatible_provider import (
 	OpenAICompatibleProvider,
 )
-from evidenceops.mocks.thread_pool import build_thread_pool_tool
-
 
 def build_final_answer(request:ModelRequest)->StructuredFinalAnswer:
-	evidence_id=f"{request.run_id}-call-http-agent-001"
+	evidence_ids=[f"{request.run_id}-{call_id}" for call_id in ("call-log-001","call-metric-001","call-config-001")]
 
 	return StructuredFinalAnswer({
 		"root_cause":{
-			"text":"线程池耗尽导致RPC请求排队超时",
-			"evidence_ids":[evidence_id],
+			"text":"order-service出现RPC超时且同期线程池饱和、排队增加；故障时配置容量为64、RPC超时1000毫秒、最多额外重试2次，具体诱因尚未确认",
+			"evidence_ids":evidence_ids,
 		},
 		"recommendations":[
 			{
-				"text":"检查线程池容量和任务积压情况",
-				"evidence_ids":[evidence_id],
+				"text":"检查order-service的线程池容量、任务执行耗时以及inventory-service的响应延迟",
+				"evidence_ids":evidence_ids,
 			},
 		],
 		"confidence":0.91,
-		"limitations":"当前只检查了线程池指标，尚未核查真实调用链",
+		"limitations":"当前证据来自本地日志、指标和历史配置样本；配置允许重试不代表实际发生重试，尚缺调用链、流量和下游耗时，不能确认因果关系",
 	})
 
 
 def build_agent_app():
 	provider=MockProvider((
 		ToolCall(
-			"call-http-agent-001",
-			"query_thread_pool_snapshot",
-			{"service_name":"order-service"},
+			"call-log-001",
+			"query_service_logs",
+			{
+				"service_name":"order-service",
+				"environment":"production",
+				"error_type":"rpc_timeout",
+				"start_time":"2026-10-05T10:00:00+08:00",
+				"end_time":"2026-10-05T10:10:00+08:00",
+				"limit":50,
+			},
+		),
+		ToolCall(
+			"call-metric-001",
+			"query_service_metrics",
+			{
+				"service_name":"order-service",
+				"environment":"production",
+				"start_time":"2026-10-05T10:00:00+08:00",
+				"end_time":"2026-10-05T10:10:00+08:00",
+				"limit":50,
+			},
+		),
+		ToolCall(
+			"call-config-001",
+			"query_service_config",
+			{
+				"service_name":"order-service",
+				"environment":"production",
+				"at_time":"2026-10-05T10:02:00+08:00",
+			},
 		),
 		build_final_answer,
 	))
+	tools=(
+		build_local_log_tool(),
+		build_local_metric_tool(),
+		build_local_config_tool(),
+	)
 
 	assembly=build_agent_diagnosis_assembly(
 		provider,
 		"mock",
-		(build_thread_pool_tool(),),
+		tools,
 		"order-service",
+		max_steps=4,
 	)
 
 	return create_app(assembly)
@@ -72,10 +106,15 @@ def build_openai_agent_app(
 	assembly=build_agent_diagnosis_assembly(
 		provider,
 		"openai-compatible",
-		(build_thread_pool_tool(),),
+		(
+			build_local_log_tool(),
+			build_local_metric_tool(),
+			build_local_config_tool(),
+		),
 		"order-service",
 		model=model,
 		model_timeout_seconds=model_timeout_seconds,
+		max_steps=4,
 	)
 
 	return create_app(assembly)
