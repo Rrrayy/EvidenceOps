@@ -1,0 +1,21 @@
+  services:
+    postgres:
+      image: postgres:17
+      environment:
+        POSTGRES_DB: evidenceops
+        POSTGRES_USER: evidenceops
+        POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?请在.env中设置数据库密码}
+      ports:
+        - "127.0.0.1:5433:5432"
+      volumes:
+        - postgres_data:/var/lib/postgresql/data
+      healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U evidenceops -d evidenceops"]
+        interval: 5s
+        timeout: 3s
+        retries: 10
+        start_period: 10s
+      restart: unless-stopped
+
+  volumes:
+    postgres_data:
