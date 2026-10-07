@@ -1,6 +1,7 @@
 import os
 
 from evidenceops.application.agent_diagnosis_factory import (
+	AgentDiagnosisAssembly,
 	build_agent_diagnosis_assembly,
 )
 from evidenceops.application.model_protocol import (
@@ -12,13 +13,25 @@ from evidenceops.api.agent_diagnosis import create_app
 from evidenceops.connectors.local_config import build_local_config_tool
 from evidenceops.connectors.local_log import build_local_log_tool
 from evidenceops.connectors.local_metric import build_local_metric_tool
+from evidenceops.infrastructure.database.diagnosis_persistence import (
+	SqlAlchemyDiagnosisPersistence,
+)
+from evidenceops.infrastructure.database.session import (
+	DatabaseSettings,
+	create_database_engine,
+	create_session_factory,
+)
 from evidenceops.infrastructure.providers.mock_provider import MockProvider
 from evidenceops.infrastructure.providers.openai_compatible_provider import (
 	OpenAICompatibleProvider,
 )
 
+
 def build_final_answer(request:ModelRequest)->StructuredFinalAnswer:
-	evidence_ids=[f"{request.run_id}-{call_id}" for call_id in ("call-log-001","call-metric-001","call-config-001")]
+	evidence_ids=[
+		f"{request.run_id}-{call_id}"
+		for call_id in ("call-log-001","call-metric-001","call-config-001")
+	]
 
 	return StructuredFinalAnswer({
 		"root_cause":{
@@ -36,7 +49,28 @@ def build_final_answer(request:ModelRequest)->StructuredFinalAnswer:
 	})
 
 
-def build_agent_app():
+def build_database_persistence()->SqlAlchemyDiagnosisPersistence|None:
+	persistence_mode=os.getenv(
+		"EVIDENCEOPS_PERSISTENCE",
+		"memory",
+	).strip().lower()
+
+	if persistence_mode=="memory":
+		return None
+
+	if persistence_mode!="postgres":
+		raise ValueError(
+			"EVIDENCEOPS_PERSISTENCE必须是memory或postgres"
+		)
+
+	settings=DatabaseSettings.from_environment()
+	engine=create_database_engine(settings)
+	session_factory=create_session_factory(engine)
+
+	return SqlAlchemyDiagnosisPersistence(session_factory,engine)
+
+
+def build_agent_app()->object:
 	provider=MockProvider((
 		ToolCall(
 			"call-log-001",
@@ -72,11 +106,14 @@ def build_agent_app():
 		),
 		build_final_answer,
 	))
+
 	tools=(
 		build_local_log_tool(),
 		build_local_metric_tool(),
 		build_local_config_tool(),
 	)
+
+	diagnosis_persistence=build_database_persistence()
 
 	assembly=build_agent_diagnosis_assembly(
 		provider,
@@ -84,6 +121,7 @@ def build_agent_app():
 		tools,
 		"order-service",
 		max_steps=4,
+		diagnosis_persistence=diagnosis_persistence,
 	)
 
 	return create_app(assembly)
@@ -93,7 +131,7 @@ def build_openai_agent_app(
 	base_url:str,
 	api_key:str,
 	model:str,
-):
+)->object:
 	model_timeout_seconds=float(
 		os.getenv("EVIDENCEOPS_MODEL_TIMEOUT_SECONDS","60.0")
 	)
@@ -103,24 +141,29 @@ def build_openai_agent_app(
 		api_key=api_key,
 	)
 
+	tools=(
+		build_local_log_tool(),
+		build_local_metric_tool(),
+		build_local_config_tool(),
+	)
+
+	diagnosis_persistence=build_database_persistence()
+
 	assembly=build_agent_diagnosis_assembly(
 		provider,
 		"openai-compatible",
-		(
-			build_local_log_tool(),
-			build_local_metric_tool(),
-			build_local_config_tool(),
-		),
+		tools,
 		"order-service",
 		model=model,
 		model_timeout_seconds=model_timeout_seconds,
 		max_steps=4,
+		diagnosis_persistence=diagnosis_persistence,
 	)
 
 	return create_app(assembly)
 
 
-def build_configured_agent_app():
+def build_configured_agent_app()->object:
 	provider_mode=os.getenv(
 		"EVIDENCEOPS_PROVIDER",
 		"mock",
