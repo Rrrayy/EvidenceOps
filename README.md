@@ -85,7 +85,10 @@ ToolCall -> ToolRuntime -> ToolResult -> Evidence
 - FastAPI response mapping for JSON and the Agent diagnosis workflow;
 - a real Qwen model connected to the Agent HTTP path with local read-only log, metric, and historical configuration Connectors;
 - multi-tool responses with bounded concurrent execution and `tool_call_id` correlation;
-- model/tool execution records returned with each diagnosis for latency and failure inspection.
+- model/tool execution records returned with each diagnosis for latency and failure inspection;
+- bounded concurrent execution for a batch of tool calls;
+- PostgreSQL persistence for `diagnosis_runs`, `evidences`, `diagnosis_reports`, and `execution_records`, managed with Alembic;
+- historical diagnosis retrieval through `GET /api/v1/agent/runs/{run_id}` without invoking the model again.
 
 ## Quick start
 
@@ -96,7 +99,7 @@ $env:PYTHONPATH="src"
 python -m pytest
 ```
 
-The repository uses deterministic local JSONL fixtures for repeatable evidence tests while allowing a real OpenAI-compatible model Provider. Provider credentials are supplied through environment variables; PostgreSQL persistence, SSE streaming, and production log/metric/configuration platforms remain follow-up work.
+The repository uses deterministic local JSONL fixtures for repeatable evidence tests while allowing a real OpenAI-compatible model Provider. Provider credentials are supplied through environment variables; PostgreSQL persistence is now integrated, while SSE streaming and production log/metric/configuration platforms remain follow-up work.
 
 For the current Qwen-compatible endpoint, configure the Provider before starting the API:
 
@@ -106,9 +109,19 @@ $env:EVIDENCEOPS_MODEL_BASE_URL="https://maas.qianwenaiapi.com/compatible-mode/v
 $env:EVIDENCEOPS_MODEL_API_KEY="your-api-key"
 $env:EVIDENCEOPS_MODEL_NAME="qwen3.8-flash"
 $env:EVIDENCEOPS_MODEL_TIMEOUT_SECONDS="60"
+$env:EVIDENCEOPS_PERSISTENCE="postgres"
+$env:POSTGRES_PASSWORD="your-postgres-password"
 ```
 
-The API exposes `POST /api/v1/agent/diagnosis`. The current end-to-end path can use a real model with three local read-only Connectors; the returned report must reference Evidence IDs produced during that run. The response also includes bounded execution records for the model rounds and tool calls.
+Start PostgreSQL and apply migrations before starting the API:
+
+```powershell
+docker compose up -d
+$env:PYTHONPATH="src"
+python -m alembic upgrade head
+```
+
+The API exposes `POST /api/v1/agent/diagnosis`. The current end-to-end path can use a real model with three local read-only Connectors; the returned report must reference Evidence IDs produced during that run. The response also includes bounded execution records for the model rounds and tool calls. After a diagnosis completes, `GET /api/v1/agent/runs/{run_id}` retrieves the persisted result without invoking the model again.
 
 ## Example contract
 

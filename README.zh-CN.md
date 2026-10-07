@@ -85,7 +85,9 @@ ToolCall -> ToolRuntime -> ToolResult -> Evidence
 - Agent 诊断流程的 FastAPI 响应转换；
 - 真实 Qwen 模型接入 Agent HTTP 主链，并接入本地只读日志、指标和历史配置 Connector；
 - 支持一轮多个工具调用、受限并发执行和 `tool_call_id` 结果配对；
-- HTTP 响应返回模型与工具执行记录，用于检查耗时、参数和失败位置。
+- HTTP 响应返回模型与工具执行记录，用于检查耗时、参数和失败位置；工具批次支持受限并发。
+- PostgreSQL 持久化 `diagnosis_runs`、`evidences`、`diagnosis_reports` 和 `execution_records`，并通过 Alembic 管理迁移。
+- 支持通过 `GET /api/v1/agent/runs/{run_id}` 查询已完成或失败的历史诊断，不会重新调用模型。
 
 ## 快速开始
 
@@ -96,7 +98,7 @@ $env:PYTHONPATH="src"
 python -m pytest
 ```
 
-当前仓库使用本地 JSONL 样本提供可重复的只读证据查询，同时支持真实 OpenAI-compatible 模型 Provider。Provider 凭据通过环境变量提供；PostgreSQL 持久化、SSE 流式接口以及生产日志、指标和配置平台仍待接入。
+当前仓库使用本地 JSONL 样本提供可重复的只读证据查询，同时支持真实 OpenAI-compatible 模型 Provider。Provider 凭据通过环境变量提供；PostgreSQL 持久化已经接入，SSE 流式接口以及生产日志、指标和配置平台仍待接入。
 
 当前 Qwen 兼容接口的配置方式：
 
@@ -106,9 +108,19 @@ $env:EVIDENCEOPS_MODEL_BASE_URL="https://maas.qianwenaiapi.com/compatible-mode/v
 $env:EVIDENCEOPS_MODEL_API_KEY="your-api-key"
 $env:EVIDENCEOPS_MODEL_NAME="qwen3.8-flash"
 $env:EVIDENCEOPS_MODEL_TIMEOUT_SECONDS="60"
+$env:EVIDENCEOPS_PERSISTENCE="postgres"
+$env:POSTGRES_PASSWORD="your-postgres-password"
 ```
 
-API 接口为 `POST /api/v1/agent/diagnosis`。当前端到端流程可以使用真实模型和三个本地只读 Connector，返回报告必须引用本次运行实际生成的 Evidence ID；响应还包含模型轮次和工具调用的执行记录。
+启动 PostgreSQL 后先执行迁移：
+
+```powershell
+docker compose up -d
+$env:PYTHONPATH="src"
+python -m alembic upgrade head
+```
+
+API 接口为 `POST /api/v1/agent/diagnosis`。当前端到端流程可以使用真实模型和三个本地只读 Connector，返回报告必须引用本次运行实际生成的 Evidence ID；响应还包含模型轮次和工具调用的执行记录。诊断完成后，可以使用 `GET /api/v1/agent/runs/{run_id}` 从 PostgreSQL 查询历史结果。
 
 ## 设计原则
 
