@@ -45,10 +45,7 @@ def build_agent_diagnosis_assembly(
 	response_format:str="json_object",
 	diagnosis_persistence:DiagnosisPersistence|None=None,
 )->AgentDiagnosisAssembly:
-	runtime=ToolRuntime(
-		tools,
-		timeout_seconds=tool_timeout_seconds,
-	)
+	runtime=ToolRuntime(tools,timeout_seconds=tool_timeout_seconds)
 
 	gateway=LLMGateway(provider,provider_name)
 
@@ -66,11 +63,7 @@ def build_agent_diagnosis_assembly(
 	evidence_collector=AgentEvidenceCollector(loop,tool_collector)
 	report_generator=DraftReportGenerator()
 
-	diagnosis_service=DiagnosisService(
-		evidence_collector,
-		report_generator,
-		diagnosis_persistence=diagnosis_persistence,
-	)
+	diagnosis_service=DiagnosisService(evidence_collector,report_generator,diagnosis_persistence=diagnosis_persistence)
 
 	return AgentDiagnosisAssembly(
 		evidence_collector=evidence_collector,

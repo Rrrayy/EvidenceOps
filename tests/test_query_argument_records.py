@@ -39,7 +39,7 @@ def test_time_errors_identify_field(field,value)->None:
 def test_invalid_model_time_is_visible_in_failed_http_response(monkeypatch)->None:
 	arguments={**metric_arguments(),"end_time":"2026-10-05T10:10:00+08:0oops"}
 	provider=MockProvider((ToolCall("call-bad-time","query_service_metrics",arguments),))
-	monkeypatch.setattr(agent_app,"OpenAICompatibleProvider",lambda **kwargs:provider)
+	monkeypatch.setattr(agent_app,"OpenAICompatibleProvider",lambda**kwargs:provider)
 	with TestClient(agent_app.build_openai_agent_app("https://example.com/v1","test-key","test-model")) as client:
 		response=client.post("/api/v1/agent/diagnosis",json={"description":"查询2026-10-05的指标"})
 	body=response.json()

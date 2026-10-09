@@ -19,16 +19,10 @@ class ToolEvidenceCollector:
 		self._service_name=service_name
 
 	def collect(self,run:DiagnosisRun)->tuple[Evidence,...]:
-		result=self._tool_runtime.execute(
-			"query_thread_pool_snapshot",
-			{"service_name":self._service_name},
-		)
+		result=self._tool_runtime.execute("query_thread_pool_snapshot",{"service_name":self._service_name})
 
 		if result.ok:
-			result=replace(
-				result,
-				evidence_id=f"{run.run_id}-direct-tool-collector",
-			)
+			result=replace(result,evidence_id=f"{run.run_id}-direct-tool-collector")
 
 		return (self._evidence_from_result(run,result),)
 
@@ -43,10 +37,7 @@ class ToolEvidenceCollector:
 			)
 
 		if not isinstance(result.data,dict):
-			raise ToolCollectionError(
-				error_code="INVALID_TOOL_RESULT",
-				error_message="工具成功结果必须是JSON对象",
-			)
+			raise ToolCollectionError(error_code="INVALID_TOOL_RESULT",error_message="工具成功结果必须是JSON对象")
 
 		if result.tool_name=="query_thread_pool_snapshot":
 			return self._thread_pool_evidence(run,result)
@@ -78,19 +69,13 @@ class ToolEvidenceCollector:
 		pending_tasks=data.get("pending_tasks")
 
 		if not isinstance(service_name,str) or not service_name.strip():
-			raise ToolCollectionError(
-				error_code="INVALID_TOOL_RESULT",
-				error_message="线程池结果缺少有效的service_name",
-			)
+			raise ToolCollectionError(error_code="INVALID_TOOL_RESULT",error_message="线程池结果缺少有效的service_name")
 
 		if not all(
 			isinstance(value,int) and not isinstance(value,bool) and value>=0
 			for value in (active_threads,thread_limit,pending_tasks)
 		):
-			raise ToolCollectionError(
-				error_code="INVALID_TOOL_RESULT",
-				error_message="线程池结果中的指标必须是非负整数",
-			)
+			raise ToolCollectionError(error_code="INVALID_TOOL_RESULT",error_message="线程池结果中的指标必须是非负整数")
 
 		return Evidence(
 			evidence_id=evidence_id,
@@ -121,64 +106,37 @@ class ToolEvidenceCollector:
 		source_ref=data.get("source_ref")
 
 		if not isinstance(matches,list):
-			raise ToolCollectionError(
-				error_code="INVALID_TOOL_RESULT",
-				error_message="日志查询结果中的matches必须是数组",
-			)
+			raise ToolCollectionError(error_code="INVALID_TOOL_RESULT",error_message="日志查询结果中的matches必须是数组")
 
 		if not all(
 			isinstance(value,int) and not isinstance(value,bool) and value>=0
 			for value in (total_count,returned_count)
 		):
-			raise ToolCollectionError(
-				error_code="INVALID_TOOL_RESULT",
-				error_message="日志查询结果中的数量字段必须是非负整数",
-			)
+			raise ToolCollectionError(error_code="INVALID_TOOL_RESULT",error_message="日志查询结果中的数量字段必须是非负整数")
 
 		if returned_count!=len(matches) or total_count<returned_count:
-			raise ToolCollectionError(
-				error_code="INVALID_TOOL_RESULT",
-				error_message="日志查询结果中的数量字段不一致",
-			)
+			raise ToolCollectionError(error_code="INVALID_TOOL_RESULT",error_message="日志查询结果中的数量字段不一致")
 
 		if not isinstance(truncated,bool):
-			raise ToolCollectionError(
-				error_code="INVALID_TOOL_RESULT",
-				error_message="日志查询结果中的truncated必须是布尔值",
-			)
+			raise ToolCollectionError(error_code="INVALID_TOOL_RESULT",error_message="日志查询结果中的truncated必须是布尔值")
 
 		if truncated!=(total_count>returned_count):
-			raise ToolCollectionError(
-				error_code="INVALID_TOOL_RESULT",
-				error_message="日志查询结果中的截断状态不一致",
-			)
+			raise ToolCollectionError(error_code="INVALID_TOOL_RESULT",error_message="日志查询结果中的截断状态不一致")
 
 		if not isinstance(service_name,str) or not service_name.strip():
-			raise ToolCollectionError(
-				error_code="INVALID_TOOL_RESULT",
-				error_message="日志查询结果缺少有效的service_name",
-			)
+			raise ToolCollectionError(error_code="INVALID_TOOL_RESULT",error_message="日志查询结果缺少有效的service_name")
 
 		if not isinstance(environment,str) or not environment.strip():
-			raise ToolCollectionError(
-				error_code="INVALID_TOOL_RESULT",
-				error_message="日志查询结果缺少有效的environment",
-			)
+			raise ToolCollectionError(error_code="INVALID_TOOL_RESULT",error_message="日志查询结果缺少有效的environment")
 
 		if not isinstance(source_ref,str) or not source_ref.strip():
-			raise ToolCollectionError(
-				error_code="INVALID_TOOL_RESULT",
-				error_message="日志查询结果缺少有效的source_ref",
-			)
+			raise ToolCollectionError(error_code="INVALID_TOOL_RESULT",error_message="日志查询结果缺少有效的source_ref")
 
 		line_numbers=[]
 
 		for match in matches:
 			if not isinstance(match,dict):
-				raise ToolCollectionError(
-					error_code="INVALID_TOOL_RESULT",
-					error_message="日志匹配项必须是JSON对象",
-				)
+				raise ToolCollectionError(error_code="INVALID_TOOL_RESULT",error_message="日志匹配项必须是JSON对象")
 
 			line_number=match.get("line_number")
 			record=match.get("record")
@@ -189,10 +147,7 @@ class ToolEvidenceCollector:
 				or line_number<=0
 				or not isinstance(record,dict)
 			):
-				raise ToolCollectionError(
-					error_code="INVALID_TOOL_RESULT",
-					error_message="日志匹配项缺少有效行号或记录",
-				)
+				raise ToolCollectionError(error_code="INVALID_TOOL_RESULT",error_message="日志匹配项缺少有效行号或记录")
 
 			line_numbers.append(line_number)
 
@@ -202,9 +157,7 @@ class ToolEvidenceCollector:
 		evidence_id=self._require_evidence_id(result)
 
 		if matches:
-			line_range=(
-				f"lines:{min(line_numbers)}-{max(line_numbers)}"
-			)
+			line_range=(f"lines:{min(line_numbers)}-{max(line_numbers)}")
 		else:
 			line_range="no-matching-lines"
 
@@ -388,20 +341,14 @@ class ToolEvidenceCollector:
 		evidence_id=result.evidence_id
 
 		if not isinstance(evidence_id,str) or not evidence_id.strip():
-			raise ToolCollectionError(
-				error_code="MISSING_EVIDENCE_ID",
-				error_message="工具结果缺少Evidence ID",
-			)
+			raise ToolCollectionError(error_code="MISSING_EVIDENCE_ID",error_message="工具结果缺少Evidence ID")
 
 		return evidence_id
 
 	@staticmethod
 	def _parse_observed_at(value:Any)->datetime:
 		if not isinstance(value,str):
-			raise ToolCollectionError(
-				error_code="INVALID_TOOL_RESULT",
-				error_message="工具结果中的observed_at必须是字符串",
-			)
+			raise ToolCollectionError(error_code="INVALID_TOOL_RESULT",error_message="工具结果中的observed_at必须是字符串")
 
 		try:
 			observed_at=datetime.fromisoformat(value)
@@ -412,18 +359,10 @@ class ToolEvidenceCollector:
 			) from error
 
 		if observed_at.tzinfo is None or observed_at.utcoffset() is None:
-			raise ToolCollectionError(
-				error_code="INVALID_TOOL_RESULT",
-				error_message="工具结果中的observed_at必须带时区",
-			)
+			raise ToolCollectionError(error_code="INVALID_TOOL_RESULT",error_message="工具结果中的observed_at必须带时区")
 
 		return observed_at
 
 	@staticmethod
 	def _build_canonical_content(data:dict[str,Any])->str:
-		return json.dumps(
-			data,
-			ensure_ascii=False,
-			sort_keys=True,
-			separators=(",",":"),
-		)
+		return json.dumps(data,ensure_ascii=False,sort_keys=True,separators=(",",":"))

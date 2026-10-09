@@ -1,11 +1,7 @@
 import pytest
 
 from evidenceops.application.llm_gateway import LLMGateway,ModelGatewayError
-from evidenceops.application.model_protocol import (
-	FinalAnswer,
-	ModelRequest,
-	ProviderResponse,
-)
+from evidenceops.application.model_protocol import FinalAnswer,ModelRequest,ProviderResponse
 
 
 def build_request()->ModelRequest:
@@ -21,11 +17,7 @@ def build_request()->ModelRequest:
 
 class SuccessfulProvider:
 	def complete(self,request:ModelRequest)->ProviderResponse:
-		return ProviderResponse(
-			response=FinalAnswer("诊断完成"),
-			model=request.model,
-			usage=None,
-		)
+		return ProviderResponse(response=FinalAnswer("诊断完成"),model=request.model,usage=None)
 
 
 class TimeoutProvider:

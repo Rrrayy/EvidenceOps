@@ -30,11 +30,7 @@ def upgrade()->None:
 			name="ck_evidences_source",
 		),
 	)
-	op.create_index(
-		"ix_evidences_run_id_observed_at",
-		"evidences",
-		["run_id","observed_at"],
-	)
+	op.create_index("ix_evidences_run_id_observed_at","evidences",["run_id","observed_at"])
 
 
 def downgrade()->None:

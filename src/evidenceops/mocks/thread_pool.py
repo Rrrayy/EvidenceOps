@@ -18,9 +18,7 @@ class ThreadPoolSnapshotRequest:
 		if not service_name.strip():
 			raise ValueError("service_name不能为空")
 
-		return {
-			"service_name":service_name.strip(),
-		}
+		return {"service_name":service_name.strip(),}
 
 
 def query_thread_pool_snapshot(arguments:dict[str,Any])->dict[str,Any]:

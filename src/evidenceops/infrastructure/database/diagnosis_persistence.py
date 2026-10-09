@@ -28,6 +28,7 @@ class SqlAlchemyDiagnosisPersistence:
 
 	@contextmanager
 	def transaction(self)->Iterator[DiagnosisTransaction]:
+		# 所有仓储共享一个 Session；仓储独立提交会破坏原子性。
 		with transaction_scope(self._session_factory) as session:
 			yield SqlAlchemyDiagnosisTransaction(
 				run=SqlAlchemyRunRepository(session),

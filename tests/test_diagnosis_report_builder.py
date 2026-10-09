@@ -10,11 +10,7 @@ from evidenceops.domain.evidence import Evidence,EvidenceSource
 
 
 def make_run()->DiagnosisRun:
-	return DiagnosisRun(
-		run_id="run-001",
-		request_id="req-001",
-		description="分析订单服务RPC超时",
-	)
+	return DiagnosisRun(run_id="run-001",request_id="req-001",description="分析订单服务RPC超时")
 
 
 def make_evidence(run_id:str,evidence_id:str="ev-001")->Evidence:
@@ -55,11 +51,7 @@ def test_build_report_from_valid_draft()->None:
 	run=make_run()
 	evidence=make_evidence(run.run_id)
 
-	report=build_diagnosis_report(
-		run,
-		make_draft(evidence.evidence_id),
-		(evidence,),
-	)
+	report=build_diagnosis_report(run,make_draft(evidence.evidence_id),(evidence,))
 
 	assert report.run_id==run.run_id
 	assert report.root_cause.text=="线程池耗尽导致RPC请求排队"
@@ -73,11 +65,7 @@ def test_builder_rejects_missing_evidence()->None:
 	evidence=make_evidence(run.run_id)
 
 	with pytest.raises(ValueError,match="Evidence ID不存在"):
-		build_diagnosis_report(
-			run,
-			make_draft("ev-missing"),
-			(evidence,),
-		)
+		build_diagnosis_report(run,make_draft("ev-missing"),(evidence,))
 
 
 def test_builder_rejects_evidence_from_other_run()->None:
@@ -85,8 +73,4 @@ def test_builder_rejects_evidence_from_other_run()->None:
 	foreign_evidence=make_evidence("run-002")
 
 	with pytest.raises(ValueError,match="Evidence不属于本次运行"):
-		build_diagnosis_report(
-			run,
-			make_draft(foreign_evidence.evidence_id),
-			(foreign_evidence,),
-		)
+		build_diagnosis_report(run,make_draft(foreign_evidence.evidence_id),(foreign_evidence,))

@@ -23,18 +23,14 @@ class ToolResult:
 	evidence_id:str|None=None
 	execution_record:ExecutionRecord|None=None
 
-	def __post_init__(self) -> None:
+	def __post_init__(self)->None:
 		if not self.tool_name.strip():
 			raise ValueError("tool_name不能为空")
 
-		if self.tool_call_id is not None and (
-				not isinstance(self.tool_call_id, str) or not self.tool_call_id.strip()
-		):
+		if self.tool_call_id is not None and (not isinstance(self.tool_call_id,str) or not self.tool_call_id.strip()):
 			raise ValueError("tool_call_id不能为空")
 
-		if self.evidence_id is not None and (
-				not isinstance(self.evidence_id, str) or not self.evidence_id.strip()
-		):
+		if self.evidence_id is not None and (not isinstance(self.evidence_id,str) or not self.evidence_id.strip()):
 			raise ValueError("evidence_id不能为空")
 
 		if self.ok and self.error_code is not None:
@@ -68,21 +64,11 @@ class ToolSpec:
 			raise TypeError("parameters_schema必须是字典")
 
 	def to_model_schema(self)->dict[str,Any]:
-		return {
-			"type":"function",
-			"function":{
-				"name":self.name,
-				"parameters":self.parameters_schema,
-			},
-		}
+		return {"type":"function","function":{"name":self.name,"parameters":self.parameters_schema,},}
 
 
 class ToolRuntime:
-	def __init__(
-		self,
-		tools:tuple[ToolSpec,...],
-		timeout_seconds:float=1.0,
-	)->None:
+	def __init__(self,tools:tuple[ToolSpec,...],timeout_seconds:float=1.0)->None:
 		if timeout_seconds<=0:
 			raise ValueError("timeout_seconds必须大于0")
 
@@ -182,6 +168,7 @@ class ToolRuntime:
 		try:
 			data=future.result(timeout=self._timeout_seconds)
 		except FutureTimeout:
+			# 只能取消尚未开始的任务，不能强杀已经运行的 handler 线程。
 			future.cancel()
 
 			return ToolResult(
@@ -224,12 +211,7 @@ class ToolRuntime:
 				tool_call_id=tool_call_id,
 			)
 
-		return ToolResult(
-			tool_name,
-			True,
-			data=data,
-			tool_call_id=tool_call_id,
-		)
+		return ToolResult(tool_name,True,data=data,tool_call_id=tool_call_id)
 
 	def execute_many(self,calls:tuple[ToolCall,...])->tuple[ToolResult,...]:
 		ToolCallBatch(calls)
@@ -240,7 +222,4 @@ class ToolRuntime:
 			return tuple(future.result() for future in futures)
 
 	def close(self)->None:
-		self._executor.shutdown(
-			wait=False,
-			cancel_futures=True,
-		)
+		self._executor.shutdown(wait=False,cancel_futures=True)

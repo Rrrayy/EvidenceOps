@@ -1,19 +1,10 @@
 import pytest
 
-from evidenceops.application.model_protocol import (
-	FinalAnswer,
-	ModelRequest,
-	ModelUsage,
-	ToolCall,
-)
+from evidenceops.application.model_protocol import FinalAnswer,ModelRequest,ModelUsage,ToolCall
 
 
 def test_tool_call_keeps_tool_call_id()->None:
-	tool_call=ToolCall(
-		"call-001",
-		"query_thread_pool_snapshot",
-		{"service_name":"order-service"},
-	)
+	tool_call=ToolCall("call-001","query_thread_pool_snapshot",{"service_name":"order-service"})
 
 	assert tool_call.tool_call_id=="call-001"
 	assert tool_call.tool_name=="query_thread_pool_snapshot"

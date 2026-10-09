@@ -43,18 +43,11 @@ class AgentLoop:
 			raise ValueError("max_steps必须大于0")
 
 		if response_format not in ("text","json_object"):
-			raise ValueError(
-				"response_format必须是text或json_object"
-			)
+			raise ValueError("response_format必须是text或json_object")
 
 		self._gateway=gateway
 		self._runtime=runtime
-		self._tools=tuple(
-			tool.to_model_schema()
-			if isinstance(tool,ToolSpec)
-			else tool
-			for tool in tools
-		)
+		self._tools=tuple(tool.to_model_schema() if isinstance(tool,ToolSpec) else tool for tool in tools)
 		self._model=model
 		self._timeout_seconds=timeout_seconds
 		self._max_steps=max_steps
@@ -71,7 +64,7 @@ class AgentLoop:
 			raise ValueError("run_id不能为空")
 
 		if self._response_format=="json_object":
-				history:tuple[dict[str,Any],...]=(
+			history:tuple[dict[str,Any],...]=(
 				{
 					"role":"system",
 					"content":(
@@ -93,12 +86,7 @@ class AgentLoop:
 				},
 			)
 		else:
-			history=(
-			{
-				"role":"user",
-				"content":prompt,
-			},
-		)
+			history=({"role":"user","content":prompt,},)
 
 		records:list[ExecutionRecord]=[]
 		def finish(final_answer,tool_results,error_code,error_message=None):
@@ -106,6 +94,7 @@ class AgentLoop:
 
 		tool_results:list[ToolResult]=[]
 
+		# 限制模型轮次，同轮多工具批次不逐项消耗轮次预算。
 		for model_round in range(1,self._max_steps+1):
 			request=ModelRequest(
 				messages=history,
@@ -150,11 +139,7 @@ class AgentLoop:
 			response=call_result.response
 
 			if isinstance(response,(FinalAnswer,StructuredFinalAnswer)):
-				return finish(
-					final_answer=response,
-					tool_results=tuple(tool_results),
-					error_code=None,
-				)
+				return finish(final_answer=response,tool_results=tuple(tool_results),error_code=None)
 
 			if not isinstance(response,(ToolCall,ToolCallBatch)):
 				return finish(None,tuple(tool_results),"INVALID_MODEL_RESPONSE","模型返回了无法识别的响应类型")
@@ -175,6 +160,7 @@ class AgentLoop:
 				for result in batch_results if result.execution_record is not None
 			)
 
+			# 证据 ID 由运行时绑定当前 Run，模型只能引用观察结果中的 ID。
 			bound_results=tuple(
 				replace(result,evidence_id=f"{run_id}-{result.tool_call_id}") if result.ok else result
 				for result in batch_results

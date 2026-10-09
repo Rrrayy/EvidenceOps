@@ -10,10 +10,7 @@ def build_runtime()->ToolRuntime:
 def test_runtime_executes_read_only_tool()->None:
 	runtime=build_runtime()
 
-	result=runtime.execute(
-		"query_thread_pool_snapshot",
-		{"service_name":"order-service"},
-	)
+	result=runtime.execute("query_thread_pool_snapshot",{"service_name":"order-service"})
 
 	assert result.ok is True
 	assert result.error_code is None
@@ -25,11 +22,7 @@ def test_runtime_executes_read_only_tool()->None:
 def test_runtime_preserves_tool_call_id()->None:
 	runtime=build_runtime()
 
-	result=runtime.execute(
-		"query_thread_pool_snapshot",
-		{"service_name":"order-service"},
-		tool_call_id="call-001",
-	)
+	result=runtime.execute("query_thread_pool_snapshot",{"service_name":"order-service"},tool_call_id="call-001")
 
 	assert result.ok is True
 	assert result.tool_call_id=="call-001"
@@ -38,10 +31,7 @@ def test_runtime_preserves_tool_call_id()->None:
 def test_runtime_rejects_unknown_tool()->None:
 	runtime=build_runtime()
 
-	result=runtime.execute(
-		"unknown_tool",
-		{},
-	)
+	result=runtime.execute("unknown_tool",{})
 
 	assert result.ok is False
 	assert result.error_code=="UNKNOWN_TOOL"
@@ -51,10 +41,7 @@ def test_runtime_rejects_unknown_tool()->None:
 def test_runtime_rejects_invalid_arguments()->None:
 	runtime=build_runtime()
 
-	result=runtime.execute(
-		"query_thread_pool_snapshot",
-		{"service_name":""},
-	)
+	result=runtime.execute("query_thread_pool_snapshot",{"service_name":""})
 
 	assert result.ok is False
 	assert result.error_code=="INVALID_ARGUMENTS"
@@ -63,10 +50,7 @@ def test_runtime_rejects_invalid_arguments()->None:
 def test_runtime_converts_handler_failure()->None:
 	runtime=build_runtime()
 
-	result=runtime.execute(
-		"query_thread_pool_snapshot",
-		{"service_name":"payment-service"},
-	)
+	result=runtime.execute("query_thread_pool_snapshot",{"service_name":"payment-service"})
 
 	assert result.ok is False
 	assert result.error_code=="TOOL_EXECUTION_FAILED"
@@ -82,10 +66,7 @@ def test_runtime_rejects_non_read_only_tool()->None:
 
 	runtime=ToolRuntime((dangerous_tool,))
 
-	result=runtime.execute(
-		"restart_service",
-		{},
-	)
+	result=runtime.execute("restart_service",{})
 
 	assert result.ok is False
 	assert result.error_code=="TOOL_POLICY_DENIED"
@@ -105,9 +86,4 @@ def test_tool_result_accepts_evidence_id()->None:
 
 def test_tool_result_rejects_blank_evidence_id()->None:
 	with pytest.raises(ValueError):
-		ToolResult(
-			tool_name="test-tool",
-			ok=True,
-			data={"value":1},
-			evidence_id="   ",
-		)
+		ToolResult(tool_name="test-tool",ok=True,data={"value":1},evidence_id="   ")

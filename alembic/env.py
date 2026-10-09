@@ -4,11 +4,7 @@ from alembic import context
 from sqlalchemy import pool
 
 from evidenceops.infrastructure.database.models import Base
-from evidenceops.infrastructure.database.session import (
-	DatabaseSettings,
-	build_database_url,
-	create_database_engine,
-)
+from evidenceops.infrastructure.database.session import DatabaseSettings,build_database_url,create_database_engine
 
 
 config=context.config

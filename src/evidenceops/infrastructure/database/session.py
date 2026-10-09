@@ -63,6 +63,7 @@ class DatabaseSettings:
 
 
 def build_database_url(settings:DatabaseSettings)->URL:
+	# URL 对象处理密码中的特殊字符，避免手工拼接破坏连接地址。
 	return URL.create(
 		drivername="postgresql+psycopg",
 		username=settings.user,
@@ -74,6 +75,7 @@ def build_database_url(settings:DatabaseSettings)->URL:
 
 
 def create_database_engine(settings:DatabaseSettings)->Engine:
+	# 借出前检测连接存活，减少容器重启后的失效连接；不自动重试事务。
 	return create_engine(
 		build_database_url(settings),
 		pool_pre_ping=True,
@@ -85,12 +87,7 @@ def create_database_engine(settings:DatabaseSettings)->Engine:
 
 
 def create_session_factory(engine:Engine)->sessionmaker[Session]:
-	return sessionmaker(
-		bind=engine,
-		class_=Session,
-		autoflush=False,
-		expire_on_commit=False,
-	)
+	return sessionmaker(bind=engine,class_=Session,autoflush=False,expire_on_commit=False)
 
 
 @contextmanager
@@ -101,6 +98,7 @@ def session_scope(session_factory:sessionmaker[Session])->Iterator[Session]:
 
 @contextmanager
 def transaction_scope(session_factory:sessionmaker[Session])->Iterator[Session]:
+	# 正常退出提交，异常退出回滚并关闭 Session，提交权不交给仓储。
 	with session_factory.begin() as session:
 		yield session
 

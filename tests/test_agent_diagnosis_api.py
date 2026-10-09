@@ -9,10 +9,7 @@ from evidenceops.infrastructure.providers.mock_provider import MockProvider
 
 def test_agent_api_runs_complete_mock_agent_flow()->None:
 	with TestClient(build_agent_app()) as client:
-		response=client.post(
-			"/api/v1/agent/diagnosis",
-			json={"description":"分析order-service的RPC超时"},
-		)
+		response=client.post("/api/v1/agent/diagnosis",json={"description":"分析order-service的RPC超时"})
 
 	body=response.json()
 
@@ -38,10 +35,7 @@ def test_agent_api_runs_complete_mock_agent_flow()->None:
 
 def test_agent_api_rejects_blank_description()->None:
 	with TestClient(build_agent_app()) as client:
-		response=client.post(
-			"/api/v1/agent/diagnosis",
-			json={"description":"   "},
-		)
+		response=client.post("/api/v1/agent/diagnosis",json={"description":"   "})
 
 	assert response.status_code==422
 
@@ -53,7 +47,7 @@ def test_failed_agent_api_preserves_execution_records(monkeypatch,failure)->None
 			raise ModelProviderError("MODEL_TIMEOUT","模型超时")
 		return StructuredFinalAnswer({"unexpected":True})
 	provider=MockProvider((respond,))
-	monkeypatch.setattr(agent_app,"OpenAICompatibleProvider",lambda **kwargs:provider)
+	monkeypatch.setattr(agent_app,"OpenAICompatibleProvider",lambda**kwargs:provider)
 	with TestClient(agent_app.build_openai_agent_app("https://example.com/v1","test-key","test-model")) as client:
 		response=client.post("/api/v1/agent/diagnosis",json={"description":"排查超时"})
 	body=response.json()
@@ -94,7 +88,7 @@ def test_openai_app_registers_three_tools_for_runtime_and_model(monkeypatch)->No
 		return complete(request)
 
 	monkeypatch.setattr(provider,"complete",record_request)
-	monkeypatch.setattr(agent_app,"OpenAICompatibleProvider",lambda **kwargs:provider)
+	monkeypatch.setattr(agent_app,"OpenAICompatibleProvider",lambda**kwargs:provider)
 	app=agent_app.build_openai_agent_app("https://example.com/v1","test-key","test-model")
 
 	with TestClient(app) as client:

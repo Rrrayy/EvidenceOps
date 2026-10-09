@@ -27,14 +27,6 @@ class MockProvider:
 		response_source=self._responses[self._index]
 		self._index+=1
 
-		response=(
-			response_source(request)
-			if callable(response_source)
-			else response_source
-		)
+		response=(response_source(request) if callable(response_source) else response_source)
 
-		return ProviderResponse(
-			response=response,
-			model=request.model,
-			usage=None,
-		)
+		return ProviderResponse(response=response,model=request.model,usage=None)

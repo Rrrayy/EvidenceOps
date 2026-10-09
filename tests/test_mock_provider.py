@@ -1,10 +1,6 @@
 import pytest
 
-from evidenceops.application.model_protocol import (
-	FinalAnswer,
-	ModelRequest,
-	ToolCall,
-)
+from evidenceops.application.model_protocol import FinalAnswer,ModelRequest,ToolCall
 from evidenceops.infrastructure.providers.mock_provider import MockProvider
 
 

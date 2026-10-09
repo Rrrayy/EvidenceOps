@@ -32,17 +32,8 @@ def test_agent_main_chain_builds_report()->None:
 		),
 		StructuredFinalAnswer(build_draft_data("run-agent-report-001-call-report-001")),
 	))
-	assembly=build_agent_diagnosis_assembly(
-		provider,
-		"mock",
-		(build_thread_pool_tool(),),
-		"order-service",
-	)
-	service=DiagnosisService(
-		assembly.evidence_collector,
-		DraftReportGenerator(),
-		lambda:"run-agent-report-001",
-	)
+	assembly=build_agent_diagnosis_assembly(provider,"mock",(build_thread_pool_tool(),),"order-service")
+	service=DiagnosisService(assembly.evidence_collector,DraftReportGenerator(),lambda:"run-agent-report-001")
 
 	try:
 		result=service.execute("req-agent-report-001","分析订单服务RPC超时")
@@ -54,9 +45,7 @@ def test_agent_main_chain_builds_report()->None:
 	assert len(result.evidences)==1
 	assert result.report is not None
 	assert result.report.run_id=="run-agent-report-001"
-	assert result.report.root_cause.evidence_ids==(
-		"run-agent-report-001-call-report-001",
-	)
+	assert result.report.root_cause.evidence_ids==("run-agent-report-001-call-report-001",)
 	assert result.report.confidence==0.91
 
 
@@ -69,17 +58,8 @@ def test_agent_main_chain_rejects_unknown_evidence_id()->None:
 		),
 		StructuredFinalAnswer(build_draft_data("evidence-does-not-exist")),
 	))
-	assembly=build_agent_diagnosis_assembly(
-		provider,
-		"mock",
-		(build_thread_pool_tool(),),
-		"order-service",
-	)
-	service=DiagnosisService(
-		assembly.evidence_collector,
-		DraftReportGenerator(),
-		lambda:"run-agent-report-002",
-	)
+	assembly=build_agent_diagnosis_assembly(provider,"mock",(build_thread_pool_tool(),),"order-service")
+	service=DiagnosisService(assembly.evidence_collector,DraftReportGenerator(),lambda:"run-agent-report-002")
 
 	try:
 		result=service.execute("req-agent-report-002","分析订单服务RPC超时")

@@ -148,10 +148,7 @@ def query_local_metrics(arguments:dict[str,Any])->dict[str,Any]:
 			if not query.start_time<=timestamp<=query.end_time:
 				continue
 
-			matches.append((timestamp,{
-				"line_number":line_number,
-				"record":record,
-			}))
+			matches.append((timestamp,{"line_number":line_number,"record":record,}))
 
 	matches.sort(key=lambda sample:sample[0])
 	samples=[sample[1] for sample in matches[:query.limit]]

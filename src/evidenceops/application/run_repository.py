@@ -40,6 +40,4 @@ class RunPersistenceError(RuntimeError):
 	def __init__(self,operation:str,run_id:str)->None:
 		self.operation=operation
 		self.run_id=run_id
-		super().__init__(
-			f"Run持久化失败:operation={operation},run_id={run_id}"
-		)
+		super().__init__(f"Run持久化失败:operation={operation},run_id={run_id}")

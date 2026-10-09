@@ -86,9 +86,7 @@ class ModelRequest:
 			raise ValueError("run_id不能为空")
 
 		if self.response_format not in ("text","json_object"):
-			raise ValueError(
-				"response_format必须是text或json_object"
-			)
+			raise ValueError("response_format必须是text或json_object")
 
 @dataclass(frozen=True,slots=True)
 class ModelUsage:
@@ -97,11 +95,7 @@ class ModelUsage:
 	total_tokens:int|None
 
 	def __post_init__(self)->None:
-		for token_value in (
-			self.prompt_tokens,
-			self.completion_tokens,
-			self.total_tokens,
-		):
+		for token_value in (self.prompt_tokens,self.completion_tokens,self.total_tokens):
 			if token_value is not None and token_value<0:
 				raise ValueError("Token数量不能为负数")
 
@@ -113,13 +107,8 @@ class ProviderResponse:
 	usage:ModelUsage|None
 
 	def __post_init__(self)->None:
-		if not isinstance(
-			self.response,
-			(ToolCall,ToolCallBatch,FinalAnswer,StructuredFinalAnswer),
-		):
-			raise TypeError(
-				"response必须是ToolCall、ToolCallBatch、FinalAnswer或StructuredFinalAnswer"
-			)
+		if not isinstance(self.response,(ToolCall,ToolCallBatch,FinalAnswer,StructuredFinalAnswer)):
+			raise TypeError("response必须是ToolCall、ToolCallBatch、FinalAnswer或StructuredFinalAnswer")
 
 		if not isinstance(self.model,str) or not self.model.strip():
 			raise ValueError("model不能为空")
@@ -135,13 +124,8 @@ class ModelCallResult:
 	request_id:str
 
 	def __post_init__(self)->None:
-		if not isinstance(
-			self.response,
-			(ToolCall,ToolCallBatch,FinalAnswer,StructuredFinalAnswer),
-		):
-			raise TypeError(
-				"response必须是ToolCall、ToolCallBatch、FinalAnswer或StructuredFinalAnswer"
-			)
+		if not isinstance(self.response,(ToolCall,ToolCallBatch,FinalAnswer,StructuredFinalAnswer)):
+			raise TypeError("response必须是ToolCall、ToolCallBatch、FinalAnswer或StructuredFinalAnswer")
 
 		if not isinstance(self.provider,str) or not self.provider.strip():
 			raise ValueError("provider不能为空")

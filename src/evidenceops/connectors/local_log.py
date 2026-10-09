@@ -96,11 +96,7 @@ class LocalLogQuery:
 		if not isinstance(keywords,list) or len(keywords)>5:
 			raise ValueError("keywords必须是最多5个字符串的数组")
 
-		normalized_keywords=tuple(
-			keyword.strip()
-			for keyword in keywords
-			if isinstance(keyword,str) and keyword.strip()
-		)
+		normalized_keywords=tuple(keyword.strip() for keyword in keywords if isinstance(keyword,str) and keyword.strip())
 
 		if len(normalized_keywords)!=len(keywords):
 			raise ValueError("keywords中的每一项都必须是非空字符串")
@@ -125,9 +121,7 @@ def query_local_logs(arguments:dict[str,Any])->dict[str,Any]:
 	config=SERVICE_REGISTRY.get((query.service_name,query.environment))
 
 	if config is None:
-		raise UnknownServiceError(
-			f"没有找到已注册服务:{query.service_name}/{query.environment}"
-		)
+		raise UnknownServiceError(f"没有找到已注册服务:{query.service_name}/{query.environment}")
 
 	if not config.read_only:
 		raise PermissionError("日志来源不是只读来源")
@@ -137,10 +131,7 @@ def query_local_logs(arguments:dict[str,Any])->dict[str,Any]:
 
 	matches=[]
 
-	for line_number,raw_line in enumerate(
-		config.source_path.read_text(encoding="utf-8").splitlines(),
-		start=1,
-	):
+	for line_number,raw_line in enumerate(config.source_path.read_text(encoding="utf-8").splitlines(),start=1):
 		if not raw_line.strip():
 			continue
 
@@ -153,16 +144,10 @@ def query_local_logs(arguments:dict[str,Any])->dict[str,Any]:
 		if not query.start_time<=observed_at<=query.end_time:
 			continue
 
-		if (
-			query.error_type is not None
-			and record.get("error_type")!=query.error_type.value
-		):
+		if (query.error_type is not None and record.get("error_type")!=query.error_type.value):
 			continue
 
-		search_text=" ".join(
-			str(record.get(field,""))
-			for field in ("message","error_type","dependency")
-		).lower()
+		search_text=" ".join(str(record.get(field,"")) for field in ("message","error_type","dependency")).lower()
 
 		if query.symptom is not None and query.symptom.lower() not in search_text:
 			continue
@@ -170,10 +155,7 @@ def query_local_logs(arguments:dict[str,Any])->dict[str,Any]:
 		if any(keyword.lower() not in search_text for keyword in query.keywords):
 			continue
 
-		matches.append({
-			"line_number":line_number,
-			"record":record,
-		})
+		matches.append({"line_number":line_number,"record":record,})
 
 	total_count=len(matches)
 	return {

@@ -41,11 +41,7 @@ def test_agent_collector_returns_evidence_and_draft()->None:
 	loop=AgentLoop(LLMGateway(provider,"mock"),runtime)
 	tool_collector=ToolEvidenceCollector(runtime,"order-service")
 	collector=AgentEvidenceCollector(loop,tool_collector)
-	run=DiagnosisRun(
-		"run-agent-evidence-001",
-		"req-agent-evidence-001",
-		"分析订单服务RPC超时",
-	)
+	run=DiagnosisRun("run-agent-evidence-001","req-agent-evidence-001","分析订单服务RPC超时")
 
 	try:
 		result=collector.collect(run)
@@ -56,9 +52,6 @@ def test_agent_collector_returns_evidence_and_draft()->None:
 	assert len(result.evidences)==1
 	assert result.evidences[0].run_id==run.run_id
 	assert result.evidences[0].source.value=="metric"
-	assert result.evidences[0].source_ref==(
-		"tool:query_thread_pool_snapshot:"
-		"service:order-service"
-	)
+	assert result.evidences[0].source_ref==("tool:query_thread_pool_snapshot:" "service:order-service")
 	assert isinstance(result.draft,DiagnosisDraft)
 	assert result.draft.confidence==0.91

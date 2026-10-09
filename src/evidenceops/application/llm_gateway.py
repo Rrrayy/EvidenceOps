@@ -1,11 +1,6 @@
 import time
 
-from evidenceops.application.model_protocol import (
-	ModelCallResult,
-	ModelProvider,
-	ModelProviderError,
-	ModelRequest,
-)
+from evidenceops.application.model_protocol import ModelCallResult,ModelProvider,ModelProviderError,ModelRequest
 
 class ModelGatewayError(RuntimeError):
 	def __init__(self,error_code:str,error_message:str)->None:
@@ -23,30 +18,20 @@ class LLMGateway:
 		self._provider_name=provider_name
 
 	def complete(self,request:ModelRequest)->ModelCallResult:
+		# 使用单调时钟测量耗时，避免系统时间调整导致负延迟。
 		start_time=time.perf_counter()
 
 		try:
-			provider_response = self._provider.complete(request)
+			provider_response=self._provider.complete(request)
 		except ModelProviderError as error:
-			raise ModelGatewayError(
-				error.error_code,
-				error.error_message,
-			) from error
+			# 保留 Provider 的稳定错误分类，使编排层无需了解供应商协议。
+			raise ModelGatewayError(error.error_code,error.error_message) from error
 		except TimeoutError as error:
-			raise ModelGatewayError(
-				"MODEL_TIMEOUT",
-				"模型请求超时",
-			) from error
+			raise ModelGatewayError("MODEL_TIMEOUT","模型请求超时") from error
 		except ConnectionError as error:
-			raise ModelGatewayError(
-				"MODEL_NETWORK_ERROR",
-				"模型网络请求失败",
-			) from error
+			raise ModelGatewayError("MODEL_NETWORK_ERROR","模型网络请求失败") from error
 		except Exception as error:
-			raise ModelGatewayError(
-				"MODEL_EXECUTION_FAILED",
-				"模型调用失败",
-			) from error
+			raise ModelGatewayError("MODEL_EXECUTION_FAILED","模型调用失败") from error
 
 		latency_ms=(time.perf_counter()-start_time)*1000
 

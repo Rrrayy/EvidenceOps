@@ -3,40 +3,24 @@ from dataclasses import dataclass
 from typing import Protocol
 from uuid import uuid4
 
-from evidenceops.application.agent_collection_result import (
-	AgentCollectionError,
-	AgentCollectionResult,
-)
+from evidenceops.application.agent_collection_result import AgentCollectionError,AgentCollectionResult
 from evidenceops.application.diagnosis_draft import DiagnosisDraft
 from evidenceops.application.diagnosis_persistence import DiagnosisPersistence
 from evidenceops.application.execution_record import ExecutionRecord
-from evidenceops.application.run_repository import (
-	RunPersistenceError,
-)
+from evidenceops.application.run_repository import RunPersistenceError
 from evidenceops.application.tool_errors import ToolCollectionError
-from evidenceops.domain.diagnosis_report import (
-	DiagnosisReport,
-	validate_report_evidence,
-)
+from evidenceops.domain.diagnosis_report import DiagnosisReport,validate_report_evidence
 from evidenceops.domain.diagnosis_run import DiagnosisRun,RunStatus
 from evidenceops.domain.evidence import Evidence
 
 
 class EvidenceCollector(Protocol):
-	def collect(
-		self,
-		run:DiagnosisRun,
-	)->tuple[Evidence,...]|AgentCollectionResult:
+	def collect(self,run:DiagnosisRun)->tuple[Evidence,...]|AgentCollectionResult:
 		...
 
 
 class ReportGenerator(Protocol):
-	def generate(
-		self,
-		run:DiagnosisRun,
-		evidences:tuple[Evidence,...],
-		*draft:DiagnosisDraft,
-	)->DiagnosisReport:
+	def generate(self,run:DiagnosisRun,evidences:tuple[Evidence,...],*draft:DiagnosisDraft)->DiagnosisReport:
 		...
 
 
@@ -82,12 +66,7 @@ class DiagnosisService:
 		except Exception as error:
 			raise RunPersistenceError("update",run.run_id) from error
 
-	def _transition_and_persist(
-		self,
-		run:DiagnosisRun,
-		next_status:RunStatus,
-		error_code:str|None=None,
-	)->None:
+	def _transition_and_persist(self,run:DiagnosisRun,next_status:RunStatus,error_code:str|None=None)->None:
 		run.transition(next_status,error_code=error_code)
 		self._persist_update(run)
 
@@ -105,18 +84,15 @@ class DiagnosisService:
 			with self._diagnosis_persistence.transaction() as transaction:
 				for evidence in evidences:
 					transaction.evidence.create(evidence)
+				# 四类数据共享事务，任一步失败都不能留下半份成功档案。
 				transaction.report.create(report)
 				transaction.execution_record.create_many(run.run_id,records)
 				transaction.run.update(run)
 		except Exception as error:
 			raise RunPersistenceError("complete",run.run_id) from error
 
-	def _persist_failure(
-		self,
-		run:DiagnosisRun,
-		evidences:tuple[Evidence,...],
-		records:tuple[ExecutionRecord,...],
-	)->None:
+	def _persist_failure(self,run:DiagnosisRun,evidences:tuple[Evidence,...],records:tuple[ExecutionRecord,...])->None:
+		# 失败保留已交付的证据和执行记录，不保存成功报告。
 		if self._diagnosis_persistence is None:
 			return
 
@@ -129,17 +105,10 @@ class DiagnosisService:
 		except Exception as error:
 			raise RunPersistenceError("fail",run.run_id) from error
 
-	def execute(
-		self,
-		request_id:str,
-		description:str,
-	)->DiagnosisExecution:
-		run=DiagnosisRun(
-			self._run_id_factory(),
-			request_id,
-			description,
-		)
+	def execute(self,request_id:str,description:str)->DiagnosisExecution:
+		run=DiagnosisRun(self._run_id_factory(),request_id,description)
 
+		# 状态更新使用短事务，模型和工具等待期间不持有数据库 Session。
 		self._persist_create(run)
 		self._transition_and_persist(run,RunStatus.RUNNING)
 
@@ -167,50 +136,24 @@ class DiagnosisService:
 			records=error.execution_records
 			run.transition(RunStatus.FAILED,error_code=error.error_code)
 			self._persist_failure(run,evidences,records)
-			return finish(
-				run,
-				evidences,
-				None,
-				{
-					"code":error.error_code,
-					"message":error.error_message,
-				},
-			)
+			return finish(run,evidences,None,{"code":error.error_code,"message":error.error_message,})
 
 		except ToolCollectionError as error:
 			records=getattr(error,"execution_records",records)
 			run.transition(RunStatus.FAILED,error_code="EVIDENCE_COLLECTION_FAILED")
 			self._persist_failure(run,evidences,records)
-			return finish(
-				run,
-				evidences,
-				None,
-				{
-					"code":error.error_code,
-					"message":error.error_message,
-				},
-			)
+			return finish(run,evidences,None,{"code":error.error_code,"message":error.error_message,})
 
 		except Exception as error:
 			records=getattr(error,"execution_records",records)
 			run.transition(RunStatus.FAILED,error_code="EVIDENCE_COLLECTION_FAILED")
 			self._persist_failure(run,evidences,records)
-			return finish(
-				run,
-				evidences,
-				None,
-				None,
-			)
+			return finish(run,evidences,None,None)
 
 		if not evidences:
 			run.transition(RunStatus.FAILED,error_code="EVIDENCE_INSUFFICIENT")
 			self._persist_failure(run,evidences,records)
-			return finish(
-				run,
-				evidences,
-				None,
-				None,
-			)
+			return finish(run,evidences,None,None)
 
 		if draft is not None:
 			try:
@@ -218,41 +161,18 @@ class DiagnosisService:
 			except ValueError:
 				run.transition(RunStatus.FAILED,error_code="INVALID_REPORT_EVIDENCE")
 				self._persist_failure(run,evidences,records)
-				return finish(
-					run,
-					evidences,
-					None,
-					{
-						"code":"INVALID_REPORT_EVIDENCE",
-						"message":"Draft引用的证据无效",
-					},
-				)
+				return finish(run,evidences,None,{"code":"INVALID_REPORT_EVIDENCE","message":"Draft引用的证据无效",})
 
 		try:
 			if draft is None:
-				report=self._report_generator.generate(
-					run,
-					evidences,
-				)
+				report=self._report_generator.generate(run,evidences)
 			else:
-				report=self._report_generator.generate(
-					run,
-					evidences,
-					draft,
-				)
+				report=self._report_generator.generate(run,evidences,draft)
 
 		except Exception:
 			run.transition(RunStatus.FAILED,error_code="REPORT_GENERATION_FAILED")
 			self._persist_failure(run,evidences,records)
-			return finish(
-				run,
-				evidences,
-				None,
-				{
-					"code":"REPORT_GENERATION_FAILED",
-					"message":"报告生成器执行失败",
-				},
-			)
+			return finish(run,evidences,None,{"code":"REPORT_GENERATION_FAILED","message":"报告生成器执行失败",})
 
 		try:
 			validate_report_evidence(report,evidences)
@@ -260,15 +180,7 @@ class DiagnosisService:
 		except Exception:
 			run.transition(RunStatus.FAILED,error_code="INVALID_REPORT_EVIDENCE")
 			self._persist_failure(run,evidences,records)
-			return finish(
-				run,
-				evidences,
-				None,
-				{
-					"code":"INVALID_REPORT_EVIDENCE",
-					"message":"报告引用的证据无效",
-				},
-			)
+			return finish(run,evidences,None,{"code":"INVALID_REPORT_EVIDENCE","message":"报告引用的证据无效",})
 
 		if self._diagnosis_persistence is None:
 			self._transition_and_persist(run,RunStatus.SUCCEEDED)
@@ -276,18 +188,10 @@ class DiagnosisService:
 			run.transition(RunStatus.SUCCEEDED)
 			self._persist_success(run,evidences,report,records)
 
-		return finish(
-			run,
-			evidences,
-			report,
-			None,
-		)
+		return finish(run,evidences,report,None)
 
 	@staticmethod
-	def _validate_collected_evidences(
-		run:DiagnosisRun,
-		evidences:tuple[Evidence,...],
-	)->None:
+	def _validate_collected_evidences(run:DiagnosisRun,evidences:tuple[Evidence,...])->None:
 		seen_ids:set[str]=set()
 
 		for evidence in evidences:
@@ -303,10 +207,7 @@ class DiagnosisService:
 			seen_ids.add(evidence.evidence_id)
 
 	@staticmethod
-	def _validate_draft_evidence(
-		draft:DiagnosisDraft,
-		evidences:tuple[Evidence,...],
-	)->None:
+	def _validate_draft_evidence(draft:DiagnosisDraft,evidences:tuple[Evidence,...])->None:
 		evidence_ids={evidence.evidence_id for evidence in evidences}
 		referenced_ids=set(draft.root_cause.evidence_ids)
 

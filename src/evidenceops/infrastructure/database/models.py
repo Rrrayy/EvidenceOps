@@ -40,11 +40,7 @@ class EvidenceRow(Base):
 	)
 
 	evidence_id:Mapped[str]=mapped_column(Text,primary_key=True)
-	run_id:Mapped[str]=mapped_column(
-		Text,
-		ForeignKey("diagnosis_runs.run_id",name="fk_evidences_run_id"),
-		nullable=False,
-	)
+	run_id:Mapped[str]=mapped_column(Text,ForeignKey("diagnosis_runs.run_id",name="fk_evidences_run_id"),nullable=False)
 	source:Mapped[str]=mapped_column(Text,nullable=False)
 	observed_at:Mapped[datetime]=mapped_column(DateTime(timezone=True),nullable=False)
 	summary:Mapped[str]=mapped_column(Text,nullable=False)
@@ -71,9 +67,7 @@ class DiagnosisReportRow(Base):
 class ExecutionRecordRow(Base):
 	__tablename__="execution_records"
 
-	__table_args__=(
-		Index("ix_execution_records_run_id_started_at","run_id","started_at"),
-	)
+	__table_args__=(Index("ix_execution_records_run_id_started_at","run_id","started_at"),)
 
 	record_id:Mapped[int]=mapped_column(primary_key=True,autoincrement=True)
 	run_id:Mapped[str]=mapped_column(

@@ -32,10 +32,7 @@ class DiagnosisDraftClaim:
 		if len(set(normalized_ids))!=len(normalized_ids):
 			raise ValueError("Evidence ID不能重复")
 
-		return cls(
-			text=text.strip(),
-			evidence_ids=normalized_ids,
-		)
+		return cls(text=text.strip(),evidence_ids=normalized_ids)
 
 
 @dataclass(frozen=True,slots=True)
@@ -63,10 +60,7 @@ class DiagnosisDraft:
 		if not recommendations_data:
 			raise ValueError("recommendations不能为空")
 
-		recommendations=tuple(
-			DiagnosisDraftClaim.from_mapping(item)
-			for item in recommendations_data
-		)
+		recommendations=tuple(DiagnosisDraftClaim.from_mapping(item) for item in recommendations_data)
 
 		if isinstance(confidence,bool) or not isinstance(confidence,(int,float)):
 			raise TypeError("confidence必须是数字")

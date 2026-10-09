@@ -35,21 +35,12 @@ class SqlAlchemyReportRepository:
 		if row is None:
 			return None
 
-		root_cause=DiagnosisClaim(
-			row.root_cause_text,
-			tuple(json.loads(row.root_cause_evidence_ids)),
-		)
+		root_cause=DiagnosisClaim(row.root_cause_text,tuple(json.loads(row.root_cause_evidence_ids)))
 		recommendations=tuple(
 			DiagnosisClaim(item["text"],tuple(item["evidence_ids"]))
 			for item in json.loads(row.recommendations)
 		)
-		return DiagnosisReport(
-			row.run_id,
-			root_cause,
-			recommendations,
-			row.confidence,
-			row.limitations,
-		)
+		return DiagnosisReport(row.run_id,root_cause,recommendations,row.confidence,row.limitations)
 
 
 class SqlAlchemyReportPersistence:

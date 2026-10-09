@@ -67,11 +67,7 @@ class SqlAlchemyRunRepository:
 
 
 class SqlAlchemyRunPersistence:
-	def __init__(
-		self,
-		session_factory:sessionmaker[Session],
-		engine:Engine|None=None,
-	)->None:
+	def __init__(self,session_factory:sessionmaker[Session],engine:Engine|None=None)->None:
 		self._session_factory=session_factory
 		self._engine=engine
 

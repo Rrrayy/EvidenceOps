@@ -35,26 +35,17 @@ def create_app(assembly:AgentDiagnosisAssembly)->FastAPI:
 	def diagnose(request:AgentDiagnosisRequest)->JSONResponse:
 		request_id=f"req-{uuid4()}"
 
-		result=assembly.diagnosis_service.execute(
-			request_id,
-			request.description,
-		)
+		result=assembly.diagnosis_service.execute(request_id,request.description)
 
 		response=to_response(result)
 
-		status_code=(
-			200
-			if result.run.status is RunStatus.SUCCEEDED
-			else 503
-		)
+		status_code=(200 if result.run.status is RunStatus.SUCCEEDED else 503)
 
-		return JSONResponse(
-			status_code=status_code,
-			content=response,
-		)
+		return JSONResponse(status_code=status_code,content=response)
 
 	@app.get("/api/v1/agent/runs/{run_id}")
 	def get_diagnosis(run_id:str)->JSONResponse:
+		# 复制 ID 时的首尾空白不属于身份，先规范化再查询。
 		run_id=run_id.strip()
 
 		if assembly.diagnosis_persistence is None:
@@ -67,26 +58,14 @@ def create_app(assembly:AgentDiagnosisAssembly)->FastAPI:
 			)
 
 		try:
-			history=load_diagnosis_history(
-				assembly.diagnosis_persistence,
-				run_id,
-			)
+			history=load_diagnosis_history(assembly.diagnosis_persistence,run_id)
 		except ValueError as error:
-			return JSONResponse(
-				status_code=422,
-				content={"error_code":"INVALID_ARGUMENTS","message":str(error)},
-			)
+			return JSONResponse(status_code=422,content={"error_code":"INVALID_ARGUMENTS","message":str(error)})
 
 		if history is None:
-			return JSONResponse(
-				status_code=404,
-				content={"error_code":"RUN_NOT_FOUND","message":"诊断运行不存在"},
-			)
+			return JSONResponse(status_code=404,content={"error_code":"RUN_NOT_FOUND","message":"诊断运行不存在"})
 
-		return JSONResponse(
-			status_code=200,
-			content=_history_response(history),
-		)
+		return JSONResponse(status_code=200,content=_history_response(history))
 
 	return app
 

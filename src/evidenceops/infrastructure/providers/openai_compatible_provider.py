@@ -17,12 +17,7 @@ from evidenceops.application.model_protocol import (
 
 
 class OpenAICompatibleProvider:
-	def __init__(
-		self,
-		base_url:str,
-		api_key:str,
-		client:httpx.Client|None=None,
-	)->None:
+	def __init__(self,base_url:str,api_key:str,client:httpx.Client|None=None)->None:
 		if not isinstance(base_url,str) or not base_url.strip():
 			raise ValueError("base_url不能为空")
 
@@ -43,6 +38,7 @@ class OpenAICompatibleProvider:
 		self._client=client or httpx.Client()
 
 	def complete(self,request:ModelRequest)->ProviderResponse:
+		# 凭据只进入 HTTP 请求头，不加入模型上下文。
 		headers={
 			"Authorization":f"Bearer {self._api_key}",
 			"Content-Type":"application/json",
@@ -50,69 +46,36 @@ class OpenAICompatibleProvider:
 			"X-Run-ID":request.run_id,
 		}
 
-		body={
-			"model":request.model,
-			"messages":list(request.messages),
-			"tools":list(request.tools),
-		}
+		body={"model":request.model,"messages":list(request.messages),"tools":list(request.tools),}
 
 		if request.response_format=="json_object":
 			body["response_format"]={"type":"json_object"}
 
 		try:
-			response=self._client.post(
-				self._url,
-				headers=headers,
-				json=body,
-				timeout=request.timeout_seconds,
-			)
+			response=self._client.post(self._url,headers=headers,json=body,timeout=request.timeout_seconds)
 		except httpx.TimeoutException as error:
-			raise ModelProviderError(
-				"MODEL_TIMEOUT",
-				"模型请求超时",
-			) from error
+			raise ModelProviderError("MODEL_TIMEOUT","模型请求超时") from error
 		except httpx.RequestError as error:
-			raise ModelProviderError(
-				"MODEL_NETWORK_ERROR",
-				"模型网络请求失败",
-			) from error
+			raise ModelProviderError("MODEL_NETWORK_ERROR","模型网络请求失败") from error
 		except httpx.HTTPError as error:
-			raise ModelProviderError(
-				"MODEL_HTTP_ERROR",
-				"模型HTTP请求失败",
-			) from error
+			raise ModelProviderError("MODEL_HTTP_ERROR","模型HTTP请求失败") from error
 
 		if response.status_code in (401,403):
-			raise ModelProviderError(
-				"MODEL_AUTH_FAILED",
-				"模型认证失败",
-			)
+			raise ModelProviderError("MODEL_AUTH_FAILED","模型认证失败")
 
 		if response.status_code==429:
-			raise ModelProviderError(
-				"MODEL_RATE_LIMITED",
-				"模型请求触发限流",
-			)
+			raise ModelProviderError("MODEL_RATE_LIMITED","模型请求触发限流")
 
 		if response.status_code>=500:
-			raise ModelProviderError(
-				"MODEL_SERVER_ERROR",
-				OpenAICompatibleProvider._build_http_error_message(response),
-			)
+			raise ModelProviderError("MODEL_SERVER_ERROR",OpenAICompatibleProvider._build_http_error_message(response))
 
 		if response.status_code>=400:
-			raise ModelProviderError(
-				"MODEL_HTTP_ERROR",
-				OpenAICompatibleProvider._build_http_error_message(response),
-			)
+			raise ModelProviderError("MODEL_HTTP_ERROR",OpenAICompatibleProvider._build_http_error_message(response))
 
 		try:
 			payload=response.json()
 		except ValueError as error:
-			raise ModelProviderError(
-				"MODEL_PROTOCOL_ERROR",
-				"模型响应不是合法JSON",
-			) from error
+			raise ModelProviderError("MODEL_PROTOCOL_ERROR","模型响应不是合法JSON") from error
 
 		return self._parse_response(payload,request)
 
@@ -130,63 +93,38 @@ class OpenAICompatibleProvider:
 		self._client.close()
 
 	@staticmethod
-	def _parse_response(
-		payload:dict[str,Any],
-		request:ModelRequest,
-	)->ProviderResponse:
+	def _parse_response(payload:dict[str,Any],request:ModelRequest)->ProviderResponse:
 		if not isinstance(payload,dict):
-			raise ModelProviderError(
-				"MODEL_PROTOCOL_ERROR",
-				"模型响应必须是JSON对象",
-			)
+			raise ModelProviderError("MODEL_PROTOCOL_ERROR","模型响应必须是JSON对象")
 
 		choices=payload.get("choices")
 
 		if not isinstance(choices,list) or not choices:
-			raise ModelProviderError(
-				"MODEL_PROTOCOL_ERROR",
-				"模型响应缺少有效choices",
-			)
+			raise ModelProviderError("MODEL_PROTOCOL_ERROR","模型响应缺少有效choices")
 
 		first_choice=choices[0]
 
 		if not isinstance(first_choice,dict):
-			raise ModelProviderError(
-				"MODEL_PROTOCOL_ERROR",
-				"模型响应中的choice格式错误",
-			)
+			raise ModelProviderError("MODEL_PROTOCOL_ERROR","模型响应中的choice格式错误")
 
 		message=first_choice.get("message")
 
 		if not isinstance(message,dict):
-			raise ModelProviderError(
-				"MODEL_PROTOCOL_ERROR",
-				"模型响应缺少有效message",
-			)
+			raise ModelProviderError("MODEL_PROTOCOL_ERROR","模型响应缺少有效message")
 
 		tool_calls=message.get("tool_calls")
 
+		# 工具调用响应可以没有文本，先识别调用再要求最终答案内容。
 		if tool_calls is not None:
-			return OpenAICompatibleProvider._parse_tool_call(
-				tool_calls,
-				payload,
-				request,
-			)
+			return OpenAICompatibleProvider._parse_tool_call(tool_calls,payload,request)
 
 		content=message.get("content")
 
 		if not isinstance(content,str) or not content.strip():
-			raise ModelProviderError(
-				"MODEL_PROTOCOL_ERROR",
-				"模型响应既没有工具调用也没有最终答案",
-			)
+			raise ModelProviderError("MODEL_PROTOCOL_ERROR","模型响应既没有工具调用也没有最终答案")
 
 		if request.response_format=="json_object":
-			return OpenAICompatibleProvider._parse_structured_answer(
-				content,
-				payload,
-				request,
-			)
+			return OpenAICompatibleProvider._parse_structured_answer(content,payload,request)
 
 		return ProviderResponse(
 			response=FinalAnswer(content),
@@ -198,24 +136,14 @@ class OpenAICompatibleProvider:
 		)
 
 	@staticmethod
-	def _parse_structured_answer(
-		content:str,
-		payload:dict[str,Any],
-		request:ModelRequest,
-	)->ProviderResponse:
+	def _parse_structured_answer(content:str,payload:dict[str,Any],request:ModelRequest)->ProviderResponse:
 		try:
 			data=json.loads(content)
 		except json.JSONDecodeError as error:
-			raise ModelProviderError(
-				"MODEL_PROTOCOL_ERROR",
-				"模型结构化输出不是合法JSON",
-			) from error
+			raise ModelProviderError("MODEL_PROTOCOL_ERROR","模型结构化输出不是合法JSON") from error
 
 		if not isinstance(data,dict):
-			raise ModelProviderError(
-				"MODEL_PROTOCOL_ERROR",
-				"模型结构化输出必须是JSON对象",
-			)
+			raise ModelProviderError("MODEL_PROTOCOL_ERROR","模型结构化输出必须是JSON对象")
 
 		return ProviderResponse(
 			response=StructuredFinalAnswer(data),
@@ -227,16 +155,9 @@ class OpenAICompatibleProvider:
 		)
 
 	@staticmethod
-	def _parse_tool_call(
-		tool_calls:Any,
-		payload:dict[str,Any],
-		request:ModelRequest,
-	)->ProviderResponse:
+	def _parse_tool_call(tool_calls:Any,payload:dict[str,Any],request:ModelRequest)->ProviderResponse:
 		if not isinstance(tool_calls,list) or not 1<=len(tool_calls)<=16:
-			raise ModelProviderError(
-				"MODEL_PROTOCOL_ERROR",
-				"每轮工具调用必须包含1至16项",
-			)
+			raise ModelProviderError("MODEL_PROTOCOL_ERROR","每轮工具调用必须包含1至16项")
 
 		calls=tuple(OpenAICompatibleProvider._parse_single_tool_call(item) for item in tool_calls)
 		try:
@@ -253,34 +174,22 @@ class OpenAICompatibleProvider:
 	def _parse_single_tool_call(tool_call:Any)->ToolCall:
 
 		if not isinstance(tool_call,dict):
-			raise ModelProviderError(
-				"MODEL_PROTOCOL_ERROR",
-				"工具调用格式错误",
-			)
+			raise ModelProviderError("MODEL_PROTOCOL_ERROR","工具调用格式错误")
 
 		tool_call_id=tool_call.get("id")
 		function=tool_call.get("function")
 
 		if not isinstance(tool_call_id,str) or not tool_call_id.strip():
-			raise ModelProviderError(
-				"MODEL_PROTOCOL_ERROR",
-				"工具调用缺少有效ID",
-			)
+			raise ModelProviderError("MODEL_PROTOCOL_ERROR","工具调用缺少有效ID")
 
 		if not isinstance(function,dict):
-			raise ModelProviderError(
-				"MODEL_PROTOCOL_ERROR",
-				"工具调用缺少function",
-			)
+			raise ModelProviderError("MODEL_PROTOCOL_ERROR","工具调用缺少function")
 
 		tool_name=function.get("name")
 		raw_arguments=function.get("arguments")
 
 		if not isinstance(tool_name,str) or not tool_name.strip():
-			raise ModelProviderError(
-				"MODEL_PROTOCOL_ERROR",
-				"工具调用缺少有效名称",
-			)
+			raise ModelProviderError("MODEL_PROTOCOL_ERROR","工具调用缺少有效名称")
 
 		arguments=OpenAICompatibleProvider._parse_arguments(raw_arguments)
 
@@ -292,32 +201,20 @@ class OpenAICompatibleProvider:
 			return raw_arguments
 
 		if not isinstance(raw_arguments,str):
-			raise ModelProviderError(
-				"MODEL_PROTOCOL_ERROR",
-				"工具参数必须是JSON对象或JSON字符串",
-			)
+			raise ModelProviderError("MODEL_PROTOCOL_ERROR","工具参数必须是JSON对象或JSON字符串")
 
 		try:
 			arguments=json.loads(raw_arguments)
 		except json.JSONDecodeError as error:
-			raise ModelProviderError(
-				"MODEL_PROTOCOL_ERROR",
-				"工具参数不是合法JSON",
-			) from error
+			raise ModelProviderError("MODEL_PROTOCOL_ERROR","工具参数不是合法JSON") from error
 
 		if not isinstance(arguments,dict):
-			raise ModelProviderError(
-				"MODEL_PROTOCOL_ERROR",
-				"工具参数解析结果必须是JSON对象",
-			)
+			raise ModelProviderError("MODEL_PROTOCOL_ERROR","工具参数解析结果必须是JSON对象")
 
 		return arguments
 
 	@staticmethod
-	def _parse_model(
-		payload:dict[str,Any],
-		requested_model:str,
-	)->str:
+	def _parse_model(payload:dict[str,Any],requested_model:str)->str:
 		model=payload.get("model")
 
 		if isinstance(model,str) and model.strip():
@@ -333,30 +230,11 @@ class OpenAICompatibleProvider:
 			return None
 
 		if not isinstance(raw_usage,dict):
-			raise ModelProviderError(
-				"MODEL_PROTOCOL_ERROR",
-				"usage格式错误",
-			)
+			raise ModelProviderError("MODEL_PROTOCOL_ERROR","usage格式错误")
 
-		values=(
-			raw_usage.get("prompt_tokens"),
-			raw_usage.get("completion_tokens"),
-			raw_usage.get("total_tokens"),
-		)
+		values=(raw_usage.get("prompt_tokens"),raw_usage.get("completion_tokens"),raw_usage.get("total_tokens"),)
 
-		if any(
-			value is not None and (
-				not isinstance(value,int) or value<0
-			)
-			for value in values
-		):
-			raise ModelProviderError(
-				"MODEL_PROTOCOL_ERROR",
-				"usage中的Token数量格式错误",
-			)
+		if any(value is not None and (not isinstance(value,int) or value<0) for value in values):
+			raise ModelProviderError("MODEL_PROTOCOL_ERROR","usage中的Token数量格式错误")
 
-		return ModelUsage(
-			prompt_tokens=values[0],
-			completion_tokens=values[1],
-			total_tokens=values[2],
-		)
+		return ModelUsage(prompt_tokens=values[0],completion_tokens=values[1],total_tokens=values[2])

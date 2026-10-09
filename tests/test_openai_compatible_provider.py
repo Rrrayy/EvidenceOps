@@ -9,9 +9,7 @@ from evidenceops.application.model_protocol import (
 	ToolCall,
 	ToolCallBatch,
 )
-from evidenceops.infrastructure.providers.openai_compatible_provider import (
-	OpenAICompatibleProvider,
-)
+from evidenceops.infrastructure.providers.openai_compatible_provider import OpenAICompatibleProvider
 
 
 class FakeResponse:
@@ -31,11 +29,7 @@ class InvalidJsonResponse:
 
 
 class FakeClient:
-	def __init__(
-		self,
-		response:object=None,
-		error:Exception|None=None,
-	)->None:
+	def __init__(self,response:object=None,error:Exception|None=None)->None:
 		self._response=response
 		self._error=error
 		self.url=None
@@ -58,9 +52,7 @@ class FakeClient:
 		pass
 
 
-def build_request(
-	response_format:str="text",
-)->ModelRequest:
+def build_request(response_format:str="text")->ModelRequest:
 	return ModelRequest(
 		messages=(
 			{
@@ -84,14 +76,8 @@ def build_request(
 	)
 
 
-def build_provider(
-	client:FakeClient,
-)->OpenAICompatibleProvider:
-	return OpenAICompatibleProvider(
-		base_url="https://example.com/v1",
-		api_key="test-key",
-		client=client,
-	)
+def build_provider(client:FakeClient)->OpenAICompatibleProvider:
+	return OpenAICompatibleProvider(base_url="https://example.com/v1",api_key="test-key",client=client)
 
 
 def test_provider_parses_final_answer_and_usage()->None:
@@ -157,27 +143,12 @@ def test_provider_parses_tool_call_arguments()->None:
 	assert isinstance(result.response,ToolCall)
 	assert result.response.tool_call_id=="call-001"
 	assert result.response.tool_name=="query_thread_pool_snapshot"
-	assert result.response.arguments=={
-		"service_name":"order-service",
-	}
+	assert result.response.arguments=={"service_name":"order-service",}
 	assert result.usage is None
 
 
 def test_provider_builds_http_request()->None:
-	client=FakeClient(
-		FakeResponse(
-			200,
-			{
-				"choices":[
-					{
-						"message":{
-							"content":"完成",
-						},
-					},
-				],
-			},
-		),
-	)
+	client=FakeClient(FakeResponse(200,{"choices":[{"message":{"content":"完成",},},],}))
 
 	build_provider(client).complete(build_request())
 
@@ -200,9 +171,7 @@ def test_provider_converts_timeout()->None:
 
 
 def test_provider_converts_network_error()->None:
-	client=FakeClient(
-		error=httpx.ConnectError("connection failed"),
-	)
+	client=FakeClient(error=httpx.ConnectError("connection failed"))
 
 	with pytest.raises(ModelProviderError) as error_info:
 		build_provider(client).complete(build_request())
@@ -220,13 +189,8 @@ def test_provider_converts_network_error()->None:
 		(400,"MODEL_HTTP_ERROR"),
 	),
 )
-def test_provider_converts_http_error(
-	status_code:int,
-	error_code:str,
-)->None:
-	client=FakeClient(
-		FakeResponse(status_code,{})
-	)
+def test_provider_converts_http_error(status_code:int,error_code:str)->None:
+	client=FakeClient(FakeResponse(status_code,{}))
 
 	with pytest.raises(ModelProviderError) as error_info:
 		build_provider(client).complete(build_request())
@@ -244,14 +208,7 @@ def test_provider_rejects_invalid_json()->None:
 
 
 def test_provider_rejects_empty_choices()->None:
-	client=FakeClient(
-		FakeResponse(
-			200,
-			{
-				"choices":[],
-			},
-		),
-	)
+	client=FakeClient(FakeResponse(200,{"choices":[],}))
 
 	with pytest.raises(ModelProviderError) as error_info:
 		build_provider(client).complete(build_request())
@@ -289,10 +246,7 @@ def test_provider_rejects_invalid_tool_arguments()->None:
 	assert error_info.value.error_code=="MODEL_PROTOCOL_ERROR"
 
 def test_provider_parses_multiple_tool_calls()->None:
-	calls=[{
-		"id":f"call-{index}",
-		"function":{"name":"query","arguments":f'{{"value":{index}}}'},
-	} for index in range(3)]
+	calls=[{"id":f"call-{index}","function":{"name":"query","arguments":f'{{"value":{index}}}'},} for index in range(3)]
 	client=FakeClient(FakeResponse(200,{"choices":[{"message":{"tool_calls":calls}}]}))
 	result=build_provider(client).complete(build_request())
 	assert isinstance(result.response,ToolCallBatch)
@@ -347,39 +301,18 @@ def test_provider_parses_structured_final_answer()->None:
 		),
 	)
 
-	result=build_provider(client).complete(
-		build_request("json_object")
-	)
+	result=build_provider(client).complete(build_request("json_object"))
 
 	assert isinstance(result.response,StructuredFinalAnswer)
 	assert result.response.data["confidence"]==0.91
-	assert result.response.data["root_cause"]["evidence_ids"]==[
-		"run-001-thread-pool",
-	]
-	assert client.body["response_format"]=={
-		"type":"json_object",
-	}
+	assert result.response.data["root_cause"]["evidence_ids"]==["run-001-thread-pool",]
+	assert client.body["response_format"]=={"type":"json_object",}
 
 
 def test_provider_rejects_invalid_structured_content()->None:
-	client=FakeClient(
-		FakeResponse(
-			200,
-			{
-				"choices":[
-					{
-						"message":{
-							"content":"线程池存在任务积压",
-						},
-					},
-				],
-			},
-		),
-	)
+	client=FakeClient(FakeResponse(200,{"choices":[{"message":{"content":"线程池存在任务积压",},},],}))
 
 	with pytest.raises(ModelProviderError) as error_info:
-		build_provider(client).complete(
-			build_request("json_object")
-		)
+		build_provider(client).complete(build_request("json_object"))
 
 	assert error_info.value.error_code=="MODEL_PROTOCOL_ERROR"

@@ -19,6 +19,7 @@ def load_diagnosis_history(persistence,run_id:str)->DiagnosisHistory|None:
 	if not isinstance(run_id,str) or not run_id.strip():
 		raise ValueError("run_id不能为空")
 
+	# 查询历史不执行模型；数据库故障也不能伪装成“找不到 Run”。
 	with persistence.transaction() as transaction:
 		run=transaction.run.get(run_id)
 		if run is None:

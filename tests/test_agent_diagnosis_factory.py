@@ -1,7 +1,4 @@
-from evidenceops.application.agent_diagnosis_factory import (
-	AgentDiagnosisAssembly,
-	build_agent_diagnosis_assembly,
-)
+from evidenceops.application.agent_diagnosis_factory import AgentDiagnosisAssembly,build_agent_diagnosis_assembly
 from evidenceops.application.model_protocol import FinalAnswer,StructuredFinalAnswer,ToolCall
 from evidenceops.domain.diagnosis_run import DiagnosisRun
 from evidenceops.infrastructure.providers.mock_provider import MockProvider
@@ -43,17 +40,8 @@ def test_factory_builds_connected_agent_diagnosis_assembly()->None:
 		),
 		StructuredFinalAnswer(build_draft_data("run-factory-001-thread-pool")),
 	))
-	assembly=build_agent_diagnosis_assembly(
-		provider,
-		"mock",
-		(build_thread_pool_tool(),),
-		"order-service",
-	)
-	run=DiagnosisRun(
-		"run-factory-001",
-		"req-factory-001",
-		"分析订单服务RPC超时",
-	)
+	assembly=build_agent_diagnosis_assembly(provider,"mock",(build_thread_pool_tool(),),"order-service")
+	run=DiagnosisRun("run-factory-001","req-factory-001","分析订单服务RPC超时")
 
 	try:
 		collection=assembly.evidence_collector.collect(run)
@@ -68,12 +56,7 @@ def test_factory_builds_connected_agent_diagnosis_assembly()->None:
 
 def test_assembly_close_closes_provider_when_supported()->None:
 	provider=ClosableMockProvider((FinalAnswer("完成"),))
-	assembly=build_agent_diagnosis_assembly(
-		provider,
-		"mock",
-		(build_thread_pool_tool(),),
-		"order-service",
-	)
+	assembly=build_agent_diagnosis_assembly(provider,"mock",(build_thread_pool_tool(),),"order-service")
 
 	assembly.close()
 
