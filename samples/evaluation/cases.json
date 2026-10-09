@@ -1,0 +1,810 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "case_id": "correlated-timeout",
+      "description": "请使用query_service_logs查询order-service在production环境2026-10-05T10:00:00+08:00到2026-10-05T10:10:00+08:00的rpc_timeout日志，limit=50；用query_service_metrics查同窗口，limit=50；用query_service_config查2026-10-05T10:02:00+08:00生效配置。区分相关性与因果，不要把配置允许重试当作已经重试。",
+      "expected_status": "succeeded",
+      "expected_error_code": null,
+      "tool_calls": [
+        {
+          "tool_name": "query_service_logs",
+          "arguments": {
+            "service_name": "order-service",
+            "environment": "production",
+            "start_time": "2026-10-05T10:00:00+08:00",
+            "end_time": "2026-10-05T10:10:00+08:00",
+            "limit": 50,
+            "error_type": "rpc_timeout"
+          }
+        },
+        {
+          "tool_name": "query_service_metrics",
+          "arguments": {
+            "service_name": "order-service",
+            "environment": "production",
+            "start_time": "2026-10-05T10:00:00+08:00",
+            "end_time": "2026-10-05T10:10:00+08:00",
+            "limit": 50
+          }
+        },
+        {
+          "tool_name": "query_service_config",
+          "arguments": {
+            "service_name": "order-service",
+            "environment": "production",
+            "at_time": "2026-10-05T10:02:00+08:00"
+          }
+        }
+      ],
+      "required_sources": [
+        "log",
+        "metric",
+        "config"
+      ],
+      "review_criteria": [
+        "说明RPC超时与线程池饱和同期出现",
+        "不将inventory-service确认为已经证明的根因",
+        "配置允许重试不代表已经观测到重试"
+      ],
+      "fixture_hashes": {
+        "samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
+        "samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+        "samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
+      },
+      "evidence_checks": [
+        {
+          "source": "log",
+          "summary_contains": [
+            "匹配2条，返回2条"
+          ]
+        },
+        {
+          "source": "metric",
+          "summary_contains": [
+            "匹配3条，返回3条"
+          ]
+        },
+        {
+          "source": "config",
+          "summary_contains": [
+            "order-config-v1"
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "missing-config",
+      "description": "请仅使用query_service_config查询order-service在production环境2026-07-05T10:02:00+08:00生效配置，不要改动时间或使用其他工具。",
+      "expected_status": "failed",
+      "expected_error_code": "TOOL_EXECUTION_FAILED",
+      "tool_calls": [
+        {
+          "tool_name": "query_service_config",
+          "arguments": {
+            "service_name": "order-service",
+            "environment": "production",
+            "at_time": "2026-07-05T10:02:00+08:00"
+          }
+        }
+      ],
+      "required_sources": [],
+      "review_criteria": [
+        "缺少配置时不伪造配置或诊断报告"
+      ],
+      "fixture_hashes": {
+        "samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
+        "samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+        "samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
+      }
+    },
+    {
+      "case_id": "invalid-time",
+      "description": "这是参数校验实验：请仅调用query_service_metrics，service_name=order-service，environment=production，start_time=not-a-date，end_time=2026-10-05T10:10:00+08:00，limit=50。保留原始参数，不纠正时间。",
+      "expected_status": "failed",
+      "expected_error_code": "INVALID_ARGUMENTS",
+      "tool_calls": [
+        {
+          "tool_name": "query_service_metrics",
+          "arguments": {
+            "service_name": "order-service",
+            "environment": "production",
+            "start_time": "not-a-date",
+            "end_time": "2026-10-05T10:10:00+08:00",
+            "limit": 50
+          }
+        }
+      ],
+      "required_sources": [],
+      "review_criteria": [
+        "非法时间参数被Runtime拒绝，不产生成功报告"
+      ],
+      "fixture_hashes": {
+        "samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
+        "samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+        "samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
+      }
+    },
+    {
+      "case_id": "logs-only",
+      "description": "仅使用query_service_logs查询order-service/production在2026-10-05T10:00:00+08:00至2026-10-05T10:10:00+08:00的rpc_timeout日志，limit=50。解释日志中可以确认的现象，勿宣称有独立指标或下游服务证据。",
+      "expected_status": "succeeded",
+      "expected_error_code": null,
+      "tool_calls": [
+        {
+          "tool_name": "query_service_logs",
+          "arguments": {
+            "service_name": "order-service",
+            "environment": "production",
+            "start_time": "2026-10-05T10:00:00+08:00",
+            "end_time": "2026-10-05T10:10:00+08:00",
+            "limit": 50,
+            "error_type": "rpc_timeout"
+          }
+        }
+      ],
+      "required_sources": [
+        "log"
+      ],
+      "review_criteria": [
+        "指出两条日志的超时目标为inventory-service",
+        "线程池字段来自日志，不称为独立指标验证",
+        "不确认下游服务已被证明为根因"
+      ],
+      "fixture_hashes": {
+        "samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
+        "samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+        "samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
+      },
+      "evidence_checks": [
+        {
+          "source": "log",
+          "summary_contains": [
+            "匹配2条，返回2条",
+            "未截断"
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "metrics-only",
+      "description": "仅使用query_service_metrics查询order-service/production在2026-10-05T10:00:00+08:00至2026-10-05T10:10:00+08:00的线程池指标，limit=50。解释变化，不虚构RPC超时日志或下游故障。",
+      "expected_status": "succeeded",
+      "expected_error_code": null,
+      "tool_calls": [
+        {
+          "tool_name": "query_service_metrics",
+          "arguments": {
+            "service_name": "order-service",
+            "environment": "production",
+            "start_time": "2026-10-05T10:00:00+08:00",
+            "end_time": "2026-10-05T10:10:00+08:00",
+            "limit": 50
+          }
+        }
+      ],
+      "required_sources": [
+        "metric"
+      ],
+      "review_criteria": [
+        "指出40/64到64/64的变化及pending_tasks由0到12再到15",
+        "不能仅凭指标确认RPC超时或inventory-service故障"
+      ],
+      "fixture_hashes": {
+        "samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
+        "samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+        "samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
+      },
+      "evidence_checks": [
+        {
+          "source": "metric",
+          "summary_contains": [
+            "匹配3条，返回3条",
+            "未截断"
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "logs-metrics",
+      "description": "分别使用query_service_logs和query_service_metrics查询order-service/production在2026-10-05T10:00:00+08:00至2026-10-05T10:10:00+08:00的数据；日志error_type=rpc_timeout，两者limit=50。不查询配置，只分析日志和指标的时间相关性。",
+      "expected_status": "succeeded",
+      "expected_error_code": null,
+      "tool_calls": [
+        {
+          "tool_name": "query_service_logs",
+          "arguments": {
+            "service_name": "order-service",
+            "environment": "production",
+            "start_time": "2026-10-05T10:00:00+08:00",
+            "end_time": "2026-10-05T10:10:00+08:00",
+            "limit": 50,
+            "error_type": "rpc_timeout"
+          }
+        },
+        {
+          "tool_name": "query_service_metrics",
+          "arguments": {
+            "service_name": "order-service",
+            "environment": "production",
+            "start_time": "2026-10-05T10:00:00+08:00",
+            "end_time": "2026-10-05T10:10:00+08:00",
+            "limit": 50
+          }
+        }
+      ],
+      "required_sources": [
+        "log",
+        "metric"
+      ],
+      "review_criteria": [
+        "确认超时和线程池满载、队列增加在10:02与10:03同时出现",
+        "没有配置证据时不虚构rpc_timeout_ms或max_retries"
+      ],
+      "fixture_hashes": {
+        "samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
+        "samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+        "samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
+      },
+      "evidence_checks": [
+        {
+          "source": "log",
+          "summary_contains": [
+            "匹配2条"
+          ]
+        },
+        {
+          "source": "metric",
+          "summary_contains": [
+            "匹配3条"
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "symptom-keywords",
+      "description": "仅使用query_service_logs查询order-service/production在2026-10-05T10:00:00+08:00至2026-10-05T10:10:00+08:00的日志，symptom=\"RPC timeout\"，keywords=[\"inventory-service\"]，limit=50，不传error_type。按症状和关键词检索，不把症状自动改成枚举错误类型。",
+      "expected_status": "succeeded",
+      "expected_error_code": null,
+      "tool_calls": [
+        {
+          "tool_name": "query_service_logs",
+          "arguments": {
+            "service_name": "order-service",
+            "environment": "production",
+            "start_time": "2026-10-05T10:00:00+08:00",
+            "end_time": "2026-10-05T10:10:00+08:00",
+            "limit": 50,
+            "symptom": "RPC timeout",
+            "keywords": [
+              "inventory-service"
+            ]
+          }
+        }
+      ],
+      "required_sources": [
+        "log"
+      ],
+      "review_criteria": [
+        "基于两条匹配记录说明RPC超时",
+        "说明只覆盖当前症状及关键词匹配范围，不代表所有错误"
+      ],
+      "fixture_hashes": {
+        "samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
+        "samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+        "samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
+      },
+      "evidence_checks": [
+        {
+          "source": "log",
+          "summary_contains": [
+            "匹配2条，返回2条"
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "empty-log-window",
+      "description": "仅用query_service_logs查询order-service/production在2026-10-05T11:00:00+08:00至2026-10-05T11:10:00+08:00的rpc_timeout日志，limit=50。即使无数据也保留原窗口，不回查其他时段，不虚构超时或线程池状态。",
+      "expected_status": "succeeded",
+      "expected_error_code": null,
+      "tool_calls": [
+        {
+          "tool_name": "query_service_logs",
+          "arguments": {
+            "service_name": "order-service",
+            "environment": "production",
+            "start_time": "2026-10-05T11:00:00+08:00",
+            "end_time": "2026-10-05T11:10:00+08:00",
+            "limit": 50,
+            "error_type": "rpc_timeout"
+          }
+        }
+      ],
+      "required_sources": [
+        "log"
+      ],
+      "review_criteria": [
+        "明确本次查询没有匹配日志",
+        "零匹配不能证明服务健康，也不能确认故障根因"
+      ],
+      "fixture_hashes": {
+        "samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
+        "samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+        "samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
+      },
+      "evidence_checks": [
+        {
+          "source": "log",
+          "summary_contains": [
+            "匹配0条，返回0条",
+            "未截断"
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "empty-log-keyword",
+      "description": "仅用query_service_logs查询order-service/production在2026-10-05T10:00:00+08:00至2026-10-05T10:10:00+08:00的rpc_timeout日志，keywords=[\"payment-service\"]，limit=50。不要删除关键词或换成inventory-service。",
+      "expected_status": "succeeded",
+      "expected_error_code": null,
+      "tool_calls": [
+        {
+          "tool_name": "query_service_logs",
+          "arguments": {
+            "service_name": "order-service",
+            "environment": "production",
+            "start_time": "2026-10-05T10:00:00+08:00",
+            "end_time": "2026-10-05T10:10:00+08:00",
+            "limit": 50,
+            "error_type": "rpc_timeout",
+            "keywords": [
+              "payment-service"
+            ]
+          }
+        }
+      ],
+      "required_sources": [
+        "log"
+      ],
+      "review_criteria": [
+        "明确关键词过滤后没有匹配日志",
+        "不能据此断言payment-service或inventory-service发生故障"
+      ],
+      "fixture_hashes": {
+        "samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
+        "samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+        "samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
+      },
+      "evidence_checks": [
+        {
+          "source": "log",
+          "summary_contains": [
+            "匹配0条，返回0条"
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "empty-metric-window",
+      "description": "仅用query_service_metrics查询order-service/production在2026-10-05T11:00:00+08:00至2026-10-05T11:10:00+08:00的线程池指标，limit=50。保留原窗口，不补造采样或返回成功诊断。",
+      "expected_status": "failed",
+      "expected_error_code": "EVIDENCE_COLLECTION_FAILED",
+      "expected_error_detail_code": "NO_METRIC_SAMPLES",
+      "tool_calls": [
+        {
+          "tool_name": "query_service_metrics",
+          "arguments": {
+            "service_name": "order-service",
+            "environment": "production",
+            "start_time": "2026-10-05T11:00:00+08:00",
+            "end_time": "2026-10-05T11:10:00+08:00",
+            "limit": 50
+          }
+        }
+      ],
+      "required_sources": [],
+      "review_criteria": [
+        "工具查询成功但无采样时，证据转换层拒绝生成指标证据",
+        "返回NO_METRIC_SAMPLES且没有成功诊断报告"
+      ],
+      "fixture_hashes": {
+        "samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
+        "samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+        "samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
+      },
+      "expected_failure_stage": "collection"
+    },
+    {
+      "case_id": "healthy-metric-sample",
+      "description": "仅用query_service_metrics查询order-service/production在2026-10-05T10:00:00+08:00至2026-10-05T10:01:00+08:00的线程池指标，limit=50。不要扩大窗口；说明当前采样是否支持线程池耗尽，不能推断服务完全健康。",
+      "expected_status": "succeeded",
+      "expected_error_code": null,
+      "tool_calls": [
+        {
+          "tool_name": "query_service_metrics",
+          "arguments": {
+            "service_name": "order-service",
+            "environment": "production",
+            "start_time": "2026-10-05T10:00:00+08:00",
+            "end_time": "2026-10-05T10:01:00+08:00",
+            "limit": 50
+          }
+        }
+      ],
+      "required_sources": [
+        "metric"
+      ],
+      "review_criteria": [
+        "说明唯一采样active_threads=40、thread_limit=64、pending_tasks=0",
+        "该采样不支持线程池满载，也不能代表整个服务健康或后续状态"
+      ],
+      "fixture_hashes": {
+        "samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
+        "samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+        "samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
+      },
+      "evidence_checks": [
+        {
+          "source": "metric",
+          "summary_contains": [
+            "匹配1条，返回1条",
+            "至2026-10-05T10:01:00+08:00"
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "config-only-v1",
+      "description": "仅用query_service_config查询order-service/production在2026-10-05T10:02:00+08:00生效配置。说明容量、超时、重试规则；不查询日志或指标，不把配置当作已发生的运行事实。",
+      "expected_status": "succeeded",
+      "expected_error_code": null,
+      "tool_calls": [
+        {
+          "tool_name": "query_service_config",
+          "arguments": {
+            "service_name": "order-service",
+            "environment": "production",
+            "at_time": "2026-10-05T10:02:00+08:00"
+          }
+        }
+      ],
+      "required_sources": [
+        "config"
+      ],
+      "review_criteria": [
+        "指出order-config-v1的线程池64、超时1000ms、最多额外重试2次",
+        "配置不能证明线程池满载、请求超时或实际重试"
+      ],
+      "fixture_hashes": {
+        "samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
+        "samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+        "samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
+      },
+      "evidence_checks": [
+        {
+          "source": "config",
+          "summary_contains": [
+            "order-config-v1",
+            "RPC超时1000毫秒",
+            "额外重试2次"
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "config-switch-boundary",
+      "description": "仅调用query_service_config两次，分别查询order-service/production在2026-10-05T23:59:59+08:00和2026-10-06T00:00:00+08:00生效配置。对比版本，说明切换边界，不根据配置变更断言故障恢复。",
+      "expected_status": "succeeded",
+      "expected_error_code": null,
+      "tool_calls": [
+        {
+          "tool_name": "query_service_config",
+          "arguments": {
+            "service_name": "order-service",
+            "environment": "production",
+            "at_time": "2026-10-05T23:59:59+08:00"
+          }
+        },
+        {
+          "tool_name": "query_service_config",
+          "arguments": {
+            "service_name": "order-service",
+            "environment": "production",
+            "at_time": "2026-10-06T00:00:00+08:00"
+          }
+        }
+      ],
+      "required_sources": [
+        "config"
+      ],
+      "review_criteria": [
+        "切换前v1超时1000ms、重试2次；切换时v2超时3000ms、重试0次",
+        "生效区间左闭右开，切换时刻只属于v2",
+        "变更不证明故障发生或恢复"
+      ],
+      "fixture_hashes": {
+        "samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
+        "samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+        "samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
+      },
+      "evidence_checks": [
+        {
+          "source": "config",
+          "summary_contains": [
+            "在2026-10-05T23:59:59+08:00",
+            "order-config-v1"
+          ]
+        },
+        {
+          "source": "config",
+          "summary_contains": [
+            "在2026-10-06T00:00:00+08:00",
+            "order-config-v2"
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "config-utc-equivalence",
+      "description": "仅调用query_service_config查询order-service/production在2026-10-05T16:00:00+00:00生效配置。工具参数保留+00:00，说明该时刻相当于北京时间2026-10-06零点，按绝对时刻选版本。",
+      "expected_status": "succeeded",
+      "expected_error_code": null,
+      "tool_calls": [
+        {
+          "tool_name": "query_service_config",
+          "arguments": {
+            "service_name": "order-service",
+            "environment": "production",
+            "at_time": "2026-10-05T16:00:00+00:00"
+          }
+        }
+      ],
+      "required_sources": [
+        "config"
+      ],
+      "review_criteria": [
+        "返回order-config-v2而非v1",
+        "说明UTC与+08:00的时刻等价，不按日期字符串误选旧版本"
+      ],
+      "fixture_hashes": {
+        "samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
+        "samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+        "samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
+      },
+      "evidence_checks": [
+        {
+          "source": "config",
+          "summary_contains": [
+            "order-config-v2",
+            "RPC超时3000毫秒",
+            "额外重试0次"
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "invalid-limit",
+      "description": "参数校验实验：仅调用query_service_metrics查询order-service/production，start_time=2026-10-05T10:00:00+08:00，end_time=2026-10-05T10:10:00+08:00，limit=0。必须保留0，不纠正成50。",
+      "expected_status": "failed",
+      "expected_error_code": "INVALID_ARGUMENTS",
+      "tool_calls": [
+        {
+          "tool_name": "query_service_metrics",
+          "arguments": {
+            "service_name": "order-service",
+            "environment": "production",
+            "start_time": "2026-10-05T10:00:00+08:00",
+            "end_time": "2026-10-05T10:10:00+08:00",
+            "limit": 0
+          }
+        }
+      ],
+      "required_sources": [],
+      "review_criteria": [
+        "limit=0被Runtime拒绝，错误码INVALID_ARGUMENTS",
+        "不修正参数、不生成成功报告"
+      ],
+      "fixture_hashes": {
+        "samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
+        "samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+        "samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
+      }
+    },
+    {
+      "case_id": "overlong-window",
+      "description": "参数校验实验：仅调用query_service_logs，service_name=order-service，environment=production，error_type=rpc_timeout，start_time=2026-10-05T10:00:00+08:00，end_time=2026-10-05T10:31:00+08:00，limit=50。保留31分钟窗口，不拆分不缩短。",
+      "expected_status": "failed",
+      "expected_error_code": "INVALID_ARGUMENTS",
+      "tool_calls": [
+        {
+          "tool_name": "query_service_logs",
+          "arguments": {
+            "service_name": "order-service",
+            "environment": "production",
+            "start_time": "2026-10-05T10:00:00+08:00",
+            "end_time": "2026-10-05T10:31:00+08:00",
+            "limit": 50,
+            "error_type": "rpc_timeout"
+          }
+        }
+      ],
+      "required_sources": [],
+      "review_criteria": [
+        "超过30分钟的窗口被Runtime拒绝",
+        "返回INVALID_ARGUMENTS，不通过改写窗口规避校验"
+      ],
+      "fixture_hashes": {
+        "samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
+        "samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+        "samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
+      }
+    },
+    {
+      "case_id": "unknown-service",
+      "description": "服务边界实验：仅用query_service_logs查询billing-service/production在2026-10-05T10:00:00+08:00至2026-10-05T10:10:00+08:00的rpc_timeout日志，limit=50。保留陌生服务名，不换成order-service，不猜测日志路径。",
+      "expected_status": "failed",
+      "expected_error_code": "UNKNOWN_SERVICE",
+      "tool_calls": [
+        {
+          "tool_name": "query_service_logs",
+          "arguments": {
+            "service_name": "billing-service",
+            "environment": "production",
+            "start_time": "2026-10-05T10:00:00+08:00",
+            "end_time": "2026-10-05T10:10:00+08:00",
+            "limit": 50,
+            "error_type": "rpc_timeout"
+          }
+        }
+      ],
+      "required_sources": [],
+      "review_criteria": [
+        "未登记服务返回UNKNOWN_SERVICE",
+        "不读取其他服务的数据，不生成成功诊断"
+      ],
+      "fixture_hashes": {
+        "samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
+        "samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+        "samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
+      }
+    },
+    {
+      "case_id": "truncated-logs",
+      "description": "仅用query_service_logs查询order-service/production在2026-10-05T10:00:00+08:00至2026-10-05T10:10:00+08:00的rpc_timeout日志，limit=1。保持limit=1，不追加查询；解释匹配数、返回数和截断限制。",
+      "expected_status": "succeeded",
+      "expected_error_code": null,
+      "tool_calls": [
+        {
+          "tool_name": "query_service_logs",
+          "arguments": {
+            "service_name": "order-service",
+            "environment": "production",
+            "start_time": "2026-10-05T10:00:00+08:00",
+            "end_time": "2026-10-05T10:10:00+08:00",
+            "limit": 1,
+            "error_type": "rpc_timeout"
+          }
+        }
+      ],
+      "required_sources": [
+        "log"
+      ],
+      "review_criteria": [
+        "匹配2条、返回1条，明确结果已截断",
+        "不能用未返回的第二条日志确认pending_tasks增长或完整趋势"
+      ],
+      "fixture_hashes": {
+        "samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
+        "samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+        "samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
+      },
+      "evidence_checks": [
+        {
+          "source": "log",
+          "summary_contains": [
+            "匹配2条，返回1条",
+            "已截断"
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "truncated-metrics",
+      "description": "仅用query_service_metrics查询order-service/production在2026-10-05T10:00:00+08:00至2026-10-05T10:10:00+08:00的线程池指标，limit=1。保持limit=1，不追加查询；不要根据未返回的数据描述完整趋势。",
+      "expected_status": "succeeded",
+      "expected_error_code": null,
+      "tool_calls": [
+        {
+          "tool_name": "query_service_metrics",
+          "arguments": {
+            "service_name": "order-service",
+            "environment": "production",
+            "start_time": "2026-10-05T10:00:00+08:00",
+            "end_time": "2026-10-05T10:10:00+08:00",
+            "limit": 1
+          }
+        }
+      ],
+      "required_sources": [
+        "metric"
+      ],
+      "review_criteria": [
+        "匹配3条、只返回最早10:01的40/64与pending_tasks=0，结果已截断",
+        "不能确认10:02或10:03满载，也不能推断整个窗口健康"
+      ],
+      "fixture_hashes": {
+        "samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
+        "samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+        "samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
+      },
+      "evidence_checks": [
+        {
+          "source": "metric",
+          "summary_contains": [
+            "匹配3条，返回1条",
+            "已截断"
+          ]
+        }
+      ]
+    },
+    {
+      "case_id": "disjoint-windows",
+      "description": "分别调用query_service_logs查询order-service/production在2026-10-05T10:02:00+08:00至2026-10-05T10:03:00+08:00的rpc_timeout日志，limit=50；调用query_service_metrics查询2026-10-05T10:00:00+08:00至2026-10-05T10:01:00+08:00的指标，limit=50。保留两个不同窗口，指出独立指标不能交叉验证超时发生时的状态。",
+      "expected_status": "succeeded",
+      "expected_error_code": null,
+      "tool_calls": [
+        {
+          "tool_name": "query_service_logs",
+          "arguments": {
+            "service_name": "order-service",
+            "environment": "production",
+            "start_time": "2026-10-05T10:02:00+08:00",
+            "end_time": "2026-10-05T10:03:00+08:00",
+            "limit": 50,
+            "error_type": "rpc_timeout"
+          }
+        },
+        {
+          "tool_name": "query_service_metrics",
+          "arguments": {
+            "service_name": "order-service",
+            "environment": "production",
+            "start_time": "2026-10-05T10:00:00+08:00",
+            "end_time": "2026-10-05T10:01:00+08:00",
+            "limit": 50
+          }
+        }
+      ],
+      "required_sources": [
+        "log",
+        "metric"
+      ],
+      "review_criteria": [
+        "明确日志是10:02至10:03，而独立指标只有10:01",
+        "不能把异窗口指标说成同时间验证；日志自带线程字段须与独立采样区分",
+        "不根据时间错位确认因果"
+      ],
+      "fixture_hashes": {
+        "samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
+        "samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+        "samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
+      },
+      "evidence_checks": [
+        {
+          "source": "log",
+          "summary_contains": [
+            "匹配2条"
+          ]
+        },
+        {
+          "source": "metric",
+          "summary_contains": [
+            "匹配1条",
+            "至2026-10-05T10:01:00+08:00"
+          ]
+        }
+      ]
+    }
+  ]
+}
