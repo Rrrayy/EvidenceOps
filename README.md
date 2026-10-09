@@ -88,7 +88,8 @@ ToolCall -> ToolRuntime -> ToolResult -> Evidence
 - model/tool execution records returned with each diagnosis for latency and failure inspection;
 - bounded concurrent execution for a batch of tool calls;
 - PostgreSQL persistence for `diagnosis_runs`, `evidences`, `diagnosis_reports`, and `execution_records`, managed with Alembic;
-- historical diagnosis retrieval through `GET /api/v1/agent/runs/{run_id}` without invoking the model again.
+- historical diagnosis retrieval through `GET /api/v1/agent/runs/{run_id}` without invoking the model again;
+- a 20-case offline Eval suite with Mock/real modes, rule checks, CLI human review, and three persisted pass-rate metrics.
 
 ## Quick start
 
@@ -99,7 +100,7 @@ $env:PYTHONPATH="src"
 python -m pytest
 ```
 
-The repository uses deterministic local JSONL fixtures for repeatable evidence tests while allowing a real OpenAI-compatible model Provider. Provider credentials are supplied through environment variables; PostgreSQL persistence is now integrated, while SSE streaming and production log/metric/configuration platforms remain follow-up work.
+The repository uses deterministic local JSONL fixtures for repeatable evidence tests while allowing a real OpenAI-compatible model Provider. Provider credentials are supplied through environment variables; PostgreSQL persistence and Eval are integrated. The local SSE implementation is paused with real-path acceptance pending; production log/metric/configuration platforms remain follow-up work.
 
 For the current Qwen-compatible endpoint, configure the Provider before starting the API:
 
@@ -122,6 +123,41 @@ python -m alembic upgrade head
 ```
 
 The API exposes `POST /api/v1/agent/diagnosis`. The current end-to-end path can use a real model with three local read-only Connectors; the returned report must reference Evidence IDs produced during that run. The response also includes bounded execution records for the model rounds and tool calls. After a diagnosis completes, `GET /api/v1/agent/runs/{run_id}` retrieves the persisted result without invoking the model again.
+
+## Eval: offline evaluation and CLI review
+
+Eval reuses DiagnosisService, AgentLoop, and the read-only tools without running the HTTP service or connecting to PostgreSQL. The fixed suite contains 20 cases: five normal queries, four empty-data/evidence-limit cases, four configuration/time boundaries, four parameter/service boundaries, and three truncation/inference boundaries. Real mode supplies the model with the request description and tool definitions; expected calls and review criteria stay with the evaluator.
+
+Run Mock engineering checks from the repository root:
+
+```powershell
+$env:PYTHONPATH=(Join-Path $PWD.Path 'src')
+.\.venv\Scripts\python.exe -X utf8 -m evidenceops.evaluation --mode mock --output eval_result_20_mock.json
+.\.venv\Scripts\python.exe -X utf8 -m evidenceops.evaluation review eval_result_20_mock.json
+```
+
+Real mode requires the model Base URL, API key, and model name variables shown above in the current shell and incurs API charges:
+
+```powershell
+.\.venv\Scripts\python.exe -X utf8 -m evidenceops.evaluation --mode real --output eval_result_20_real.json
+.\.venv\Scripts\python.exe -X utf8 -m evidenceops.evaluation review eval_result_20_real.json
+```
+
+`--output` writes UTF-8 directly, avoiding PowerShell text-pipeline encoding corruption. Reusing an output path replaces its results and review decisions. Review displays the request, root cause, recommendations, limitations, and criteria in separate sections. Enter y/n and an optional comment; each completed decision is saved, and restarting resumes pending cases.
+
+| Metric | Definition |
+| --- | --- |
+| rule_pass_rate | Rule-passed cases / all cases |
+| semantic_pass_rate | Human-reviewed passed cases / all cases |
+| final_pass_rate | Cases passing both rules and human review / all cases |
+
+Exceptions and pending cases remain in the denominator. Expected rejection cases can pass evaluation. Rules inspect arguments, execution status, evidence sources/summaries, and reference ownership; they do not automatically prove semantic support. Mock checks the engineering path, not real-model quality.
+
+One local real-model batch scored 18/20 on all three metrics, with no pending reviews. Two cases failed the final-output protocol; their exact raw formatting defects remain unconfirmed, and the baseline is retained without reproduction for now. This is not production diagnosis accuracy. Token/cost aggregation, raw failed-model-output capture, per-case execution checkpoints, multi-reviewer workflows, and an overall diagnosis budget are not implemented. See the [Eval guide](samples/evaluation/README.md) for case details and review instructions.
+
+## Follow-up status
+
+The initial SSE implementation and focused tests exist locally, but work is paused and real-model/PostgreSQL streaming acceptance has not been completed. The Eval commit excludes SSE code. Cancellation, reconnect replay, event persistence, and restart recovery remain follow-up work.
 
 ## Example contract
 

@@ -88,6 +88,7 @@ ToolCall -> ToolRuntime -> ToolResult -> Evidence
 - HTTP 响应返回模型与工具执行记录，用于检查耗时、参数和失败位置；工具批次支持受限并发。
 - PostgreSQL 持久化 `diagnosis_runs`、`evidences`、`diagnosis_reports` 和 `execution_records`，并通过 Alembic 管理迁移。
 - 支持通过 `GET /api/v1/agent/runs/{run_id}` 查询已完成或失败的历史诊断，不会重新调用模型。
+- 20案例离线Eval，支持Mock/真实模型、规则检查、CLI人工审核和三项通过率回写。
 
 ## 快速开始
 
@@ -98,7 +99,7 @@ $env:PYTHONPATH="src"
 python -m pytest
 ```
 
-当前仓库使用本地 JSONL 样本提供可重复的只读证据查询，同时支持真实 OpenAI-compatible 模型 Provider。Provider 凭据通过环境变量提供；PostgreSQL 持久化已经接入，SSE 流式接口以及生产日志、指标和配置平台仍待接入。
+当前仓库使用本地 JSONL 样本提供可重复的只读证据查询，同时支持真实 OpenAI-compatible 模型 Provider。Provider 凭据通过环境变量提供；PostgreSQL 持久化和 Eval 评测已接入；SSE 本地实现暂停、真实链路验收未完成，生产日志、指标和配置平台仍待接入。
 
 当前 Qwen 兼容接口的配置方式：
 
@@ -121,6 +122,41 @@ python -m alembic upgrade head
 ```
 
 API 接口为 `POST /api/v1/agent/diagnosis`。当前端到端流程可以使用真实模型和三个本地只读 Connector，返回报告必须引用本次运行实际生成的 Evidence ID；响应还包含模型轮次和工具调用的执行记录。诊断完成后，可以使用 `GET /api/v1/agent/runs/{run_id}` 从 PostgreSQL 查询历史结果。
+
+## Eval：离线评测与人工审核
+
+Eval直接复用DiagnosisService、AgentLoop和只读工具，不需要启动HTTP服务或PostgreSQL。固定题库包含20个案例：正常查询5个、无数据与证据不足4个、配置和时间边界4个、参数与服务边界4个、截断和推断边界3个。真实模式只向模型提供请求描述和工具定义，预期参数与人工标准留给评测器。
+
+在项目根目录执行Mock工程验证：
+
+```powershell
+$env:PYTHONPATH=(Join-Path $PWD.Path 'src')
+.\.venv\Scripts\python.exe -X utf8 -m evidenceops.evaluation --mode mock --output eval_result_20_mock.json
+.\.venv\Scripts\python.exe -X utf8 -m evidenceops.evaluation review eval_result_20_mock.json
+```
+
+真实模式需要当前窗口配置模型Base URL、API Key与模型名，使用前文的模型环境变量；运行会产生API费用：
+
+```powershell
+.\.venv\Scripts\python.exe -X utf8 -m evidenceops.evaluation --mode real --output eval_result_20_real.json
+.\.venv\Scripts\python.exe -X utf8 -m evidenceops.evaluation review eval_result_20_real.json
+```
+
+`--output`直接保存UTF-8，避免PowerShell文本管道转换破坏中文。重跑同一路径会替换结果及已有审核状态。review分段展示请求、模型根因、建议、局限与审核标准，输入y/n及可选comment；每条完成后保存，中断重运行只继续pending案例。
+
+| 指标 | 定义 |
+| --- | --- |
+| rule_pass_rate | 规则通过数量 / 全部案例 |
+| semantic_pass_rate | 人工审核passed数量 / 全部案例 |
+| final_pass_rate | 同一案例规则和人工均通过数量 / 全部案例 |
+
+异常及pending保留在总分母；预期拒绝的失败案例也可以评测通过。规则检查覆盖参数、执行状态、证据来源/摘要和引用归属，不自动证明证据语义支持结论。Mock证明工程链路，不能代替真实模型质量评测。
+
+本地真实模型单批结果为18/20，三项均90%、pending=0；两例因最终输出协议失败，具体原始格式原因未确认，保留基线暂不复现。这不是生产诊断准确率。当前尚未汇总Token/成本、保存原始模型失败输出、实现运行中逐案例恢复或多审核人协作；完整诊断总预算也未实现。题库与审核说明见 [Eval使用说明](samples/evaluation/README.md)。
+
+## 后续进度
+
+SSE第一版代码与专项测试已在本地实现，目前暂停，真实模型加PostgreSQL的流式手工验收尚未完成；本次Eval提交不包含SSE代码。取消、重连补发、事件持久化与重启恢复仍是后续工作。
 
 ## 设计原则
 
