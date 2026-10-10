@@ -8,6 +8,8 @@ from evidenceops.application.diagnosis_draft import DiagnosisDraft
 from evidenceops.application.diagnosis_persistence import DiagnosisPersistence
 from evidenceops.application.execution_record import ExecutionRecord
 from evidenceops.application.run_repository import RunPersistenceError
+from evidenceops.application.run_events import EventSink,RunEvents
+from evidenceops.application.run_budget import RunBudget,RunBudgetExceeded
 from evidenceops.application.tool_errors import ToolCollectionError
 from evidenceops.domain.diagnosis_report import DiagnosisReport,validate_report_evidence
 from evidenceops.domain.diagnosis_run import DiagnosisRun,RunStatus
@@ -15,7 +17,7 @@ from evidenceops.domain.evidence import Evidence
 
 
 class EvidenceCollector(Protocol):
-	def collect(self,run:DiagnosisRun)->tuple[Evidence,...]|AgentCollectionResult:
+	def collect(self,run:DiagnosisRun,events:RunEvents|None=None,budget:RunBudget|None=None)->tuple[Evidence,...]|AgentCollectionResult:
 		...
 
 
@@ -40,11 +42,15 @@ class DiagnosisService:
 		report_generator:ReportGenerator,
 		run_id_factory:Callable[[],str]|None=None,
 		diagnosis_persistence:DiagnosisPersistence|None=None,
+		run_timeout_seconds:float|None=None,
 	)->None:
 		self._evidence_collector=evidence_collector
 		self._report_generator=report_generator
 		self._run_id_factory=run_id_factory or (lambda:f"run-{uuid4()}")
 		self._diagnosis_persistence=diagnosis_persistence
+		if run_timeout_seconds is not None:
+			RunBudget(run_timeout_seconds)
+		self._run_timeout_seconds=run_timeout_seconds
 
 	def _persist_create(self,run:DiagnosisRun)->None:
 		if self._diagnosis_persistence is None:
@@ -105,12 +111,30 @@ class DiagnosisService:
 		except Exception as error:
 			raise RunPersistenceError("fail",run.run_id) from error
 
-	def execute(self,request_id:str,description:str)->DiagnosisExecution:
+	def execute(self,request_id:str,description:str,event_sink:EventSink|None=None)->DiagnosisExecution:
 		run=DiagnosisRun(self._run_id_factory(),request_id,description)
+		events=RunEvents(run.run_id,event_sink) if event_sink is not None else None
+		budget=RunBudget(self._run_timeout_seconds) if self._run_timeout_seconds is not None else None
+		try:
+			result=self._execute_run(run,events) if budget is None else self._execute_run(run,events,budget)
+		except Exception as error:
+			if events is not None:
+				events.emit("run_failed",status="failed",error_code="PERSISTENCE_FAILED" if isinstance(error,RunPersistenceError)
+					else "DIAGNOSIS_EXECUTION_FAILED",message="诊断执行或保存失败")
+			raise
+		if events is not None:
+			# 终止事件必须晚于成功/失败事务提交，不能提前宣称报告保存成功。
+			from evidenceops.application.diagnosis_response import to_response
+			events.emit("run_completed" if result.run.status is RunStatus.SUCCEEDED else "run_failed",result=to_response(result))
+		return result
+
+	def _execute_run(self,run:DiagnosisRun,events:RunEvents|None,budget:RunBudget|None=None)->DiagnosisExecution:
 
 		# 状态更新使用短事务，模型和工具等待期间不持有数据库 Session。
 		self._persist_create(run)
 		self._transition_and_persist(run,RunStatus.RUNNING)
+		if events is not None:
+			events.emit("run_started",request_id=run.request_id,status=run.status.value)
 
 		records:tuple[ExecutionRecord,...]=()
 
@@ -121,7 +145,13 @@ class DiagnosisService:
 		draft:DiagnosisDraft|None=None
 
 		try:
-			collection=self._evidence_collector.collect(run)
+			options={}
+			if events is not None:
+				options["events"]=events
+			if budget is not None:
+				budget.check()
+				options["budget"]=budget
+			collection=self._evidence_collector.collect(run,**options)
 
 			if isinstance(collection,AgentCollectionResult):
 				records=collection.execution_records
@@ -131,6 +161,13 @@ class DiagnosisService:
 				evidences=tuple(collection)
 
 			self._validate_collected_evidences(run,evidences)
+			if budget is not None:
+				budget.check()
+
+		except RunBudgetExceeded:
+			run.transition(RunStatus.FAILED,error_code="RUN_TIMEOUT")
+			self._persist_failure(run,evidences,records)
+			return finish(run,evidences,None,{"code":"RUN_TIMEOUT","message":"诊断整体执行预算已耗尽"})
 
 		except AgentCollectionError as error:
 			records=error.execution_records
@@ -176,6 +213,13 @@ class DiagnosisService:
 
 		try:
 			validate_report_evidence(report,evidences)
+			if budget is not None:
+				budget.check()
+
+		except RunBudgetExceeded:
+			run.transition(RunStatus.FAILED,error_code="RUN_TIMEOUT")
+			self._persist_failure(run,evidences,records)
+			return finish(run,evidences,None,{"code":"RUN_TIMEOUT","message":"诊断整体执行预算已耗尽"})
 
 		except Exception:
 			run.transition(RunStatus.FAILED,error_code="INVALID_REPORT_EVIDENCE")

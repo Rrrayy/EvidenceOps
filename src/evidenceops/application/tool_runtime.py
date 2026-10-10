@@ -10,6 +10,8 @@ from typing import Any
 from evidenceops.application.tool_errors import UnknownServiceError
 from evidenceops.application.model_protocol import ToolCall,ToolCallBatch
 from evidenceops.application.execution_record import ExecutionRecord
+from evidenceops.application.run_events import RunEvents
+from evidenceops.application.run_budget import RunBudget,RunBudgetExceeded
 
 
 @dataclass(frozen=True,slots=True)
@@ -76,9 +78,12 @@ class ToolRuntime:
 		self._timeout_seconds=timeout_seconds
 		self._executor=ThreadPoolExecutor(max_workers=4)
 
-	def execute(self,tool_name:str,arguments:dict[str,Any],tool_call_id:str|None=None)->ToolResult:
+	def execute(self,tool_name:str,arguments:dict[str,Any],tool_call_id:str|None=None,
+		events:RunEvents|None=None,model_round:int|None=None,budget:RunBudget|None=None)->ToolResult:
 		started_at=datetime.now(timezone.utc)
 		started_clock=perf_counter()
+		if events is not None:
+			events.emit("tool_started",model_round=model_round,tool_name=tool_name,tool_call_id=tool_call_id)
 		# 仅记录已知只读查询的标量条件；不保存路径、密钥或任意工具负载。
 		query_arguments=None
 		if tool_name in ("query_service_logs","query_service_metrics","query_service_config") and isinstance(arguments,dict):
@@ -90,7 +95,9 @@ class ToolRuntime:
 		handler_times={}
 		timing_lock=Lock()
 		try:
-			result=self._execute(tool_name,arguments,tool_call_id,handler_times,timing_lock)
+			result=self._execute(tool_name,arguments,tool_call_id,handler_times,timing_lock,budget)
+		except RunBudgetExceeded as error:
+			result=ToolResult(tool_name,False,error_code="RUN_TIMEOUT",error_message=str(error),tool_call_id=tool_call_id)
 		except Exception as error:
 			result=ToolResult(tool_name,False,error_code="TOOL_EXECUTION_FAILED",error_message=str(error),tool_call_id=tool_call_id)
 		finished_at=datetime.now(timezone.utc)
@@ -104,6 +111,11 @@ class ToolRuntime:
 			handler_started_at=times.get("started_at"),handler_finished_at=times.get("finished_at"),
 			query_arguments=query_arguments,
 		)
+		if events is not None:
+			events.emit("tool_finished",model_round=model_round,tool_name=tool_name,tool_call_id=tool_call_id,
+				status=record.status,error_code=record.error_code,duration_ms=record.duration_ms,
+				handler_started_at=record.handler_started_at.isoformat() if record.handler_started_at else None,
+				handler_finished_at=record.handler_finished_at.isoformat() if record.handler_finished_at else None)
 		return replace(result,execution_record=record)
 
 	def _execute(
@@ -113,7 +125,10 @@ class ToolRuntime:
 		tool_call_id:str|None=None,
 		handler_times:dict|None=None,
 		timing_lock:Any=None,
+		budget:RunBudget|None=None,
 	)->ToolResult:
+		if budget is not None:
+			budget.check()
 		tool=self._tools.get(tool_name)
 
 		if tool is None:
@@ -155,6 +170,9 @@ class ToolRuntime:
 			)
 
 		def invoke_handler():
+			# 线程池排队也消耗预算，排队后才获得线程不能再启动过期任务。
+			if budget is not None:
+				budget.check()
 			with timing_lock:
 				handler_times["started_at"]=datetime.now(timezone.utc)
 			try:
@@ -163,10 +181,17 @@ class ToolRuntime:
 				with timing_lock:
 					handler_times["finished_at"]=datetime.now(timezone.utc)
 
+		if budget is not None:
+			budget.check()
 		future=self._executor.submit(invoke_handler)
 
 		try:
-			data=future.result(timeout=self._timeout_seconds)
+			data=future.result(timeout=budget.limit(self._timeout_seconds) if budget is not None else self._timeout_seconds)
+			if budget is not None:
+				budget.check()
+		except RunBudgetExceeded:
+			future.cancel()
+			raise
 		except FutureTimeout:
 			# 只能取消尚未开始的任务，不能强杀已经运行的 handler 线程。
 			future.cancel()
@@ -174,8 +199,8 @@ class ToolRuntime:
 			return ToolResult(
 				tool_name,
 				False,
-				error_code="TOOL_TIMEOUT",
-				error_message="工具执行超过时间限制",
+				error_code="RUN_TIMEOUT" if budget is not None and budget.remaining()<=0 else "TOOL_TIMEOUT",
+				error_message="诊断整体执行预算已耗尽" if budget is not None and budget.remaining()<=0 else "工具执行超过时间限制",
 				tool_call_id=tool_call_id,
 			)
 		except UnknownServiceError as error:
@@ -213,11 +238,15 @@ class ToolRuntime:
 
 		return ToolResult(tool_name,True,data=data,tool_call_id=tool_call_id)
 
-	def execute_many(self,calls:tuple[ToolCall,...])->tuple[ToolResult,...]:
+	def execute_many(self,calls:tuple[ToolCall,...],events:RunEvents|None=None,model_round:int|None=None,
+		budget:RunBudget|None=None)->tuple[ToolResult,...]:
 		ToolCallBatch(calls)
 		# 调度线程与handler线程池分开，避免线程等待自身池内任务而死锁。
 		with ThreadPoolExecutor(max_workers=4) as dispatcher:
-			futures=[dispatcher.submit(self.execute,call.tool_name,call.arguments,call.tool_call_id) for call in calls]
+			options={} if events is None else {"events":events,"model_round":model_round}
+			if budget is not None:
+				options["budget"]=budget
+			futures=[dispatcher.submit(self.execute,call.tool_name,call.arguments,call.tool_call_id,**options) for call in calls]
 			# 按调用顺序汇总；任务在提交后已经并发运行。
 			return tuple(future.result() for future in futures)
 

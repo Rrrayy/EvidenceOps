@@ -11,6 +11,8 @@ from uuid import uuid4
 from evidenceops.application.llm_gateway import LLMGateway,ModelGatewayError
 from evidenceops.application.model_protocol import FinalAnswer,ModelRequest,StructuredFinalAnswer,ToolCall,ToolCallBatch
 from evidenceops.application.tool_runtime import ToolResult,ToolRuntime,ToolSpec
+from evidenceops.application.run_events import RunEvents
+from evidenceops.application.run_budget import RunBudget,RunBudgetExceeded
 
 
 @dataclass(frozen=True,slots=True)
@@ -53,7 +55,7 @@ class AgentLoop:
 		self._max_steps=max_steps
 		self._response_format=response_format
 
-	def run(self,prompt:str,run_id:str|None=None)->AgentLoopResult:
+	def run(self,prompt:str,run_id:str|None=None,events:RunEvents|None=None,budget:RunBudget|None=None)->AgentLoopResult:
 		if not isinstance(prompt,str) or not prompt.strip():
 			raise ValueError("prompt不能为空")
 
@@ -96,11 +98,15 @@ class AgentLoop:
 
 		# 限制模型轮次，同轮多工具批次不逐项消耗轮次预算。
 		for model_round in range(1,self._max_steps+1):
+			try:
+				call_timeout=budget.limit(self._timeout_seconds) if budget is not None else self._timeout_seconds
+			except RunBudgetExceeded:
+				return finish(None,tuple(tool_results),"RUN_TIMEOUT","诊断整体执行预算已耗尽")
 			request=ModelRequest(
 				messages=history,
 				tools=self._tools,
 				model=self._model,
-				timeout_seconds=self._timeout_seconds,
+				timeout_seconds=call_timeout,
 				request_id=str(uuid4()),
 				run_id=run_id,
 				response_format=self._response_format,
@@ -108,6 +114,9 @@ class AgentLoop:
 
 			started_at=datetime.now(timezone.utc)
 			started_clock=perf_counter()
+			if events is not None:
+				events.emit("model_started",model_round=model_round,model_request_id=request.request_id,model=self._model,
+					timeout_seconds=request.timeout_seconds)
 			def record_model(error_code=None):
 				records.append(ExecutionRecord(
 					kind="model",started_at=started_at,finished_at=datetime.now(timezone.utc),
@@ -115,10 +124,22 @@ class AgentLoop:
 					status="succeeded" if error_code is None else "failed",error_code=error_code,
 					run_id=run_id,model_round=model_round,model_request_id=request.request_id,
 				))
+				if events is not None:
+					events.emit("model_finished",model_round=model_round,model_request_id=request.request_id,
+						status=records[-1].status,error_code=error_code,duration_ms=records[-1].duration_ms)
 
 			try:
 				call_result=self._gateway.complete(request)
+				# HTTP阶段超时不是硬截止时间；拒绝超过共享截止时间才到达的回答。
+				if budget is not None:
+					budget.check()
+			except RunBudgetExceeded:
+				record_model("RUN_TIMEOUT")
+				return finish(None,tuple(tool_results),"RUN_TIMEOUT","诊断整体执行预算已耗尽")
 			except ModelGatewayError as error:
+				if budget is not None and budget.remaining()<=0:
+					record_model("RUN_TIMEOUT")
+					return finish(None,tuple(tool_results),"RUN_TIMEOUT","诊断整体执行预算已耗尽")
 				record_model(error.error_code)
 				return finish(
 					final_answer=None,
@@ -151,9 +172,15 @@ class AgentLoop:
 
 			if len(calls)==1:
 				call=calls[0]
-				batch_results=(self._runtime.execute(call.tool_name,call.arguments,tool_call_id=call.tool_call_id),)
+				options={} if events is None else {"events":events,"model_round":model_round}
+				if budget is not None:
+					options["budget"]=budget
+				batch_results=(self._runtime.execute(call.tool_name,call.arguments,tool_call_id=call.tool_call_id,**options),)
 			else:
-				batch_results=self._runtime.execute_many(calls)
+				options={} if events is None else {"events":events,"model_round":model_round}
+				if budget is not None:
+					options["budget"]=budget
+				batch_results=self._runtime.execute_many(calls,**options)
 
 			records.extend(
 				replace(result.execution_record,run_id=run_id,model_round=model_round)

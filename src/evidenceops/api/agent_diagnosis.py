@@ -1,9 +1,11 @@
 from contextlib import asynccontextmanager
+import asyncio
 from uuid import uuid4
 
 from fastapi import FastAPI
 from pydantic import BaseModel,field_validator
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse,StreamingResponse
+from evidenceops.api.diagnosis_stream import DiagnosisStreamRunner,StreamBusyError
 
 from evidenceops.application.agent_diagnosis_factory import AgentDiagnosisAssembly
 from evidenceops.application.diagnosis_response import to_response
@@ -24,12 +26,26 @@ class AgentDiagnosisRequest(BaseModel):
 
 
 def create_app(assembly:AgentDiagnosisAssembly)->FastAPI:
+	stream_runner=DiagnosisStreamRunner(assembly.diagnosis_service)
 	@asynccontextmanager
 	async def lifespan(_:FastAPI):
-		yield
-		assembly.close()
+		try:
+			yield
+		finally:
+			await asyncio.to_thread(stream_runner.close)
+			assembly.close()
 
 	app=FastAPI(lifespan=lifespan)
+
+	@app.post("/api/v1/agent/diagnosis/stream",response_class=StreamingResponse,
+		responses={200:{"content":{"text/event-stream":{}}},429:{"description":"流式诊断并发已达上限"}})
+	async def diagnose_stream(request:AgentDiagnosisRequest):
+		try:
+			channel=stream_runner.start(request.description)
+		except StreamBusyError as error:
+			return JSONResponse(status_code=429,content={"error_code":"STREAM_BUSY","message":str(error)})
+		return StreamingResponse(channel.stream(),media_type="text/event-stream",
+			headers={"Cache-Control":"no-cache","X-Accel-Buffering":"no"})
 
 	@app.post("/api/v1/agent/diagnosis")
 	def diagnose(request:AgentDiagnosisRequest)->JSONResponse:

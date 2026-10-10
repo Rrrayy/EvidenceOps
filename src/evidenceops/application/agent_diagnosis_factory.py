@@ -44,6 +44,7 @@ def build_agent_diagnosis_assembly(
 	max_steps:int=3,
 	response_format:str="json_object",
 	diagnosis_persistence:DiagnosisPersistence|None=None,
+	run_timeout_seconds:float|None=None,
 )->AgentDiagnosisAssembly:
 	runtime=ToolRuntime(tools,timeout_seconds=tool_timeout_seconds)
 
@@ -63,7 +64,8 @@ def build_agent_diagnosis_assembly(
 	evidence_collector=AgentEvidenceCollector(loop,tool_collector)
 	report_generator=DraftReportGenerator()
 
-	diagnosis_service=DiagnosisService(evidence_collector,report_generator,diagnosis_persistence=diagnosis_persistence)
+	diagnosis_service=DiagnosisService(evidence_collector,report_generator,diagnosis_persistence=diagnosis_persistence,
+		run_timeout_seconds=run_timeout_seconds)
 
 	return AgentDiagnosisAssembly(
 		evidence_collector=evidence_collector,

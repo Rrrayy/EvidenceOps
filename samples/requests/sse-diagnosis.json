@@ -1,0 +1,3 @@
+{
+	"description":"请使用query_service_logs和query_service_metrics查询order-service在production环境2026-10-05T10:00:00+08:00至2026-10-05T10:10:00+08:00的rpc_timeout日志与线程池指标，各limit=50，并使用query_service_config查询2026-10-05T10:02:00+08:00生效配置。结合证据分析，区分已确认事实与原因假设，不要把配置允许重试当作已经发生重试。"
+}

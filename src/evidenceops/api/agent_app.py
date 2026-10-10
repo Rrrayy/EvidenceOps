@@ -95,6 +95,7 @@ def build_agent_app()->object:
 		"order-service",
 		max_steps=4,
 		diagnosis_persistence=diagnosis_persistence,
+		run_timeout_seconds=float(os.getenv("EVIDENCEOPS_RUN_TIMEOUT_SECONDS","180")),
 	)
 
 	return create_app(assembly)
@@ -118,6 +119,7 @@ def build_openai_agent_app(base_url:str,api_key:str,model:str)->object:
 		model_timeout_seconds=model_timeout_seconds,
 		max_steps=4,
 		diagnosis_persistence=diagnosis_persistence,
+		run_timeout_seconds=float(os.getenv("EVIDENCEOPS_RUN_TIMEOUT_SECONDS","180")),
 	)
 
 	return create_app(assembly)

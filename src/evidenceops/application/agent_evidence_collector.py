@@ -6,6 +6,8 @@ from evidenceops.application.model_protocol import StructuredFinalAnswer
 from evidenceops.application.tool_evidence_collector import ToolEvidenceCollector
 from evidenceops.domain.diagnosis_run import DiagnosisRun
 from evidenceops.domain.evidence import Evidence
+from evidenceops.application.run_events import RunEvents
+from evidenceops.application.run_budget import RunBudget,RunBudgetExceeded
 
 
 class AgentEvidenceCollector:
@@ -13,11 +15,20 @@ class AgentEvidenceCollector:
 		self._agent_loop=agent_loop
 		self._tool_collector=tool_collector
 
-	def collect(self,run:DiagnosisRun)->AgentCollectionResult:
-		loop_result=self._agent_loop.run(run.description,run_id=run.run_id)
+	def collect(self,run:DiagnosisRun,events:RunEvents|None=None,budget:RunBudget|None=None)->AgentCollectionResult:
+		options={}
+		if events is not None:
+			options["events"]=events
+		if budget is not None:
+			options["budget"]=budget
+		loop_result=self._agent_loop.run(run.description,run_id=run.run_id,**options)
 
 		try:
+			if budget is not None:
+				budget.check()
 			return self._convert_result(run,loop_result)
+		except RunBudgetExceeded as error:
+			raise AgentCollectionError("RUN_TIMEOUT",str(error),loop_result.execution_records) from error
 		except (AgentCollectionError,ToolCollectionError) as error:
 			error.execution_records=loop_result.execution_records
 			raise
