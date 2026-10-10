@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 from typing import Any,Protocol
+from evidenceops.application.run_control import RunControl
+from evidenceops.application.run_budget import RunBudget
 
 
 @dataclass(frozen=True,slots=True)
@@ -65,6 +67,8 @@ class ModelRequest:
 	request_id:str
 	run_id:str
 	response_format:str="text"
+	control:RunControl|None=None
+	budget:RunBudget|None=None
 
 	def __post_init__(self)->None:
 		if not isinstance(self.messages,tuple):

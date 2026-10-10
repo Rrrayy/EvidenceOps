@@ -8,6 +8,7 @@ from typing import Any
 
 from evidenceops.application.tool_errors import UnknownServiceError
 from evidenceops.application.tool_runtime import ToolSpec
+from evidenceops.application.run_control import RunControl
 from evidenceops.connectors.query_time import parse_query_time
 
 
@@ -116,7 +117,9 @@ class LocalLogQuery:
 		}
 
 
-def query_local_logs(arguments:dict[str,Any])->dict[str,Any]:
+def query_local_logs(arguments:dict[str,Any],control:RunControl|None=None)->dict[str,Any]:
+	if control is not None:
+		control.check()
 	query=LocalLogQuery(**arguments)
 	config=SERVICE_REGISTRY.get((query.service_name,query.environment))
 
@@ -131,31 +134,28 @@ def query_local_logs(arguments:dict[str,Any])->dict[str,Any]:
 
 	matches=[]
 
-	for line_number,raw_line in enumerate(config.source_path.read_text(encoding="utf-8").splitlines(),start=1):
-		if not raw_line.strip():
-			continue
-
-		try:
-			record=json.loads(raw_line)
-			observed_at=datetime.fromisoformat(record["timestamp"])
-		except (ValueError,KeyError,json.JSONDecodeError):
-			continue
-
-		if not query.start_time<=observed_at<=query.end_time:
-			continue
-
-		if (query.error_type is not None and record.get("error_type")!=query.error_type.value):
-			continue
-
-		search_text=" ".join(str(record.get(field,"")) for field in ("message","error_type","dependency")).lower()
-
-		if query.symptom is not None and query.symptom.lower() not in search_text:
-			continue
-
-		if any(keyword.lower() not in search_text for keyword in query.keywords):
-			continue
-
-		matches.append({"line_number":line_number,"record":record,})
+	# 逐行读取提供协作取消点；异常离开with会关闭文件，不一次读入整个来源。
+	with config.source_path.open(encoding="utf-8") as source_file:
+		for line_number,raw_line in enumerate(source_file,start=1):
+			if control is not None:
+				control.check()
+			if not raw_line.strip():
+				continue
+			try:
+				record=json.loads(raw_line)
+				observed_at=datetime.fromisoformat(record["timestamp"])
+			except (ValueError,KeyError,json.JSONDecodeError):
+				continue
+			if not query.start_time<=observed_at<=query.end_time:
+				continue
+			if query.error_type is not None and record.get("error_type")!=query.error_type.value:
+				continue
+			search_text=" ".join(str(record.get(field,"")) for field in ("message","error_type","dependency")).lower()
+			if query.symptom is not None and query.symptom.lower() not in search_text:
+				continue
+			if any(keyword.lower() not in search_text for keyword in query.keywords):
+				continue
+			matches.append({"line_number":line_number,"record":record})
 
 	total_count=len(matches)
 	return {
@@ -180,6 +180,7 @@ def build_local_log_tool()->ToolSpec:
 		read_only=True,
 		validate_arguments=LocalLogQuery.from_arguments,
 		handler=query_local_logs,
+		controlled_handler=query_local_logs,
 		parameters_schema={
 			"type":"object",
 			"properties":{

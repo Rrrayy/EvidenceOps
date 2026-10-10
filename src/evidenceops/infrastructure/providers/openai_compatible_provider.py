@@ -1,4 +1,6 @@
 import json
+import asyncio
+from collections.abc import Callable
 from typing import Any
 from urllib.parse import urlparse
 
@@ -17,7 +19,8 @@ from evidenceops.application.model_protocol import (
 
 
 class OpenAICompatibleProvider:
-	def __init__(self,base_url:str,api_key:str,client:httpx.Client|None=None)->None:
+	def __init__(self,base_url:str,api_key:str,client:httpx.Client|None=None,
+		async_client_factory:Callable[[],httpx.AsyncClient]|None=None)->None:
 		if not isinstance(base_url,str) or not base_url.strip():
 			raise ValueError("base_url不能为空")
 
@@ -36,6 +39,9 @@ class OpenAICompatibleProvider:
 		self._url=f"{normalized_base_url.rstrip('/')}/chat/completions"
 		self._api_key=api_key.strip()
 		self._client=client or httpx.Client()
+		self._async_client_factory=async_client_factory or httpx.AsyncClient
+		# 显式注入的同步客户端可能是测试Transport或定制代理，不能悄悄绕过它发真实请求。
+		self._cancellable_io=client is None or async_client_factory is not None
 
 	def complete(self,request:ModelRequest)->ProviderResponse:
 		# 凭据只进入 HTTP 请求头，不加入模型上下文。
@@ -52,7 +58,14 @@ class OpenAICompatibleProvider:
 			body["response_format"]={"type":"json_object"}
 
 		try:
-			response=self._client.post(self._url,headers=headers,json=body,timeout=request.timeout_seconds)
+			if request.control is not None:
+				request.control.check()
+			# 同步编排在线程里运行；请求独立的异步IO可取消，不关闭其他Run的共享客户端。
+			response=asyncio.run(self._post_cancellable(request,headers,body)) if (
+				request.control is not None and self._cancellable_io) else (
+				self._client.post(self._url,headers=headers,json=body,timeout=request.timeout_seconds))
+			if request.control is not None:
+				request.control.check()
 		except httpx.TimeoutException as error:
 			raise ModelProviderError("MODEL_TIMEOUT","模型请求超时") from error
 		except httpx.RequestError as error:
@@ -78,6 +91,27 @@ class OpenAICompatibleProvider:
 			raise ModelProviderError("MODEL_PROTOCOL_ERROR","模型响应不是合法JSON") from error
 
 		return self._parse_response(payload,request)
+
+	async def _post_cancellable(self,request:ModelRequest,headers:dict,body:dict)->httpx.Response:
+		request.control.check()
+		async with self._async_client_factory() as client:
+			task=asyncio.create_task(client.post(self._url,headers=headers,json=body,timeout=request.timeout_seconds))
+			try:
+				while True:
+					request.control.check()
+					if request.budget is not None:
+						request.budget.check()
+					completed,_=await asyncio.wait({task},timeout=0.05)
+					if completed:
+						request.control.check()
+						if request.budget is not None:
+							request.budget.check()
+						return task.result()
+			finally:
+				# 取消必须等待IO协程清理；只取消外层等待会遗留网络任务。
+				if not task.done():
+					task.cancel()
+				await asyncio.gather(task,return_exceptions=True)
 
 	@staticmethod
 	def _build_http_error_message(response:httpx.Response)->str:

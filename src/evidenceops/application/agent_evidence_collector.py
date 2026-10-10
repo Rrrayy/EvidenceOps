@@ -8,6 +8,7 @@ from evidenceops.domain.diagnosis_run import DiagnosisRun
 from evidenceops.domain.evidence import Evidence
 from evidenceops.application.run_events import RunEvents
 from evidenceops.application.run_budget import RunBudget,RunBudgetExceeded
+from evidenceops.application.run_control import RunCancelled,RunControl
 
 
 class AgentEvidenceCollector:
@@ -15,12 +16,15 @@ class AgentEvidenceCollector:
 		self._agent_loop=agent_loop
 		self._tool_collector=tool_collector
 
-	def collect(self,run:DiagnosisRun,events:RunEvents|None=None,budget:RunBudget|None=None)->AgentCollectionResult:
+	def collect(self,run:DiagnosisRun,events:RunEvents|None=None,budget:RunBudget|None=None,
+		control:RunControl|None=None)->AgentCollectionResult:
 		options={}
 		if events is not None:
 			options["events"]=events
 		if budget is not None:
 			options["budget"]=budget
+		if control is not None:
+			options["control"]=control
 		loop_result=self._agent_loop.run(run.description,run_id=run.run_id,**options)
 
 		evidences=[]
@@ -41,11 +45,15 @@ class AgentEvidenceCollector:
 						conversion_error=error
 			if loop_result.error_code is not None:
 				raise AgentCollectionError(loop_result.error_code,loop_result.error_message or "Agent Loop执行失败")
+			if control is not None:
+				control.check()
 			if budget is not None:
 				budget.check()
 			if conversion_error is not None:
 				raise conversion_error
 			return self._convert_result(loop_result,tuple(evidences))
+		except RunCancelled as error:
+			raise AgentCollectionError("RUN_CANCELLED",str(error),loop_result.execution_records,tuple(evidences)) from error
 		except RunBudgetExceeded as error:
 			raise AgentCollectionError("RUN_TIMEOUT",str(error),loop_result.execution_records,tuple(evidences)) from error
 		except (AgentCollectionError,ToolCollectionError) as error:

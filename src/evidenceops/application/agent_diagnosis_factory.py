@@ -65,7 +65,7 @@ def build_agent_diagnosis_assembly(
 	report_generator=DraftReportGenerator()
 
 	diagnosis_service=DiagnosisService(evidence_collector,report_generator,diagnosis_persistence=diagnosis_persistence,
-		run_timeout_seconds=run_timeout_seconds)
+		run_timeout_seconds=run_timeout_seconds,cancellation_enabled=True)
 
 	return AgentDiagnosisAssembly(
 		evidence_collector=evidence_collector,

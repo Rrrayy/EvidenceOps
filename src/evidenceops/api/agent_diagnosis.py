@@ -37,6 +37,25 @@ def create_app(assembly:AgentDiagnosisAssembly)->FastAPI:
 
 	app=FastAPI(lifespan=lifespan)
 
+	@app.post("/api/v1/agent/runs/{run_id}/cancel")
+	async def cancel_diagnosis(run_id:str)->JSONResponse:
+		run_id=run_id.strip()
+		if not run_id:
+			return JSONResponse(status_code=422,content={"error_code":"INVALID_ARGUMENTS","message":"run_id不能为空"})
+		decision=assembly.diagnosis_service.request_cancel(run_id)
+		if decision is not None:
+			return JSONResponse(status_code=202 if decision["cancellation_requested"] else 409,content=decision)
+		if assembly.diagnosis_persistence is not None:
+			# 活跃Run取消仅操作内存；历史回查的同步数据库IO移出事件循环。
+			history=await asyncio.to_thread(load_diagnosis_history,assembly.diagnosis_persistence,run_id)
+			if history is not None:
+				if history.run.status in (RunStatus.SUCCEEDED,RunStatus.FAILED,RunStatus.CANCELLED):
+					return JSONResponse(status_code=200,content={"run_id":run_id,"status":history.run.status.value,
+						"cancellation_requested":False})
+				return JSONResponse(status_code=409,content={"run_id":run_id,"error_code":"RUN_NOT_ACTIVE",
+					"message":"当前进程未执行该Run；取消请求未被接纳"})
+		return JSONResponse(status_code=404,content={"error_code":"RUN_NOT_FOUND","message":"诊断运行不存在"})
+
 	@app.post("/api/v1/agent/diagnosis/stream",response_class=StreamingResponse,
 		responses={200:{"content":{"text/event-stream":{}}},429:{"description":"流式诊断并发已达上限"}})
 	async def diagnose_stream(request:AgentDiagnosisRequest):
@@ -55,7 +74,7 @@ def create_app(assembly:AgentDiagnosisAssembly)->FastAPI:
 
 		response=to_response(result)
 
-		status_code=(200 if result.run.status is RunStatus.SUCCEEDED else 503)
+		status_code=(200 if result.run.status in (RunStatus.SUCCEEDED,RunStatus.CANCELLED) else 503)
 
 		return JSONResponse(status_code=status_code,content=response)
 

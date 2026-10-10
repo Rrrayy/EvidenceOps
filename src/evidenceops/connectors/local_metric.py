@@ -7,6 +7,7 @@ from typing import Any
 
 from evidenceops.application.tool_errors import UnknownServiceError
 from evidenceops.application.tool_runtime import ToolSpec
+from evidenceops.application.run_control import RunControl
 from evidenceops.connectors.query_time import parse_query_time
 
 
@@ -104,7 +105,9 @@ def validate_sample(record:dict[str,Any])->None:
 		raise ValueError("thread_limit必须大于0")
 
 
-def query_local_metrics(arguments:dict[str,Any])->dict[str,Any]:
+def query_local_metrics(arguments:dict[str,Any],control:RunControl|None=None)->dict[str,Any]:
+	if control is not None:
+		control.check()
 	query=LocalMetricQuery(**arguments)
 	config=METRIC_REGISTRY.get((query.service_name,query.environment))
 
@@ -119,6 +122,8 @@ def query_local_metrics(arguments:dict[str,Any])->dict[str,Any]:
 	# 逐行读取；limit限制返回数量，不限制读取数量。
 	with config.source_path.open(encoding="utf-8") as source_file:
 		for line_number,raw_line in enumerate(source_file,start=1):
+			if control is not None:
+				control.check()
 			if not raw_line.strip():
 				continue
 
@@ -173,6 +178,7 @@ def build_local_metric_tool()->ToolSpec:
 		read_only=True,
 		validate_arguments=LocalMetricQuery.from_arguments,
 		handler=query_local_metrics,
+		controlled_handler=query_local_metrics,
 		parameters_schema={
 			"type":"object",
 			"properties":{

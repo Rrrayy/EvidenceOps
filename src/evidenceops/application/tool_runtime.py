@@ -12,6 +12,7 @@ from evidenceops.application.model_protocol import ToolCall,ToolCallBatch
 from evidenceops.application.execution_record import ExecutionRecord
 from evidenceops.application.run_events import RunEvents
 from evidenceops.application.run_budget import RunBudget,RunBudgetExceeded
+from evidenceops.application.run_control import RunCancelled,RunControl
 
 
 @dataclass(frozen=True,slots=True)
@@ -51,6 +52,7 @@ class ToolSpec:
 	validate_arguments:Callable[[dict[str,Any]],dict[str,Any]]
 	handler:Callable[[dict[str,Any]],Any]
 	parameters_schema:dict[str,Any]=field(default_factory=dict)
+	controlled_handler:Callable[[dict[str,Any],RunControl],Any]|None=None
 
 	def __post_init__(self)->None:
 		if not self.name.strip():
@@ -64,6 +66,8 @@ class ToolSpec:
 
 		if not isinstance(self.parameters_schema,dict):
 			raise TypeError("parameters_schema必须是字典")
+		if self.controlled_handler is not None and not callable(self.controlled_handler):
+			raise TypeError("controlled_handler必须可调用")
 
 	def to_model_schema(self)->dict[str,Any]:
 		return {"type":"function","function":{"name":self.name,"parameters":self.parameters_schema,},}
@@ -79,7 +83,8 @@ class ToolRuntime:
 		self._executor=ThreadPoolExecutor(max_workers=4)
 
 	def execute(self,tool_name:str,arguments:dict[str,Any],tool_call_id:str|None=None,
-		events:RunEvents|None=None,model_round:int|None=None,budget:RunBudget|None=None)->ToolResult:
+		events:RunEvents|None=None,model_round:int|None=None,budget:RunBudget|None=None,
+		control:RunControl|None=None)->ToolResult:
 		started_at=datetime.now(timezone.utc)
 		started_clock=perf_counter()
 		if events is not None:
@@ -95,7 +100,9 @@ class ToolRuntime:
 		handler_times={}
 		timing_lock=Lock()
 		try:
-			result=self._execute(tool_name,arguments,tool_call_id,handler_times,timing_lock,budget)
+			result=self._execute(tool_name,arguments,tool_call_id,handler_times,timing_lock,budget,control)
+		except RunCancelled as error:
+			result=ToolResult(tool_name,False,error_code="RUN_CANCELLED",error_message=str(error),tool_call_id=tool_call_id)
 		except RunBudgetExceeded as error:
 			result=ToolResult(tool_name,False,error_code="RUN_TIMEOUT",error_message=str(error),tool_call_id=tool_call_id)
 		except Exception as error:
@@ -106,7 +113,7 @@ class ToolRuntime:
 		record=ExecutionRecord(
 			kind="tool",started_at=started_at,finished_at=finished_at,
 			duration_ms=(perf_counter()-started_clock)*1000,
-			status="succeeded" if result.ok else "failed",error_code=result.error_code,
+			status="succeeded" if result.ok else ("cancelled" if result.error_code=="RUN_CANCELLED" else "failed"),error_code=result.error_code,
 			tool_name=tool_name,tool_call_id=tool_call_id,
 			handler_started_at=times.get("started_at"),handler_finished_at=times.get("finished_at"),
 			query_arguments=query_arguments,
@@ -126,7 +133,10 @@ class ToolRuntime:
 		handler_times:dict|None=None,
 		timing_lock:Any=None,
 		budget:RunBudget|None=None,
+		control:RunControl|None=None,
 	)->ToolResult:
+		if control is not None:
+			control.check()
 		if budget is not None:
 			budget.check()
 		tool=self._tools.get(tool_name)
@@ -170,13 +180,16 @@ class ToolRuntime:
 			)
 
 		def invoke_handler():
+			if control is not None:
+				control.check()
 			# 线程池排队也消耗预算，排队后才获得线程不能再启动过期任务。
 			if budget is not None:
 				budget.check()
 			with timing_lock:
 				handler_times["started_at"]=datetime.now(timezone.utc)
 			try:
-				return tool.handler(normalized_arguments)
+				return tool.controlled_handler(normalized_arguments,control) if (
+					control is not None and tool.controlled_handler is not None) else tool.handler(normalized_arguments)
 			finally:
 				with timing_lock:
 					handler_times["finished_at"]=datetime.now(timezone.utc)
@@ -186,10 +199,26 @@ class ToolRuntime:
 		future=self._executor.submit(invoke_handler)
 
 		try:
-			data=future.result(timeout=budget.limit(self._timeout_seconds) if budget is not None else self._timeout_seconds)
+			if control is None:
+				data=future.result(timeout=budget.limit(self._timeout_seconds) if budget is not None else self._timeout_seconds)
+			else:
+				# 短等待检查取消，不重置单次工具截止时间；运行线程仍由其handler负责清理。
+				deadline=perf_counter()+(budget.limit(self._timeout_seconds) if budget is not None else self._timeout_seconds)
+				while True:
+					control.check()
+					remaining=deadline-perf_counter()
+					if remaining<=0:
+						raise FutureTimeout()
+					try:
+						data=future.result(timeout=min(0.05,remaining))
+						break
+					except FutureTimeout:
+						if future.done():
+							raise
+				control.check()
 			if budget is not None:
 				budget.check()
-		except RunBudgetExceeded:
+		except (RunCancelled,RunBudgetExceeded):
 			future.cancel()
 			raise
 		except FutureTimeout:
@@ -239,13 +268,15 @@ class ToolRuntime:
 		return ToolResult(tool_name,True,data=data,tool_call_id=tool_call_id)
 
 	def execute_many(self,calls:tuple[ToolCall,...],events:RunEvents|None=None,model_round:int|None=None,
-		budget:RunBudget|None=None)->tuple[ToolResult,...]:
+		budget:RunBudget|None=None,control:RunControl|None=None)->tuple[ToolResult,...]:
 		ToolCallBatch(calls)
 		# 调度线程与handler线程池分开，避免线程等待自身池内任务而死锁。
 		with ThreadPoolExecutor(max_workers=4) as dispatcher:
 			options={} if events is None else {"events":events,"model_round":model_round}
 			if budget is not None:
 				options["budget"]=budget
+			if control is not None:
+				options["control"]=control
 			futures=[dispatcher.submit(self.execute,call.tool_name,call.arguments,call.tool_call_id,**options) for call in calls]
 			# 按调用顺序汇总；任务在提交后已经并发运行。
 			return tuple(future.result() for future in futures)

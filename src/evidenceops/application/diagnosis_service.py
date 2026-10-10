@@ -10,6 +10,7 @@ from evidenceops.application.execution_record import ExecutionRecord
 from evidenceops.application.run_repository import RunPersistenceError
 from evidenceops.application.run_events import EventSink,RunEvents
 from evidenceops.application.run_budget import RunBudget,RunBudgetExceeded
+from evidenceops.application.run_control import RunCancelled,RunControl,RunRegistry
 from evidenceops.application.tool_errors import ToolCollectionError
 from evidenceops.domain.diagnosis_report import DiagnosisReport,validate_report_evidence
 from evidenceops.domain.diagnosis_run import DiagnosisRun,RunStatus
@@ -17,7 +18,8 @@ from evidenceops.domain.evidence import Evidence
 
 
 class EvidenceCollector(Protocol):
-	def collect(self,run:DiagnosisRun,events:RunEvents|None=None,budget:RunBudget|None=None)->tuple[Evidence,...]|AgentCollectionResult:
+	def collect(self,run:DiagnosisRun,events:RunEvents|None=None,budget:RunBudget|None=None,
+		control:RunControl|None=None)->tuple[Evidence,...]|AgentCollectionResult:
 		...
 
 
@@ -43,6 +45,7 @@ class DiagnosisService:
 		run_id_factory:Callable[[],str]|None=None,
 		diagnosis_persistence:DiagnosisPersistence|None=None,
 		run_timeout_seconds:float|None=None,
+		cancellation_enabled:bool=False,
 	)->None:
 		self._evidence_collector=evidence_collector
 		self._report_generator=report_generator
@@ -51,6 +54,12 @@ class DiagnosisService:
 		if run_timeout_seconds is not None:
 			RunBudget(run_timeout_seconds)
 		self._run_timeout_seconds=run_timeout_seconds
+		self._cancellation_enabled=cancellation_enabled
+		self._registry=RunRegistry()
+
+	def request_cancel(self,run_id:str)->dict|None:
+		control=self._registry.get(run_id)
+		return None if control is None else {"run_id":run_id,**control.request_cancel()}
 
 	def _persist_create(self,run:DiagnosisRun)->None:
 		if self._diagnosis_persistence is None:
@@ -115,6 +124,8 @@ class DiagnosisService:
 		run=DiagnosisRun(self._run_id_factory(),request_id,description)
 		events=RunEvents(run.run_id,event_sink) if event_sink is not None else None
 		budget=RunBudget(self._run_timeout_seconds) if self._run_timeout_seconds is not None else None
+		if self._cancellation_enabled:
+			self._registry.register(run.run_id,RunControl(events,budget))
 		try:
 			result=self._execute_run(run,events) if budget is None else self._execute_run(run,events,budget)
 		except Exception as error:
@@ -122,13 +133,18 @@ class DiagnosisService:
 				events.emit("run_failed",status="failed",error_code="PERSISTENCE_FAILED" if isinstance(error,RunPersistenceError)
 					else "DIAGNOSIS_EXECUTION_FAILED",message="诊断执行或保存失败")
 			raise
+		finally:
+			self._registry.remove(run.run_id)
 		if events is not None:
 			# 终止事件必须晚于成功/失败事务提交，不能提前宣称报告保存成功。
 			from evidenceops.application.diagnosis_response import to_response
-			events.emit("run_completed" if result.run.status is RunStatus.SUCCEEDED else "run_failed",result=to_response(result))
+			event_name="run_completed" if result.run.status is RunStatus.SUCCEEDED else (
+				"run_cancelled" if result.run.status is RunStatus.CANCELLED else "run_failed")
+			events.emit(event_name,result=to_response(result))
 		return result
 
 	def _execute_run(self,run:DiagnosisRun,events:RunEvents|None,budget:RunBudget|None=None)->DiagnosisExecution:
+		control=self._registry.get(run.run_id)
 
 		# 状态更新使用短事务，模型和工具等待期间不持有数据库 Session。
 		self._persist_create(run)
@@ -144,8 +160,19 @@ class DiagnosisService:
 		evidences:tuple[Evidence,...]=()
 		draft:DiagnosisDraft|None=None
 
+		def stop(error_code,detail=None):
+			status=control.claim_terminal(RunStatus.FAILED) if control is not None else RunStatus.FAILED
+			if status is RunStatus.CANCELLED:
+				detail={"code":"RUN_CANCELLED","message":"诊断已取消"}
+			run.transition(status,error_code=error_code if status is RunStatus.FAILED else None)
+			self._persist_failure(run,evidences,records)
+			return finish(run,evidences,None,detail)
+
 		try:
 			options={}
+			if control is not None:
+				control.check()
+				options["control"]=control
 			if events is not None:
 				options["events"]=events
 			if budget is not None:
@@ -161,46 +188,38 @@ class DiagnosisService:
 				evidences=tuple(collection)
 
 			self._validate_collected_evidences(run,evidences)
+			if control is not None:
+				control.check()
 			if budget is not None:
 				budget.check()
 
+		except RunCancelled:
+			return stop("RUN_CANCELLED")
 		except RunBudgetExceeded:
-			run.transition(RunStatus.FAILED,error_code="RUN_TIMEOUT")
-			self._persist_failure(run,evidences,records)
-			return finish(run,evidences,None,{"code":"RUN_TIMEOUT","message":"诊断整体执行预算已耗尽"})
+			return stop("RUN_TIMEOUT",{"code":"RUN_TIMEOUT","message":"诊断整体执行预算已耗尽"})
 
 		except AgentCollectionError as error:
 			records=error.execution_records
 			evidences=self._failure_evidences(run,error.evidences)
-			run.transition(RunStatus.FAILED,error_code=error.error_code)
-			self._persist_failure(run,evidences,records)
-			return finish(run,evidences,None,{"code":error.error_code,"message":error.error_message,})
+			return stop(error.error_code,{"code":error.error_code,"message":error.error_message})
 
 		except ToolCollectionError as error:
 			records=getattr(error,"execution_records",records)
 			evidences=self._failure_evidences(run,error.evidences)
-			run.transition(RunStatus.FAILED,error_code="EVIDENCE_COLLECTION_FAILED")
-			self._persist_failure(run,evidences,records)
-			return finish(run,evidences,None,{"code":error.error_code,"message":error.error_message,})
+			return stop("EVIDENCE_COLLECTION_FAILED",{"code":error.error_code,"message":error.error_message})
 
 		except Exception as error:
 			records=getattr(error,"execution_records",records)
-			run.transition(RunStatus.FAILED,error_code="EVIDENCE_COLLECTION_FAILED")
-			self._persist_failure(run,evidences,records)
-			return finish(run,evidences,None,None)
+			return stop("EVIDENCE_COLLECTION_FAILED")
 
 		if not evidences:
-			run.transition(RunStatus.FAILED,error_code="EVIDENCE_INSUFFICIENT")
-			self._persist_failure(run,evidences,records)
-			return finish(run,evidences,None,None)
+			return stop("EVIDENCE_INSUFFICIENT")
 
 		if draft is not None:
 			try:
 				self._validate_draft_evidence(draft,evidences)
 			except ValueError:
-				run.transition(RunStatus.FAILED,error_code="INVALID_REPORT_EVIDENCE")
-				self._persist_failure(run,evidences,records)
-				return finish(run,evidences,None,{"code":"INVALID_REPORT_EVIDENCE","message":"Draft引用的证据无效",})
+				return stop("INVALID_REPORT_EVIDENCE",{"code":"INVALID_REPORT_EVIDENCE","message":"Draft引用的证据无效"})
 
 		try:
 			if draft is None:
@@ -209,24 +228,25 @@ class DiagnosisService:
 				report=self._report_generator.generate(run,evidences,draft)
 
 		except Exception:
-			run.transition(RunStatus.FAILED,error_code="REPORT_GENERATION_FAILED")
-			self._persist_failure(run,evidences,records)
-			return finish(run,evidences,None,{"code":"REPORT_GENERATION_FAILED","message":"报告生成器执行失败",})
+			return stop("REPORT_GENERATION_FAILED",{"code":"REPORT_GENERATION_FAILED","message":"报告生成器执行失败"})
 
 		try:
 			validate_report_evidence(report,evidences)
+			if control is not None:
+				control.check()
 			if budget is not None:
 				budget.check()
 
+		except RunCancelled:
+			return stop("RUN_CANCELLED")
 		except RunBudgetExceeded:
-			run.transition(RunStatus.FAILED,error_code="RUN_TIMEOUT")
-			self._persist_failure(run,evidences,records)
-			return finish(run,evidences,None,{"code":"RUN_TIMEOUT","message":"诊断整体执行预算已耗尽"})
+			return stop("RUN_TIMEOUT",{"code":"RUN_TIMEOUT","message":"诊断整体执行预算已耗尽"})
 
 		except Exception:
-			run.transition(RunStatus.FAILED,error_code="INVALID_REPORT_EVIDENCE")
-			self._persist_failure(run,evidences,records)
-			return finish(run,evidences,None,{"code":"INVALID_REPORT_EVIDENCE","message":"报告引用的证据无效",})
+			return stop("INVALID_REPORT_EVIDENCE",{"code":"INVALID_REPORT_EVIDENCE","message":"报告引用的证据无效"})
+
+		if control is not None and control.claim_terminal(RunStatus.SUCCEEDED) is RunStatus.CANCELLED:
+			return stop("RUN_CANCELLED")
 
 		if self._diagnosis_persistence is None:
 			self._transition_and_persist(run,RunStatus.SUCCEEDED)

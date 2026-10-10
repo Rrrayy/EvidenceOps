@@ -9,7 +9,7 @@ from time import monotonic
 from uuid import uuid4
 
 
-TERMINAL_EVENTS={"run_completed","run_failed","stream_failed"}
+TERMINAL_EVENTS={"run_completed","run_failed","run_cancelled","stream_failed"}
 
 
 def encode_event(event:dict)->str:

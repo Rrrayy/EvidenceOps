@@ -1,4 +1,6 @@
 import time
+from evidenceops.application.run_control import RunCancelled
+from evidenceops.application.run_budget import RunBudgetExceeded
 
 from evidenceops.application.model_protocol import ModelCallResult,ModelProvider,ModelProviderError,ModelRequest
 
@@ -23,6 +25,9 @@ class LLMGateway:
 
 		try:
 			provider_response=self._provider.complete(request)
+		except (RunCancelled,RunBudgetExceeded):
+			# 控制流中断不属于供应商错误，交给Loop决定Run终止原因。
+			raise
 		except ModelProviderError as error:
 			# 保留 Provider 的稳定错误分类，使编排层无需了解供应商协议。
 			raise ModelGatewayError(error.error_code,error.error_message) from error

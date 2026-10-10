@@ -7,6 +7,7 @@ from typing import Any
 
 from evidenceops.application.tool_errors import UnknownServiceError
 from evidenceops.application.tool_runtime import ToolSpec
+from evidenceops.application.run_control import RunControl
 from evidenceops.connectors.query_time import parse_query_time
 
 
@@ -63,7 +64,9 @@ class LocalConfigQuery:
 		}
 
 
-def query_local_config(arguments:dict[str,Any])->dict[str,Any]:
+def query_local_config(arguments:dict[str,Any],control:RunControl|None=None)->dict[str,Any]:
+	if control is not None:
+		control.check()
 	query=LocalConfigQuery(**arguments)
 	source=CONFIG_REGISTRY.get((query.service_name,query.environment))
 	if source is None:
@@ -75,6 +78,8 @@ def query_local_config(arguments:dict[str,Any])->dict[str,Any]:
 	versions=set()
 	with source.source_path.open(encoding="utf-8") as source_file:
 		for line_number,raw_line in enumerate(source_file,start=1):
+			if control is not None:
+				control.check()
 			if not raw_line.strip():
 				continue
 			try:
@@ -128,6 +133,7 @@ def build_local_config_tool()->ToolSpec:
 		read_only=True,
 		validate_arguments=LocalConfigQuery.from_arguments,
 		handler=query_local_config,
+		controlled_handler=query_local_config,
 		parameters_schema={
 			"type":"object",
 			"properties":{

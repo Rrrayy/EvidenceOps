@@ -1,7 +1,7 @@
 import logging
 from collections.abc import Callable
 from datetime import datetime,timezone
-from threading import Lock
+from threading import RLock
 
 
 EventSink=Callable[[dict],None]
@@ -12,7 +12,8 @@ class RunEvents:
 		self.run_id=run_id
 		self._sink=sink
 		self._sequence=0
-		self._lock=Lock()
+		# 事件订阅者可能在model_started回调里请求取消，随后重入发布取消事件。
+		self._lock=RLock()
 
 	def emit(self,event_type:str,**data)->None:
 		# 并发工具共享本次Run的序号；编号与入队在同一锁内，保证发送顺序。
