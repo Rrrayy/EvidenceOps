@@ -23,27 +23,39 @@ class AgentEvidenceCollector:
 			options["budget"]=budget
 		loop_result=self._agent_loop.run(run.description,run_id=run.run_id,**options)
 
+		evidences=[]
+		conversion_error=None
 		try:
+			# 只整理已有观察，不重新执行工具；报告或预算失败不能抹掉观测事实。
+			for tool_result in loop_result.tool_results:
+				if not tool_result.ok:
+					if conversion_error is None:
+						conversion_error=ToolCollectionError(tool_result.error_code or "TOOL_EXECUTION_FAILED",
+							tool_result.error_message or "工具执行失败")
+					continue
+				try:
+					evidences.append(self._tool_collector.collect_result(run,tool_result))
+				except ToolCollectionError as error:
+					# 单项损坏不妨碍其余成功结果归档，保留首个转换错误。
+					if conversion_error is None:
+						conversion_error=error
+			if loop_result.error_code is not None:
+				raise AgentCollectionError(loop_result.error_code,loop_result.error_message or "Agent Loop执行失败")
 			if budget is not None:
 				budget.check()
-			return self._convert_result(run,loop_result)
+			if conversion_error is not None:
+				raise conversion_error
+			return self._convert_result(loop_result,tuple(evidences))
 		except RunBudgetExceeded as error:
-			raise AgentCollectionError("RUN_TIMEOUT",str(error),loop_result.execution_records) from error
+			raise AgentCollectionError("RUN_TIMEOUT",str(error),loop_result.execution_records,tuple(evidences)) from error
 		except (AgentCollectionError,ToolCollectionError) as error:
 			error.execution_records=loop_result.execution_records
+			error.evidences=tuple(evidences)
 			raise
 		except Exception as error:
-			raise AgentCollectionError("EVIDENCE_COLLECTION_FAILED","Agent结果转换失败",loop_result.execution_records) from error
+			raise AgentCollectionError("EVIDENCE_COLLECTION_FAILED","Agent结果转换失败",loop_result.execution_records,tuple(evidences)) from error
 
-	def _convert_result(self,run:DiagnosisRun,loop_result:AgentLoopResult)->AgentCollectionResult:
-		if loop_result.error_code is not None:
-			raise AgentCollectionError(loop_result.error_code,loop_result.error_message or "Agent Loop执行失败")
-
-		evidences=[]
-
-		for tool_result in loop_result.tool_results:
-			evidences.append(self._tool_collector.collect_result(run,tool_result))
-
+	def _convert_result(self,loop_result:AgentLoopResult,evidences:tuple[Evidence,...])->AgentCollectionResult:
 		if not isinstance(loop_result.final_answer,StructuredFinalAnswer):
 			raise AgentCollectionError("MODEL_PROTOCOL_ERROR","模型没有返回结构化最终答案")
 
@@ -53,7 +65,7 @@ class AgentEvidenceCollector:
 			raise AgentCollectionError("MODEL_PROTOCOL_ERROR",f"结构化最终答案无法转换为DiagnosisDraft：{error}") from error
 
 		return AgentCollectionResult(
-			evidences=tuple(evidences),
+			evidences=evidences,
 			draft=draft,
 			execution_records=loop_result.execution_records,
 		)

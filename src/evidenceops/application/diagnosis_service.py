@@ -171,12 +171,14 @@ class DiagnosisService:
 
 		except AgentCollectionError as error:
 			records=error.execution_records
+			evidences=self._failure_evidences(run,error.evidences)
 			run.transition(RunStatus.FAILED,error_code=error.error_code)
 			self._persist_failure(run,evidences,records)
 			return finish(run,evidences,None,{"code":error.error_code,"message":error.error_message,})
 
 		except ToolCollectionError as error:
 			records=getattr(error,"execution_records",records)
+			evidences=self._failure_evidences(run,error.evidences)
 			run.transition(RunStatus.FAILED,error_code="EVIDENCE_COLLECTION_FAILED")
 			self._persist_failure(run,evidences,records)
 			return finish(run,evidences,None,{"code":error.error_code,"message":error.error_message,})
@@ -233,6 +235,18 @@ class DiagnosisService:
 			self._persist_success(run,evidences,report,records)
 
 		return finish(run,evidences,report,None)
+
+	@staticmethod
+	def _failure_evidences(run:DiagnosisRun,evidences:tuple[Evidence,...])->tuple[Evidence,...]:
+		# 异常负载也需逐项校验，不能绕过归属约束；非法项不进入失败档案。
+		accepted=[]
+		for evidence in evidences:
+			try:
+				DiagnosisService._validate_collected_evidences(run,tuple(accepted)+(evidence,))
+			except (TypeError,ValueError):
+				continue
+			accepted.append(evidence)
+		return tuple(accepted)
 
 	@staticmethod
 	def _validate_collected_evidences(run:DiagnosisRun,evidences:tuple[Evidence,...])->None:
