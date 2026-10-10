@@ -100,7 +100,7 @@ $env:PYTHONPATH="src"
 python -m pytest
 ```
 
-The repository uses deterministic local JSONL fixtures for repeatable evidence tests while allowing a real OpenAI-compatible model Provider. Provider credentials are supplied through environment variables; PostgreSQL persistence and Eval are integrated. The local SSE implementation is paused with real-path acceptance pending; production log/metric/configuration platforms remain follow-up work.
+The repository uses deterministic local JSONL fixtures for repeatable evidence tests while allowing a real OpenAI-compatible model Provider. Provider credentials are supplied through environment variables; PostgreSQL persistence, Eval, and SSE process events are integrated. A user-run real-model/PostgreSQL streaming test succeeded; production log/metric/configuration platforms remain follow-up work.
 
 For the current Qwen-compatible endpoint, configure the Provider before starting the API:
 
@@ -109,7 +109,8 @@ $env:EVIDENCEOPS_PROVIDER="openai-compatible"
 $env:EVIDENCEOPS_MODEL_BASE_URL="https://maas.qianwenaiapi.com/compatible-mode/v1"
 $env:EVIDENCEOPS_MODEL_API_KEY="your-api-key"
 $env:EVIDENCEOPS_MODEL_NAME="qwen3.8-flash"
-$env:EVIDENCEOPS_MODEL_TIMEOUT_SECONDS="60"
+$env:EVIDENCEOPS_MODEL_TIMEOUT_SECONDS="120"
+$env:EVIDENCEOPS_RUN_TIMEOUT_SECONDS="180"
 $env:EVIDENCEOPS_PERSISTENCE="postgres"
 $env:POSTGRES_PASSWORD="your-postgres-password"
 ```
@@ -153,11 +154,15 @@ Real mode requires the model Base URL, API key, and model name variables shown a
 
 Exceptions and pending cases remain in the denominator. Expected rejection cases can pass evaluation. Rules inspect arguments, execution status, evidence sources/summaries, and reference ownership; they do not automatically prove semantic support. Mock checks the engineering path, not real-model quality.
 
-One local real-model batch scored 18/20 on all three metrics, with no pending reviews. Two cases failed the final-output protocol; their exact raw formatting defects remain unconfirmed, and the baseline is retained without reproduction for now. This is not production diagnosis accuracy. Token/cost aggregation, raw failed-model-output capture, per-case execution checkpoints, multi-reviewer workflows, and an overall diagnosis budget are not implemented. See the [Eval guide](samples/evaluation/README.md) for case details and review instructions.
+One local real-model batch scored 18/20 on all three metrics, with no pending reviews. Two cases failed the final-output protocol; their exact raw formatting defects remain unconfirmed, and the baseline is retained without reproduction for now. This is not production diagnosis accuracy. Token/cost aggregation, raw failed-model-output capture, per-case execution checkpoints, and multi-reviewer workflows are not implemented. The API now uses a shared execution budget; direct assembly and Eval callers remain opt-in. See the [Eval guide](samples/evaluation/README.md) for case details and review instructions.
 
 ## Follow-up status
 
-The initial SSE implementation and focused tests exist locally, but work is paused and real-model/PostgreSQL streaming acceptance has not been completed. The Eval commit excludes SSE code. Cancellation, reconnect replay, event persistence, and restart recovery remain follow-up work.
+`POST /api/v1/agent/diagnosis/stream` emits model/tool start and finish events, then `run_completed` or `run_failed` after persistence. Send `samples/requests/sse-diagnosis.json` with `curl.exe -N` and `--data-binary "@samples/requests/sse-diagnosis.json"`. Disconnecting the stream does not cancel the diagnosis. Cancellation, reconnect replay, event persistence, and restart recovery remain follow-up work.
+
+The API defaults to a 180-second shared execution budget (`EVIDENCEOPS_RUN_TIMEOUT_SECONDS`). Each model/tool wait uses the smaller of its own timeout and the remaining budget. Budget exhaustion produces `RUN_TIMEOUT`; earlier individual timeouts retain `MODEL_TIMEOUT` or `TOOL_TIMEOUT`. Restart the API after changing environment variables. The example sets individual model timeout to 120 seconds; its default remains 60 seconds.
+
+This is cooperative budget enforcement, not a hard response deadline: synchronous HTTP phase timeouts and database commits can exceed the remaining budget, and running tool threads cannot be forcibly stopped. Late results are rejected at checkpoints; final persistence is allowed to finish. The budget starts inside DiagnosisService, excluding earlier HTTP parsing/admission. See `tests/test_run_budget.py` for deterministic failure checks.
 
 ## Example contract
 

@@ -99,7 +99,7 @@ $env:PYTHONPATH="src"
 python -m pytest
 ```
 
-当前仓库使用本地 JSONL 样本提供可重复的只读证据查询，同时支持真实 OpenAI-compatible 模型 Provider。Provider 凭据通过环境变量提供；PostgreSQL 持久化和 Eval 评测已接入；SSE 本地实现暂停、真实链路验收未完成，生产日志、指标和配置平台仍待接入。
+当前仓库使用本地 JSONL 样本提供可重复的只读证据查询，同时支持真实 OpenAI-compatible 模型 Provider。Provider 凭据通过环境变量提供；PostgreSQL 持久化、Eval 和 SSE 过程事件已接入。用户已完成一次真实模型加 PostgreSQL 的流式成功验证；生产日志、指标和配置平台仍待接入。
 
 当前 Qwen 兼容接口的配置方式：
 
@@ -108,7 +108,8 @@ $env:EVIDENCEOPS_PROVIDER="openai-compatible"
 $env:EVIDENCEOPS_MODEL_BASE_URL="https://maas.qianwenaiapi.com/compatible-mode/v1"
 $env:EVIDENCEOPS_MODEL_API_KEY="your-api-key"
 $env:EVIDENCEOPS_MODEL_NAME="qwen3.8-flash"
-$env:EVIDENCEOPS_MODEL_TIMEOUT_SECONDS="60"
+$env:EVIDENCEOPS_MODEL_TIMEOUT_SECONDS="120"
+$env:EVIDENCEOPS_RUN_TIMEOUT_SECONDS="180"
 $env:EVIDENCEOPS_PERSISTENCE="postgres"
 $env:POSTGRES_PASSWORD="your-postgres-password"
 ```
@@ -152,11 +153,15 @@ $env:PYTHONPATH=(Join-Path $PWD.Path 'src')
 
 异常及pending保留在总分母；预期拒绝的失败案例也可以评测通过。规则检查覆盖参数、执行状态、证据来源/摘要和引用归属，不自动证明证据语义支持结论。Mock证明工程链路，不能代替真实模型质量评测。
 
-本地真实模型单批结果为18/20，三项均90%、pending=0；两例因最终输出协议失败，具体原始格式原因未确认，保留基线暂不复现。这不是生产诊断准确率。当前尚未汇总Token/成本、保存原始模型失败输出、实现运行中逐案例恢复或多审核人协作；完整诊断总预算也未实现。题库与审核说明见 [Eval使用说明](samples/evaluation/README.md)。
+本地真实模型单批结果为18/20，三项均90%、pending=0；两例因最终输出协议失败，具体原始格式原因未确认，保留基线暂不复现。这不是生产诊断准确率。当前尚未汇总Token/成本、保存原始模型失败输出、实现运行中逐案例恢复或多审核人协作；API 已接入共享执行预算，Eval 不自动开启。题库与审核说明见 [Eval使用说明](samples/evaluation/README.md)。
 
 ## 后续进度
 
-SSE第一版代码与专项测试已在本地实现，目前暂停，真实模型加PostgreSQL的流式手工验收尚未完成；本次Eval提交不包含SSE代码。取消、重连补发、事件持久化与重启恢复仍是后续工作。
+`POST /api/v1/agent/diagnosis/stream` 推送模型与工具的起止事件，保存完成后发出 `run_completed` 或 `run_failed`。通过 `curl.exe -N` 配合 `--data-binary "@samples/requests/sse-diagnosis.json"` 发送样本请求。断开流不会自动取消诊断；取消、重连补发、事件持久化与重启恢复仍是后续工作。
+
+API 默认使用 180 秒共享执行预算，由 `EVIDENCEOPS_RUN_TIMEOUT_SECONDS` 配置。模型和工具每次等待取“单次超时与剩余预算的较小值”。预算耗尽返回 `RUN_TIMEOUT`；提前触发的单次超时仍是 `MODEL_TIMEOUT` 或 `TOOL_TIMEOUT`。修改环境变量后需重启 API。示例模型超时为 120 秒，未配置时仍默认 60 秒；直接使用组装器或 Eval 时，总预算需调用者显式开启。
+
+这是协作式执行预算，不是 HTTP 响应硬截止：同步 HTTP 的阶段超时、同步数据库提交可能超出剩余预算，已启动工具线程不能强杀。检查点拒绝迟到结果，最终保存允许完成。预算从 DiagnosisService 内部开始计时，不包含此前 HTTP 解析和接纳过程。确定性失败验证见 `tests/test_run_budget.py`。
 
 ## 设计原则
 
