@@ -1,7 +1,7 @@
 # EvidenceOps
 
 <p align="center">
-  <strong>面向后端故障的证据驱动诊断 Agent</strong>
+  <strong>面向多语言软件故障的证据驱动诊断 Agent</strong>
 </p>
 
 <p align="center">
@@ -10,13 +10,15 @@
   <a href="#架构">架构</a>
 </p>
 
-EvidenceOps 是一个面向后端故障诊断的 Agent 平台。它遵循一条核心规则：模型可以提出诊断假设，但报告中的每条结论都必须由受控工具收集的证据支持。
+EvidenceOps 是一个面向常见语言和后端技术栈的软件故障诊断 Agent 平台。用户可以提交故障描述、错误日志、异常堆栈、配置或代码上下文，Agent 会收集受控证据，区分已确认事实与推测，并生成可追溯的诊断报告。
 
-第一阶段聚焦 C++ RPC 超时和线程池耗尽场景。项目从运行时边界开始构建，让模型 Provider、工具执行、证据收集和报告校验都可以独立测试。
+项目并不只服务 C++。第一批计划支持 Python、Java、Go、JavaScript/TypeScript 和 C/C++，之后再支持 Rust、PHP 和 C#。当前的 RPC 超时样本是用于训练和集成验证的确定性数据，不是产品边界。
+
+## 项目简介
 
 ## 为什么做 EvidenceOps
 
-一次后端故障排查通常需要关联日志、RPC 错误、队列长度、线程池指标、配置和部署信息。单纯的聊天回复无法说明结论依据了哪些事实；没有边界的 Agent 也可能调用错误函数或接受不合法参数。
+一次软件故障排查通常需要关联日志、异常堆栈、源代码上下文、指标、配置、部署记录和技术文档。单纯的自然语言回复无法说明结论依据了哪些事实；没有边界的 Agent 也可能调用错误函数或接受不合法参数。
 
 EvidenceOps 将这些边界明确化：
 
@@ -25,6 +27,17 @@ EvidenceOps 将这些边界明确化：
 - 工具结果转换为类型化的 `Evidence`；
 - 结构化模型输出先转换并校验为诊断草稿；
 - 报告中的根因和建议必须绑定 `Evidence ID`。
+
+## 功能特性
+
+- 与模型 Provider 解耦的 Agent Loop 和 OpenAI-compatible 模型适配器。
+- 多个只读工具的受限并发执行。
+- 带来源、观测时间、位置、版本和内容哈希的 Evidence 收集。
+- 结构化报告校验和 Evidence 引用归属校验。
+- 使用 Alembic 管理迁移的 PostgreSQL 持久化。
+- 不重新调用模型的历史 Run 查询接口。
+- SSE 生命周期事件、共享执行预算和单进程显式取消。
+- 20 案例离线 Eval、规则检查、CLI 人工审核和通过率持久化。
 
 ## 架构
 
@@ -49,7 +62,7 @@ EvidenceOps 将这些边界明确化：
                  Validated Diagnosis Report
 ```
 
-运行时调用顺序与依赖构造顺序分开：
+运行时调用顺序与依赖构造顺序分开。未来的语言适配器会把不同语言的错误统一成诊断上下文，因此 Agent Runtime 不需要为每种语言复制一套实现：
 
 ```text
 ModelRequest -> LLMGateway -> Provider -> ProviderResponse
@@ -57,6 +70,8 @@ ModelRequest -> LLMGateway -> Provider -> ProviderResponse
                                       -> AgentLoop
 
 ToolCall -> ToolRuntime -> ToolResult -> Evidence
+
+原始输入 -> 语言/框架识别 -> 解析器适配器 -> ParsedError -> Evidence -> Agent Runtime
 ```
 
 ## 核心边界
@@ -67,6 +82,7 @@ ToolCall -> ToolRuntime -> ToolResult -> Evidence
 | Application | 诊断编排、Agent Loop、模型协议、Gateway、草稿校验和报告构建 |
 | Infrastructure | 模型 Provider 适配器和外部集成 |
 | API | HTTP 响应转换和 Agent 诊断入口 |
+| 输入适配器 | 未来的语言和框架解析器，输出统一诊断上下文 |
 | Mocks | RPC 超时、请求日志、线程池和 Provider 的确定性场景 |
 
 ## 已实现基础
@@ -89,6 +105,18 @@ ToolCall -> ToolRuntime -> ToolResult -> Evidence
 - PostgreSQL 持久化 `diagnosis_runs`、`evidences`、`diagnosis_reports` 和 `execution_records`，并通过 Alembic 管理迁移。
 - 支持通过 `GET /api/v1/agent/runs/{run_id}` 查询已完成或失败的历史诊断，不会重新调用模型。
 - 20案例离线Eval，支持Mock/真实模型、规则检查、CLI人工审核和三项通过率回写。
+
+## 技术栈
+
+- Python 3.14
+- FastAPI 与 Pydantic
+- SQLAlchemy、Alembic 与 PostgreSQL 17
+- Psycopg 3
+- Docker Compose
+- pytest
+- OpenAI-compatible 模型接口
+
+后续学习和集成路线包括 PostgreSQL/pgvector RAG、LangChain Adapter、LangGraph 对照实现、MCP 和 OpenTelemetry。在完成实现和测试前，不把这些内容写成已完成能力。
 
 ## 快速开始
 
@@ -157,11 +185,55 @@ $env:PYTHONPATH=(Join-Path $PWD.Path 'src')
 
 ## 后续进度
 
-`POST /api/v1/agent/diagnosis/stream` 推送模型与工具的起止事件，保存完成后发出 `run_completed` 或 `run_failed`。通过 `curl.exe -N` 配合 `--data-binary "@samples/requests/sse-diagnosis.json"` 发送样本请求。断开流不会自动取消诊断；取消、重连补发、事件持久化与重启恢复仍是后续工作。
+`POST /api/v1/agent/diagnosis/stream` 推送模型与工具的起止事件，保存完成后发出 `run_completed`、`run_failed` 或 `run_cancelled`。通过 `curl.exe -N` 配合 `--data-binary "@samples/requests/sse-diagnosis.json"` 发送样本请求。断开流不会自动取消诊断；重连补发、事件持久化与重启恢复仍是后续工作。
 
 API 默认使用 180 秒共享执行预算，由 `EVIDENCEOPS_RUN_TIMEOUT_SECONDS` 配置。模型和工具每次等待取“单次超时与剩余预算的较小值”。预算耗尽返回 `RUN_TIMEOUT`；提前触发的单次超时仍是 `MODEL_TIMEOUT` 或 `TOOL_TIMEOUT`。修改环境变量后需重启 API。示例模型超时为 120 秒，未配置时仍默认 60 秒；直接使用组装器或 Eval 时，总预算需调用者显式开启。
 
-这是协作式执行预算，不是 HTTP 响应硬截止：同步 HTTP 的阶段超时、同步数据库提交可能超出剩余预算，已启动工具线程不能强杀。检查点拒绝迟到结果，最终保存允许完成。预算从 DiagnosisService 内部开始计时，不包含此前 HTTP 解析和接纳过程。确定性失败验证见 `tests/test_run_budget.py`。
+这不是HTTP响应硬截止：API真实Provider现在用请求独立的异步HTTP任务，每约50毫秒检查取消与总预算，并取消和等待本地IO清理；同步第三方Provider仍只能在返回后检查。数据库提交、资源清理可能延长响应时间，已启动工具线程不能强杀。预算从DiagnosisService内部开始，不包含此前HTTP解析和接纳。确定性验证见 `tests/test_run_budget.py`。
+
+## 显式取消（单进程）
+
+重启API加载新代码，用SSE发送请求，在 `run_started` 中获取真实Run ID。另开PowerShell执行：
+
+```powershell
+$run_id=(Read-Host "粘贴正在执行的run_id").Trim()
+curl.exe -i -X POST "http://127.0.0.1:8000/api/v1/agent/runs/$run_id/cancel"
+curl.exe "http://127.0.0.1:8000/api/v1/agent/runs/$run_id"
+```
+
+202表示已接纳取消请求，不代表已落库；重复请求幂等。SSE先发 `run_cancel_requested`，终态保存后发 `run_cancelled`。历史最终应为 `status=cancelled`、`error_code=null`、`report=null`；已完成且验证的Evidence与记录保留，取消调用记录为 `status=cancelled / error_code=RUN_CANCELLED`。Run领域将取消作为独立终态，故不使用失败Run的error_code。
+
+提交成功/失败已认领时返回409及 `phase=finalizing`，不承诺提交已成功；持久化已结束Run返回200和现有终态，不改变它。未知ID返回404；数据库仍running但当前进程没有登记的Run返回409 `RUN_NOT_ACTIVE`，不伪造取消成功。memory模式无已结束历史，因此结束后再取消可能404。
+
+每Run独立Event与锁，Service统一认领终态。模型请求取消只清理本地IO，不保证供应商停止生成或计费。本地三个JSONL Connector支持逐行协作取消并关闭文件；其他handler可声明 `controlled_handler(arguments,control)`，用 `control.check()` 与 `control.wait(seconds)` 响应。未配合的运行线程可能继续占handler池槽，迟到结果不进入报告；不能把Run已取消当作全部线程已停止。
+
+登记表只在当前进程内，启动时不要设置多个workers；本版不支持跨worker/跨主机取消、取消意图持久化或重启恢复。模型可取消路径使用每次请求独立AsyncClient/事件循环，减少对现有同步编排的改动，但不复用跨轮HTTP连接池。显式注入同步client且未提供async_client_factory时保留原客户端，仅支持调用前后检查，不能中断其同步IO。测试不要求真实模型额度：
+
+```powershell
+$env:PYTHONPATH=(Join-Path $PWD.Path 'src')
+.\.venv\Scripts\python.exe -X utf8 -m pytest tests/test_run_cancellation.py -q -p no:cacheprovider
+```
+
+取消专项覆盖API、SSE、SQLAlchemy+SQLite历史回查、两Run隔离、终态竞争、真实localhost TCP读取取消、排队工具、协作/非协作handler及Connector文件关闭。真实供应商与PostgreSQL的取消手工验收另行执行。
+
+## 路线图
+
+- [x] Agent Loop、Tool Runtime、Evidence 校验和结构化报告。
+- [x] 真实 OpenAI-compatible 模型链路和受限多工具并发。
+- [x] Run、Evidence、报告和执行记录的 PostgreSQL 持久化。
+- [x] SSE 生命周期事件、共享预算、超时处理和单进程取消。
+- [x] 20 案例离线 Eval 和 CLI 语义审核。
+- [ ] 持久化 SSE 事件，并支持断线后的 `Last-Event-ID` 补发。
+- [ ] 服务重启后恢复未完成或可恢复的 Run。
+- [ ] 学习并实现最小 RAG 链路：文档摄取、混合检索和 Evidence 引用。
+- [ ] 增加 Python、Java、Go、JavaScript/TypeScript 和 C/C++ 的语言与框架适配器。
+- [ ] 在第一批适配器评测稳定后增加 Rust、PHP 和 C#。
+- [ ] 增加 LangChain 与 LangGraph 对照适配，不替换自研核心。
+- [ ] 增加 MCP、OpenTelemetry、跨 Worker 协调和生产安全控制。
+
+## 贡献说明
+
+项目按小步、可测试的功能推进。每次修改都应明确边界，实现可确定的正常与失败路径，补充针对性测试，并同步更新相关文档。不要将密钥和生成的评测结果提交到 Git。
 
 ## 设计原则
 
@@ -180,3 +252,8 @@ API 默认使用 180 秒共享执行预算，由 `EVIDENCEOPS_RUN_TIMEOUT_SECOND
 ## License
 
 首个公开版本发布前补充许可证信息。
+
+## 致谢
+
+- [Best-README-Template](https://github.com/othneildrew/Best-README-Template)：README 章节组织参考。
+- FastAPI、PostgreSQL、SQLAlchemy、Alembic、pytest 和 OpenAI-compatible 生态。

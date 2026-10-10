@@ -1,7 +1,7 @@
 # EvidenceOps
 
 <p align="center">
-  <strong>Evidence-driven diagnosis for backend incidents</strong>
+  <strong>Evidence-driven diagnosis for multilingual software incidents</strong>
 </p>
 
 <p align="center">
@@ -10,13 +10,15 @@
   <a href="#architecture">Architecture</a>
 </p>
 
-EvidenceOps is an agent platform for diagnosing backend failures with traceable evidence. It is designed around a simple rule: a model may propose a hypothesis, but every report conclusion must be supported by evidence collected through controlled tools.
+EvidenceOps is an Agent platform for diagnosing software failures across common language and backend stacks. Users can provide an incident description, error log, stack trace, configuration, or code context. The Agent collects controlled evidence, separates confirmed facts from hypotheses, and produces a traceable diagnosis report.
 
-The first target scenario is C++ RPC timeout and thread-pool exhaustion. The project is built from the runtime boundary outward, so model providers, tool execution, evidence collection, and report validation remain independently testable.
+The project is not limited to C++. The first planned language adapters target Python, Java, Go, JavaScript/TypeScript, and C/C++; Rust, PHP, and C# are planned next. The current RPC timeout fixtures are deterministic training and integration data, not the product boundary.
+
+## About The Project
 
 ## Why EvidenceOps
 
-Incident diagnosis usually requires correlating logs, RPC failures, queue depth, thread-pool metrics, configuration, and deployment context. A chat response alone cannot show which facts support a conclusion, and an unconstrained agent can call the wrong function or accept malformed parameters.
+Incident diagnosis usually requires correlating logs, stack traces, source context, metrics, configuration, deployment history, and technical documentation. A natural-language answer alone cannot show which facts support a conclusion, and an unconstrained Agent can call the wrong function or accept malformed parameters.
 
 EvidenceOps makes those boundaries explicit:
 
@@ -25,6 +27,17 @@ EvidenceOps makes those boundaries explicit:
 - tool results become typed `Evidence` objects;
 - structured model output becomes a validated diagnosis draft;
 - reports bind root causes and recommendations to `Evidence ID` values.
+
+## Features
+
+- Provider-independent Agent Loop and OpenAI-compatible model adapter.
+- Bounded concurrent execution of multiple read-only tools.
+- Evidence collection with source, observation time, location, version, and content hash.
+- Structured report and Evidence-reference validation.
+- PostgreSQL persistence with Alembic migrations.
+- Historical Run API without invoking the model again.
+- SSE lifecycle events, shared execution budgets, and explicit single-process cancellation.
+- 20-case offline Eval suite with rule checks, CLI human review, and persisted pass-rate metrics.
 
 ## Architecture
 
@@ -49,7 +62,7 @@ EvidenceOps makes those boundaries explicit:
                  Validated Diagnosis Report
 ```
 
-The runtime and provider paths are deliberately separated:
+The runtime and provider paths are deliberately separated. Future language adapters will normalize language-specific failures into a shared diagnostic context, so the Agent Runtime does not need one implementation per language:
 
 ```text
 ModelRequest -> LLMGateway -> Provider -> ProviderResponse
@@ -57,6 +70,8 @@ ModelRequest -> LLMGateway -> Provider -> ProviderResponse
                                       -> AgentLoop
 
 ToolCall -> ToolRuntime -> ToolResult -> Evidence
+
+Raw input -> Language/Framework Detector -> Parser Adapter -> ParsedError -> Evidence -> Agent Runtime
 ```
 
 ## Core boundaries
@@ -67,6 +82,7 @@ ToolCall -> ToolRuntime -> ToolResult -> Evidence
 | Application | diagnosis orchestration, agent loop, model protocol, gateway, draft validation, and report building |
 | Infrastructure | model provider adapters and external integrations |
 | API | HTTP response conversion and the current mock diagnosis endpoint |
+| Input adapters | future language and framework parsers that produce a shared diagnostic context |
 | Mocks | deterministic RPC timeout, request-log, thread-pool, and provider scenarios |
 
 ## Implemented foundation
@@ -90,6 +106,18 @@ ToolCall -> ToolRuntime -> ToolResult -> Evidence
 - PostgreSQL persistence for `diagnosis_runs`, `evidences`, `diagnosis_reports`, and `execution_records`, managed with Alembic;
 - historical diagnosis retrieval through `GET /api/v1/agent/runs/{run_id}` without invoking the model again;
 - a 20-case offline Eval suite with Mock/real modes, rule checks, CLI human review, and three persisted pass-rate metrics.
+
+## Built With
+
+- Python 3.14
+- FastAPI and Pydantic
+- SQLAlchemy, Alembic, and PostgreSQL 17
+- Psycopg 3
+- Docker Compose
+- pytest
+- OpenAI-compatible model APIs
+
+Planned learning and integration tracks include RAG with PostgreSQL/pgvector, a LangChain adapter, a LangGraph comparison, MCP, and OpenTelemetry. They are not represented as completed features until implemented and tested.
 
 ## Quick start
 
@@ -158,11 +186,36 @@ One local real-model batch scored 18/20 on all three metrics, with no pending re
 
 ## Follow-up status
 
-`POST /api/v1/agent/diagnosis/stream` emits model/tool start and finish events, then `run_completed` or `run_failed` after persistence. Send `samples/requests/sse-diagnosis.json` with `curl.exe -N` and `--data-binary "@samples/requests/sse-diagnosis.json"`. Disconnecting the stream does not cancel the diagnosis. Cancellation, reconnect replay, event persistence, and restart recovery remain follow-up work.
+`POST /api/v1/agent/diagnosis/stream` emits model/tool start and finish events, then `run_completed`, `run_failed`, or `run_cancelled` after persistence. Send `samples/requests/sse-diagnosis.json` with `curl.exe -N` and `--data-binary "@samples/requests/sse-diagnosis.json"`. Disconnecting the stream does not cancel the diagnosis. Reconnect replay, event persistence, and restart recovery remain follow-up work.
 
 The API defaults to a 180-second shared execution budget (`EVIDENCEOPS_RUN_TIMEOUT_SECONDS`). Each model/tool wait uses the smaller of its own timeout and the remaining budget. Budget exhaustion produces `RUN_TIMEOUT`; earlier individual timeouts retain `MODEL_TIMEOUT` or `TOOL_TIMEOUT`. Restart the API after changing environment variables. The example sets individual model timeout to 120 seconds; its default remains 60 seconds.
 
-This is cooperative budget enforcement, not a hard response deadline: synchronous HTTP phase timeouts and database commits can exceed the remaining budget, and running tool threads cannot be forcibly stopped. Late results are rejected at checkpoints; final persistence is allowed to finish. The budget starts inside DiagnosisService, excluding earlier HTTP parsing/admission. See `tests/test_run_budget.py` for deterministic failure checks.
+This is not a hard response deadline. The API's real Provider now uses request-local async HTTP tasks, checking cancellation and the Run budget approximately every 50 ms and awaiting local IO cleanup. Synchronous third-party Providers still require return-time checks. Database commits and cleanup can exceed the budget; running tool threads cannot be forcibly stopped. The budget starts inside DiagnosisService, excluding earlier HTTP parsing/admission. See `tests/test_run_budget.py` for deterministic failure checks.
+
+## Explicit cancellation (single process)
+
+Restart the API, start a streaming diagnosis, and copy its Run ID from `run_started`. In another PowerShell window:
+
+```powershell
+$run_id=(Read-Host "Paste the active run_id").Trim()
+curl.exe -i -X POST "http://127.0.0.1:8000/api/v1/agent/runs/$run_id/cancel"
+curl.exe "http://127.0.0.1:8000/api/v1/agent/runs/$run_id"
+```
+
+202 accepts the cancellation request; it does not confirm durable cancellation. Repeated requests are idempotent. SSE emits `run_cancel_requested`, then `run_cancelled` after persistence. Final history has `status=cancelled`, `error_code=null`, and `report=null`, retaining validated Evidence and execution records. Cancelled call records use `status=cancelled / error_code=RUN_CANCELLED`; the Run domain treats cancellation as a separate terminal state rather than failure.
+
+Once finalization is claimed, cancellation returns409 with `phase=finalizing`; the target status is not a commit confirmation. Persisted terminal Runs return200 without changing state. Unknown IDs return404. A persisted running Run absent from this process returns409 `RUN_NOT_ACTIVE`. Memory mode cannot look up completed Runs, so a subsequent cancellation may return404.
+
+Each Run has a separate Event and terminal-decision lock. Model cancellation cleans up local IO; it does not guarantee remote generation or billing stops. The three local JSONL Connectors check cancellation per row and close their files. Other tools may supply `controlled_handler(arguments,control)` using `control.check()` and `control.wait(seconds)`. Non-cooperative running threads may retain handler-pool slots; late results cannot create a successful report. A cancelled Run does not prove every thread has stopped.
+
+The registry is process-local: use one worker. Cross-worker/host cancellation, durable cancellation requests, and restart recovery are not implemented. Request-local AsyncClient/event-loop ownership preserves the synchronous orchestration interface at the cost of cross-round HTTP connection reuse. An explicitly injected synchronous client without an async_client_factory is preserved; its IO can only be checked before/after the call. Run deterministic cancellation checks without model charges:
+
+```powershell
+$env:PYTHONPATH=(Join-Path $PWD.Path 'src')
+.\.venv\Scripts\python.exe -X utf8 -m pytest tests/test_run_cancellation.py -q -p no:cacheprovider
+```
+
+Coverage includes API/SSE and SQLAlchemy+SQLite history, Run isolation, terminal races, real localhost TCP read cancellation, queued tools, cooperative/non-cooperative handlers, and Connector file closure. Real-provider/PostgreSQL cancellation acceptance remains a separate manual check.
 
 ## Example contract
 
@@ -177,6 +230,25 @@ ToolCall(
 ```
 
 After runtime validation and execution, the result is converted into an evidence record. A structured final answer is parsed into a `DiagnosisDraft`; the report builder then injects the current run ID and validates every referenced evidence ID.
+
+## Roadmap
+
+- [x] Agent Loop, Tool Runtime, Evidence validation, and structured reports.
+- [x] Real OpenAI-compatible model path with bounded multi-tool execution.
+- [x] PostgreSQL persistence for Runs, Evidence, reports, and execution records.
+- [x] SSE lifecycle events, shared budgets, timeout handling, and single-process cancellation.
+- [x] 20-case offline Eval and CLI semantic review.
+- [ ] Persist SSE events and support `Last-Event-ID` replay after disconnects.
+- [ ] Recover active or incomplete Runs after service restart.
+- [ ] Learn and implement a minimal RAG pipeline with document ingestion, hybrid retrieval, and Evidence citations.
+- [ ] Add language and framework adapters for Python, Java, Go, JavaScript/TypeScript, and C/C++.
+- [ ] Add Rust, PHP, and C# adapters after the first batch is evaluated.
+- [ ] Add LangChain and LangGraph comparison adapters without replacing the self-built core.
+- [ ] Add MCP, OpenTelemetry, cross-worker coordination, and production security controls.
+
+## Contributing
+
+The project is developed in small, testable slices. A change should define its boundary, implement deterministic normal and failure paths, add focused tests, and update the relevant documentation. Keep secrets and generated evaluation artifacts out of Git.
 
 ## Design principles
 
@@ -195,3 +267,8 @@ Detailed learning notes and the evolving engineering plan are kept separately fr
 ## License
 
 License information will be added before the first public release.
+
+## Acknowledgments
+
+- [Best-README-Template](https://github.com/othneildrew/Best-README-Template) for the README organization reference.
+- FastAPI, PostgreSQL, SQLAlchemy, Alembic, pytest, and the OpenAI-compatible ecosystem.
