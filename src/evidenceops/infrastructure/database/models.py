@@ -1,11 +1,26 @@
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint,DateTime,ForeignKey,Index,Text
+from sqlalchemy import BigInteger,CheckConstraint,DateTime,ForeignKey,Index,JSON,Text,UniqueConstraint
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase,Mapped,mapped_column
 
 
 class Base(DeclarativeBase):
 	pass
+
+
+class TraceEventRow(Base):
+	__tablename__="trace_events"
+	# 唯一约束本身提供复合索引，不重复建立同样的普通索引。
+	__table_args__=(UniqueConstraint("run_id","sequence",name="uq_trace_events_run_sequence"),
+					CheckConstraint("sequence>0",name="ck_trace_events_sequence"),)
+	event_id:Mapped[str]=mapped_column(Text,primary_key=True)
+	run_id:Mapped[str]=mapped_column(Text,ForeignKey("diagnosis_runs.run_id",name="fk_trace_events_run_id"),nullable=False)
+	sequence:Mapped[int]=mapped_column(BigInteger,nullable=False)
+	event_type:Mapped[str]=mapped_column(Text,nullable=False)
+	# PostgreSQL使用JSONB；SQLite回归使用JSON，不把SQLite测试当作PostgreSQL验收。
+	payload:Mapped[dict]=mapped_column(JSON().with_variant(JSONB(),"postgresql"),nullable=False)
+	occurred_at:Mapped[datetime]=mapped_column(DateTime(timezone=True),nullable=False)
 
 
 class RunRow(Base):

@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from contextlib import nullcontext
 from dataclasses import dataclass
 from typing import Protocol
 from uuid import uuid4
@@ -91,6 +92,7 @@ class DiagnosisService:
 		evidences:tuple[Evidence,...],
 		report:DiagnosisReport,
 		records:tuple[ExecutionRecord,...],
+		terminal_event:dict|None=None,
 	)->None:
 		if self._diagnosis_persistence is None:
 			return
@@ -103,10 +105,13 @@ class DiagnosisService:
 				transaction.report.create(report)
 				transaction.execution_record.create_many(run.run_id,records)
 				transaction.run.update(run)
+				if terminal_event is not None:
+					transaction.trace_event.create(terminal_event)
 		except Exception as error:
 			raise RunPersistenceError("complete",run.run_id) from error
 
-	def _persist_failure(self,run:DiagnosisRun,evidences:tuple[Evidence,...],records:tuple[ExecutionRecord,...])->None:
+	def _persist_failure(self,run:DiagnosisRun,evidences:tuple[Evidence,...],records:tuple[ExecutionRecord,...],
+		terminal_event:dict|None=None)->None:
 		# 失败保留已交付的证据和执行记录，不保存成功报告。
 		if self._diagnosis_persistence is None:
 			return
@@ -117,40 +122,58 @@ class DiagnosisService:
 					transaction.evidence.create(evidence)
 				transaction.execution_record.create_many(run.run_id,records)
 				transaction.run.update(run)
+				if terminal_event is not None:
+					transaction.trace_event.create(terminal_event)
 		except Exception as error:
 			raise RunPersistenceError("fail",run.run_id) from error
 
 	def execute(self,request_id:str,description:str,event_sink:EventSink|None=None)->DiagnosisExecution:
 		run=DiagnosisRun(self._run_id_factory(),request_id,description)
-		events=RunEvents(run.run_id,event_sink) if event_sink is not None else None
+		def persist_event(event):
+			with self._diagnosis_persistence.transaction() as transaction:
+				transaction.trace_event.create(event)
+		events=RunEvents(run.run_id,event_sink,persist_event if self._diagnosis_persistence is not None else None) if (
+			event_sink is not None or self._diagnosis_persistence is not None) else None
 		budget=RunBudget(self._run_timeout_seconds) if self._run_timeout_seconds is not None else None
-		if self._cancellation_enabled:
-			self._registry.register(run.run_id,RunControl(events,budget))
 		try:
 			result=self._execute_run(run,events) if budget is None else self._execute_run(run,events,budget)
 		except Exception as error:
 			if events is not None:
-				events.emit("run_failed",status="failed",error_code="PERSISTENCE_FAILED" if isinstance(error,RunPersistenceError)
-					else "DIAGNOSIS_EXECUTION_FAILED",message="诊断执行或保存失败")
+				events.transport_failed("PERSISTENCE_FAILED" if isinstance(error,RunPersistenceError)
+					else "DIAGNOSIS_EXECUTION_FAILED")
 			raise
 		finally:
 			self._registry.remove(run.run_id)
-		if events is not None:
-			# 终止事件必须晚于成功/失败事务提交，不能提前宣称报告保存成功。
-			from evidenceops.application.diagnosis_response import to_response
-			event_name="run_completed" if result.run.status is RunStatus.SUCCEEDED else (
-				"run_cancelled" if result.run.status is RunStatus.CANCELLED else "run_failed")
-			events.emit(event_name,result=to_response(result))
 		return result
 
-	def _execute_run(self,run:DiagnosisRun,events:RunEvents|None,budget:RunBudget|None=None)->DiagnosisExecution:
-		control=self._registry.get(run.run_id)
+	def _finalize(self,result:DiagnosisExecution,events:RunEvents|None)->None:
+		def commit(event=None):
+			arguments=(result.run,result.evidences,result.report,result.execution_records) if (
+				result.report is not None) else (result.run,result.evidences,result.execution_records)
+			persist=self._persist_success if result.report is not None else self._persist_failure
+			if event is not None and self._diagnosis_persistence is not None:
+				persist(*arguments,terminal_event=event)
+			else:
+				persist(*arguments)
+		if events is None:
+			commit()
+			return
+		from evidenceops.application.diagnosis_response import to_response
+		name="run_completed" if result.run.status is RunStatus.SUCCEEDED else (
+			"run_cancelled" if result.run.status is RunStatus.CANCELLED else "run_failed")
+		events.finish(name,{"result":to_response(result)},commit)
 
+	def _execute_run(self,run:DiagnosisRun,events:RunEvents|None,budget:RunBudget|None=None)->DiagnosisExecution:
 		# 状态更新使用短事务，模型和工具等待期间不持有数据库 Session。
 		self._persist_create(run)
 		self._transition_and_persist(run,RunStatus.RUNNING)
-		if events is not None:
-			events.emit("run_started",request_id=run.request_id,status=run.status.value)
+		# 外键先提交；登记与started共用事件锁，防止取消请求抢占第一条序号。
+		with events.locked() if events is not None else nullcontext():
+			if self._cancellation_enabled:
+				self._registry.register(run.run_id,RunControl(events,budget))
+			if events is not None:
+				events.emit("run_started",request_id=run.request_id,status=run.status.value)
+		control=self._registry.get(run.run_id)
 
 		records:tuple[ExecutionRecord,...]=()
 
@@ -161,12 +184,15 @@ class DiagnosisService:
 		draft:DiagnosisDraft|None=None
 
 		def stop(error_code,detail=None):
+			if events is not None:
+				events.check()
 			status=control.claim_terminal(RunStatus.FAILED) if control is not None else RunStatus.FAILED
 			if status is RunStatus.CANCELLED:
 				detail={"code":"RUN_CANCELLED","message":"诊断已取消"}
 			run.transition(status,error_code=error_code if status is RunStatus.FAILED else None)
-			self._persist_failure(run,evidences,records)
-			return finish(run,evidences,None,detail)
+			result=finish(run,evidences,None,detail)
+			self._finalize(result,events)
+			return result
 
 		try:
 			options={}
@@ -179,6 +205,8 @@ class DiagnosisService:
 				budget.check()
 				options["budget"]=budget
 			collection=self._evidence_collector.collect(run,**options)
+			if events is not None:
+				events.check()
 
 			if isinstance(collection,AgentCollectionResult):
 				records=collection.execution_records
@@ -248,13 +276,10 @@ class DiagnosisService:
 		if control is not None and control.claim_terminal(RunStatus.SUCCEEDED) is RunStatus.CANCELLED:
 			return stop("RUN_CANCELLED")
 
-		if self._diagnosis_persistence is None:
-			self._transition_and_persist(run,RunStatus.SUCCEEDED)
-		else:
-			run.transition(RunStatus.SUCCEEDED)
-			self._persist_success(run,evidences,report,records)
-
-		return finish(run,evidences,report,None)
+		run.transition(RunStatus.SUCCEEDED)
+		result=finish(run,evidences,report,None)
+		self._finalize(result,events)
+		return result
 
 	@staticmethod
 	def _failure_evidences(run:DiagnosisRun,evidences:tuple[Evidence,...])->tuple[Evidence,...]:

@@ -306,11 +306,11 @@ def test_success_claim_rejects_cancel_during_database_commit(monkeypatch):
 	release=Event()
 	ids=[]
 	persist=assembly.diagnosis_service._persist_success
-	def delayed_commit(run,*args):
+	def delayed_commit(run,*args,**kwargs):
 		ids.append(run.run_id)
 		entered.set()
 		assert release.wait(3)
-		persist(run,*args)
+		persist(run,*args,**kwargs)
 	monkeypatch.setattr(assembly.diagnosis_service,"_persist_success",delayed_commit)
 	try:
 		with TestClient(create_app(assembly)) as client,ThreadPoolExecutor(max_workers=1) as worker:

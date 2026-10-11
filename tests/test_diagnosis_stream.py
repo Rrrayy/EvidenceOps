@@ -207,6 +207,7 @@ def test_persistence_failure_never_emits_run_completed(operation):
 		evidence=Store()
 		report=Store()
 		execution_record=Store()
+		trace_event=Store()
 	def create(run):
 		if operation=="create":
 			raise RunPersistenceError("create",run.run_id)
@@ -219,7 +220,7 @@ def test_persistence_failure_never_emits_run_completed(operation):
 			assembly.diagnosis_service.execute("persist","诊断",events.append)
 	finally:
 		assembly.close()
-	assert events[-1]["event"]=="run_failed"
+	assert events[-1]["event"]=="stream_failed"
 	assert events[-1]["data"]["error_code"]=="PERSISTENCE_FAILED"
 	assert not any(item["event"]=="run_completed" for item in events)
 	assert "secret database details" not in json.dumps(events)
@@ -230,8 +231,17 @@ def test_completed_event_follows_persistence_completion():
 	order=[]
 	assembly.diagnosis_service._persist_create=lambda run:None
 	assembly.diagnosis_service._persist_update=lambda run:None
-	assembly.diagnosis_service._diagnosis_persistence=object()
-	assembly.diagnosis_service._persist_success=lambda *args:order.append("committed")
+	# 本测试只隔离终态提交顺序；过程事件持久化另有真实仓储测试。
+	class EventPersistence:
+		@contextmanager
+		def transaction(self):
+			yield self
+		class EventStore:
+			def create(self,event):
+				pass
+		trace_event=EventStore()
+	assembly.diagnosis_service._diagnosis_persistence=EventPersistence()
+	assembly.diagnosis_service._persist_success=lambda *args,**kwargs:order.append("committed")
 	try:
 		assembly.diagnosis_service.execute("persist","诊断",lambda event:order.append(event["event"]))
 	finally:

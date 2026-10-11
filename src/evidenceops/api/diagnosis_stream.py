@@ -15,7 +15,8 @@ TERMINAL_EVENTS={"run_completed","run_failed","run_cancelled","stream_failed"}
 def encode_event(event:dict)->str:
 	# 单行JSON会转义文本中的换行，不能让业务文本注入额外SSE事件。
 	payload=json.dumps(event,ensure_ascii=False,separators=(",",":"))
-	return f"id: {event['run_id'] or 'stream'}:{event['sequence']}\nevent: {event['event']}\ndata: {payload}\n\n"
+	identity="" if event["event"]=="stream_failed" else f"id: {event['run_id'] or 'stream'}:{event['sequence']}\n"
+	return f"{identity}event: {event['event']}\ndata: {payload}\n\n"
 
 
 class EventChannel:

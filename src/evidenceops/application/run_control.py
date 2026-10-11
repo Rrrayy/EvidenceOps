@@ -1,4 +1,5 @@
 from threading import Event,Lock,RLock
+from contextlib import nullcontext
 
 from evidenceops.application.run_events import RunEvents
 from evidenceops.application.run_budget import RunBudget
@@ -29,6 +30,14 @@ class RunControl:
 		return self._signal.wait(self._budget.limit(seconds) if self._budget is not None else seconds)
 
 	def request_cancel(self)->dict:
+		# 终态已认领时不等待正在提交的事件锁，取消接口应立即返回finalizing。
+		with self._lock:
+			if self._terminal is not None:
+				return {"cancellation_requested":False,"phase":"finalizing","target_status":self._terminal.value}
+		with self._events.locked() if self._events is not None else nullcontext():
+			return self._request_cancel()
+
+	def _request_cancel(self)->dict:
 		with self._lock:
 			if self._terminal is not None:
 				return {"cancellation_requested":False,"phase":"finalizing","target_status":self._terminal.value}
