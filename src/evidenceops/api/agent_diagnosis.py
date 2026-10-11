@@ -2,7 +2,9 @@ from contextlib import asynccontextmanager
 import asyncio
 from uuid import uuid4
 
-from fastapi import FastAPI
+from fastapi import FastAPI,Header,Query
+from dataclasses import asdict
+from starlette.background import BackgroundTask
 from pydantic import BaseModel,field_validator
 from starlette.responses import JSONResponse,StreamingResponse
 from evidenceops.api.diagnosis_stream import DiagnosisStreamRunner,StreamBusyError
@@ -11,6 +13,9 @@ from evidenceops.application.agent_diagnosis_factory import AgentDiagnosisAssemb
 from evidenceops.application.diagnosis_response import to_response
 from evidenceops.application.diagnosis_history import load_diagnosis_history
 from evidenceops.domain.diagnosis_run import RunStatus
+from evidenceops.application.run_repository import RunPersistenceError
+from evidenceops.application.event_history import EventHistoryError,load_event_page,parse_event_cursor
+from evidenceops.api.event_replay import EventReplay,ReplayBusyError
 
 
 class AgentDiagnosisRequest(BaseModel):
@@ -27,6 +32,7 @@ class AgentDiagnosisRequest(BaseModel):
 
 def create_app(assembly:AgentDiagnosisAssembly)->FastAPI:
 	stream_runner=DiagnosisStreamRunner(assembly.diagnosis_service)
+	replay=EventReplay(assembly.diagnosis_persistence)
 	@asynccontextmanager
 	async def lifespan(_:FastAPI):
 		try:
@@ -37,12 +43,50 @@ def create_app(assembly:AgentDiagnosisAssembly)->FastAPI:
 
 	app=FastAPI(lifespan=lifespan)
 
+	def event_error(error):
+		if isinstance(error,EventHistoryError):
+			return JSONResponse(status_code=error.status_code,content={"error_code":error.error_code,"message":str(error)})
+		return JSONResponse(status_code=503,content={"error_code":"PERSISTENCE_FAILED","message":"事件读取失败"})
+
+	@app.get("/api/v1/agent/runs/{run_id}/events")
+	def get_events(run_id:str,after:int=Query(0,ge=0),limit:int=Query(100,ge=1,le=1000)):
+		try:
+			page=load_event_page(assembly.diagnosis_persistence,run_id,after,limit)
+		except Exception as error:
+			return event_error(error)
+		return JSONResponse(content=asdict(page))
+
+	@app.get("/api/v1/agent/runs/{run_id}/events/stream",response_class=StreamingResponse,
+		responses={200:{"content":{"text/event-stream":{}}},429:{"description":"观察连接已达上限"}})
+	async def replay_events(run_id:str,after:int|None=Query(None,ge=0),last_event_id:str|None=Header(None)):
+		lease=None
+		try:
+			run_id=run_id.strip()
+			cursor=parse_event_cursor(run_id,after,last_event_id)
+			lease=replay.reserve()
+			page=await asyncio.to_thread(load_event_page,assembly.diagnosis_persistence,run_id,cursor,replay.page_size)
+		except ReplayBusyError as error:
+			return JSONResponse(status_code=429,content={"error_code":"REPLAY_BUSY","message":str(error)})
+		except BaseException as error:
+			if lease is not None:
+				lease.close()
+			if not isinstance(error,Exception):
+				raise
+			return event_error(error)
+		return StreamingResponse(lease.stream(page),media_type="text/event-stream",
+			headers={"Cache-Control":"no-cache","X-Accel-Buffering":"no"},background=BackgroundTask(lease.close))
+
 	@app.post("/api/v1/agent/runs/{run_id}/cancel")
 	async def cancel_diagnosis(run_id:str)->JSONResponse:
 		run_id=run_id.strip()
 		if not run_id:
 			return JSONResponse(status_code=422,content={"error_code":"INVALID_ARGUMENTS","message":"run_id不能为空"})
-		decision=assembly.diagnosis_service.request_cancel(run_id)
+		try:
+			# 取消请求事件现在需要数据库提交；同步IO不能阻塞ASGI事件循环。
+			decision=await asyncio.to_thread(assembly.diagnosis_service.request_cancel,run_id)
+		except RunPersistenceError:
+			return JSONResponse(status_code=503,content={"run_id":run_id,"error_code":"PERSISTENCE_FAILED",
+				"message":"取消事件保存失败，请查询历史状态"})
 		if decision is not None:
 			return JSONResponse(status_code=202 if decision["cancellation_requested"] else 409,content=decision)
 		if assembly.diagnosis_persistence is not None:
@@ -70,7 +114,11 @@ def create_app(assembly:AgentDiagnosisAssembly)->FastAPI:
 	def diagnose(request:AgentDiagnosisRequest)->JSONResponse:
 		request_id=f"req-{uuid4()}"
 
-		result=assembly.diagnosis_service.execute(request_id,request.description)
+		try:
+			result=assembly.diagnosis_service.execute(request_id,request.description)
+		except RunPersistenceError as error:
+			return JSONResponse(status_code=503,content={"run_id":error.run_id,"request_id":request_id,
+				"error_code":"PERSISTENCE_FAILED","message":"诊断数据保存失败，请查询历史状态"})
 
 		response=to_response(result)
 

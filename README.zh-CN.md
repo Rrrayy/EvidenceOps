@@ -185,7 +185,38 @@ $env:PYTHONPATH=(Join-Path $PWD.Path 'src')
 
 ## 后续进度
 
-`POST /api/v1/agent/diagnosis/stream` 推送模型与工具的起止事件，保存完成后发出 `run_completed`、`run_failed` 或 `run_cancelled`。通过 `curl.exe -N` 配合 `--data-binary "@samples/requests/sse-diagnosis.json"` 发送样本请求。断开流不会自动取消诊断；重连补发、事件持久化与重启恢复仍是后续工作。
+`POST /api/v1/agent/diagnosis/stream` 推送模型与工具的起止事件，保存完成后发出 `run_completed`、`run_failed` 或 `run_cancelled`。通过 `curl.exe -N` 配合 `--data-binary "@samples/requests/sse-diagnosis.json"` 发送样本请求。断开流不会自动取消诊断；事件持久化和GET重连补发已接入，重启恢复仍是后续工作。
+
+### 事件持久化（迁移 0004）
+
+postgres模式下，普通HTTP与SSE诊断都会将业务事件写入 `trace_events`，提交后再发送。终止事件与Run终态、Evidence、执行记录及成功报告共享事务。发送失败不影响已提交档案；数据库保存失败返回 `PERSISTENCE_FAILED`，SSE以没有事件ID的 `stream_failed` 结束，不能宣称终态已保存。memory模式仍仅提供内存事件。
+
+升级数据库后再启动新版本API：
+
+```powershell
+$env:PYTHONPATH=(Join-Path $PWD.Path 'src')
+.\.venv\Scripts\alembic.exe upgrade head
+.\.venv\Scripts\alembic.exe current
+docker compose exec -T postgres psql -U evidenceops -d evidenceops -c "SELECT run_id,sequence,event_type,occurred_at FROM trace_events ORDER BY occurred_at DESC LIMIT 20;"
+```
+
+需要先按现有数据库配置设置 `POSTGRES_PASSWORD`。本版不自动迁移public表。旧Run没有历史事件，不补造。进程崩溃可能丢失尚未提交的Evidence/执行记录；保存事件不等于执行检查点。事件内容包含报告和路径摘要，按业务数据管理，不复制到普通日志。取消请求事件也会保存，但不能据此自动恢复内存取消信号。
+
+### 事件查询与断线重连
+
+已有0004表时无需新迁移，只需重启API。创建诊断仍用POST；下列GET接口只观察已有Run，不调用模型或启动工具：
+
+```powershell
+$run_id=(Read-Host '粘贴已有run_id').Trim()
+curl.exe "http://127.0.0.1:8000/api/v1/agent/runs/$run_id/events?after=0&limit=5"
+curl.exe -N "http://127.0.0.1:8000/api/v1/agent/runs/$run_id/events/stream" -H "Last-Event-ID: ${run_id}:5"
+```
+
+JSON返回events、next_sequence、max_sequence、has_more及status，下一页把next_sequence传给after。GET流仅发送sequence大于游标的事件；不传游标从头开始，也可用 `?after=5`。请求头和after同时提供必须一致。已有终态补发后关闭，末尾游标只返回connected注释后关闭，旧终态Run无事件时返回空历史，不补造结果。浏览器EventSource收到终止事件应主动close，避免自动重试空的已结束流；本版curl不会自动重连，需要你保存最后ID后发起GET。
+
+活跃流每0.5秒读取一页数据库事件，每页100条，15秒心跳。历史与新事件来自同一个数据库游标，没有内存订阅切换窗口。每进程最多16条重放观察连接，超额返回429 REPLAY_BUSY，断连释放观察槽但不取消Run。读取结束就关闭Session，发送或等待时不占数据库连接。memory模式返回503 PERSISTENCE_DISABLED；未知Run为404；格式错误/游标冲突为422；超过最大序号为409 INVALID_EVENT_CURSOR；发现序号缺口为409 EVENT_HISTORY_GAP。开流后读取失败发送无id的stream_failed。
+
+本版没有清理事件，所以不实现410过期逻辑；客户端仍需按event_id去重。运行进程崩溃后遗留running暂时只会等待和心跳，启动恢复尚未实现，手工观察可加curl的 `--max-time`。
 
 API 默认使用 180 秒共享执行预算，由 `EVIDENCEOPS_RUN_TIMEOUT_SECONDS` 配置。模型和工具每次等待取“单次超时与剩余预算的较小值”。预算耗尽返回 `RUN_TIMEOUT`；提前触发的单次超时仍是 `MODEL_TIMEOUT` 或 `TOOL_TIMEOUT`。修改环境变量后需重启 API。示例模型超时为 120 秒，未配置时仍默认 60 秒；直接使用组装器或 Eval 时，总预算需调用者显式开启。
 
@@ -223,7 +254,8 @@ $env:PYTHONPATH=(Join-Path $PWD.Path 'src')
 - [x] Run、Evidence、报告和执行记录的 PostgreSQL 持久化。
 - [x] SSE 生命周期事件、共享预算、超时处理和单进程取消。
 - [x] 20 案例离线 Eval 和 CLI 语义审核。
-- [ ] 持久化 SSE 事件，并支持断线后的 `Last-Event-ID` 补发。
+- [x] 业务事件持久化，终态与终止事件原子提交。
+- [x] 分页事件查询和断线后的 `Last-Event-ID` 补发。
 - [ ] 服务重启后恢复未完成或可恢复的 Run。
 - [ ] 学习并实现最小 RAG 链路：文档摄取、混合检索和 Evidence 引用。
 - [ ] 增加 Python、Java、Go、JavaScript/TypeScript 和 C/C++ 的语言与框架适配器。

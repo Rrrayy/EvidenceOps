@@ -186,7 +186,38 @@ One local real-model batch scored 18/20 on all three metrics, with no pending re
 
 ## Follow-up status
 
-`POST /api/v1/agent/diagnosis/stream` emits model/tool start and finish events, then `run_completed`, `run_failed`, or `run_cancelled` after persistence. Send `samples/requests/sse-diagnosis.json` with `curl.exe -N` and `--data-binary "@samples/requests/sse-diagnosis.json"`. Disconnecting the stream does not cancel the diagnosis. Reconnect replay, event persistence, and restart recovery remain follow-up work.
+`POST /api/v1/agent/diagnosis/stream` emits model/tool start and finish events, then `run_completed`, `run_failed`, or `run_cancelled` after persistence. Send `samples/requests/sse-diagnosis.json` with `curl.exe -N` and `--data-binary "@samples/requests/sse-diagnosis.json"`. Disconnecting the stream does not cancel the diagnosis. Durable events and GET replay are integrated; restart recovery remains follow-up work.
+
+### Durable events (migration 0004)
+
+In postgres mode, both ordinary HTTP and SSE diagnoses persist business events in `trace_events` before delivery. The terminal event shares a transaction with the Run status, Evidence, execution records, and successful report. Delivery failures do not invalidate committed data. Persistence failures return `PERSISTENCE_FAILED`; SSE ends with `stream_failed` without an event ID, rather than claiming a durable terminal state. Memory mode retains its in-memory behavior.
+
+Apply migrations before starting the updated API, with `POSTGRES_PASSWORD` configured:
+
+```powershell
+$env:PYTHONPATH=(Join-Path $PWD.Path 'src')
+.\.venv\Scripts\alembic.exe upgrade head
+.\.venv\Scripts\alembic.exe current
+docker compose exec -T postgres psql -U evidenceops -d evidenceops -c "SELECT run_id,sequence,event_type,occurred_at FROM trace_events ORDER BY occurred_at DESC LIMIT 20;"
+```
+
+The public schema is not automatically migrated. Old Runs are not backfilled. A crash can still lose uncommitted Evidence and execution records: a durable event log is not an execution checkpoint. Payloads contain business report/path summaries and must not be copied to ordinary logs. Cancellation-request events are durable, but cancellation signals are not restored from them.
+
+### Event history and reconnect replay
+
+With migration0004 already applied, restart the API; no new migration is required. POST creates a diagnosis; GET only observes an existing Run without invoking models or tools:
+
+```powershell
+$run_id=(Read-Host 'Paste an existing run_id').Trim()
+curl.exe "http://127.0.0.1:8000/api/v1/agent/runs/$run_id/events?after=0&limit=5"
+curl.exe -N "http://127.0.0.1:8000/api/v1/agent/runs/$run_id/events/stream" -H "Last-Event-ID: ${run_id}:5"
+```
+
+JSON pages expose events, next_sequence, max_sequence, has_more, and status. Pass next_sequence as after for the next page. The GET stream sends only sequences greater than Last-Event-ID; an omitted cursor starts at zero, and `?after=5` is an alternative. Header and query cursors must agree. Terminal Runs close after replay; a cursor at the end yields only a connected comment. Legacy terminal Runs without events return empty history. Browser EventSource clients should close on a terminal event to avoid reconnecting an ended stream. curl requires manual reconnection and cursor tracking.
+
+Active streams poll PostgreSQL every0.5 seconds with100-event pages and15-second heartbeats. Each read uses a short Session, released before network delivery or waiting. History and live events use one database cursor without a subscription handoff gap. There are16 observation slots per process, separate from diagnosis execution slots; overload returns429 REPLAY_BUSY. Disconnect releases the slot without cancelling the Run. Disabled persistence returns503, missing Runs404, malformed or conflicting cursors422, future cursors409 INVALID_EVENT_CURSOR, and sequence gaps409 EVENT_HISTORY_GAP. Errors after streaming starts use stream_failed without an SSE ID.
+
+No retention or410 expiry policy is implemented. Clients must still deduplicate event IDs. Orphaned running Runs will wait and emit heartbeats until restart recovery is implemented; use curl `--max-time` to bound a manual observation.
 
 The API defaults to a 180-second shared execution budget (`EVIDENCEOPS_RUN_TIMEOUT_SECONDS`). Each model/tool wait uses the smaller of its own timeout and the remaining budget. Budget exhaustion produces `RUN_TIMEOUT`; earlier individual timeouts retain `MODEL_TIMEOUT` or `TOOL_TIMEOUT`. Restart the API after changing environment variables. The example sets individual model timeout to 120 seconds; its default remains 60 seconds.
 
@@ -238,7 +269,8 @@ After runtime validation and execution, the result is converted into an evidence
 - [x] PostgreSQL persistence for Runs, Evidence, reports, and execution records.
 - [x] SSE lifecycle events, shared budgets, timeout handling, and single-process cancellation.
 - [x] 20-case offline Eval and CLI semantic review.
-- [ ] Persist SSE events and support `Last-Event-ID` replay after disconnects.
+- [x] Persist business events and commit terminal events atomically with Run results.
+- [x] Paginated event history and `Last-Event-ID` replay after disconnects.
 - [ ] Recover active or incomplete Runs after service restart.
 - [ ] Learn and implement a minimal RAG pipeline with document ingestion, hybrid retrieval, and Evidence citations.
 - [ ] Add language and framework adapters for Python, Java, Go, JavaScript/TypeScript, and C/C++.
