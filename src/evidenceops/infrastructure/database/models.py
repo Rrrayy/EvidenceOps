@@ -1,4 +1,6 @@
-from datetime import datetime
+"""定义诊断、报告、证据、执行记录和事件的数据库表，并统一 UTC 时间转换。"""
+from datetime import datetime,timezone
+from sqlalchemy.types import TypeDecorator
 
 from sqlalchemy import BigInteger,CheckConstraint,DateTime,ForeignKey,Index,JSON,Text,UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
@@ -9,18 +11,30 @@ class Base(DeclarativeBase):
 	pass
 
 
+class UTCDateTime(TypeDecorator):
+	impl=DateTime
+	cache_ok=True
+	def load_dialect_impl(self,dialect): return dialect.type_descriptor(DateTime(timezone=True))
+	def process_bind_param(self,value,dialect):
+		if value is None: return None
+		value=value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value.astimezone(timezone.utc) # 兼容已记录的 UTC 无时区字段。
+		return value.replace(tzinfo=None) if dialect.name=="sqlite" else value # SQLite 写入规范的 UTC 墙钟。
+	def process_result_value(self,value,dialect):
+		return value.replace(tzinfo=timezone.utc) if value is not None and value.tzinfo is None else value # 避免浏览器二次偏移。
+
+
 class TraceEventRow(Base):
 	__tablename__="trace_events"
-	# 唯一约束本身提供复合索引，不重复建立同样的普通索引。
+
 	__table_args__=(UniqueConstraint("run_id","sequence",name="uq_trace_events_run_sequence"),
 					CheckConstraint("sequence>0",name="ck_trace_events_sequence"),)
 	event_id:Mapped[str]=mapped_column(Text,primary_key=True)
 	run_id:Mapped[str]=mapped_column(Text,ForeignKey("diagnosis_runs.run_id",name="fk_trace_events_run_id"),nullable=False)
 	sequence:Mapped[int]=mapped_column(BigInteger,nullable=False)
 	event_type:Mapped[str]=mapped_column(Text,nullable=False)
-	# PostgreSQL使用JSONB；SQLite回归使用JSON，不把SQLite测试当作PostgreSQL验收。
+
 	payload:Mapped[dict]=mapped_column(JSON().with_variant(JSONB(),"postgresql"),nullable=False)
-	occurred_at:Mapped[datetime]=mapped_column(DateTime(timezone=True),nullable=False)
+	occurred_at:Mapped[datetime]=mapped_column(UTCDateTime(),nullable=False)
 
 
 class RunRow(Base):
@@ -37,10 +51,11 @@ class RunRow(Base):
 	request_id:Mapped[str]=mapped_column(Text,nullable=False)
 	description:Mapped[str]=mapped_column(Text,nullable=False)
 	status:Mapped[str]=mapped_column(Text,nullable=False)
-	created_at:Mapped[datetime]=mapped_column(DateTime(timezone=True),nullable=False)
-	started_at:Mapped[datetime|None]=mapped_column(DateTime(timezone=True),nullable=True)
-	finished_at:Mapped[datetime|None]=mapped_column(DateTime(timezone=True),nullable=True)
+	created_at:Mapped[datetime]=mapped_column(UTCDateTime(),nullable=False)
+	started_at:Mapped[datetime|None]=mapped_column(UTCDateTime(),nullable=True)
+	finished_at:Mapped[datetime|None]=mapped_column(UTCDateTime(),nullable=True)
 	error_code:Mapped[str|None]=mapped_column(Text,nullable=True)
+	model_config:Mapped[dict|None]=mapped_column(JSON,nullable=True) # 历史实际模型与 Run 同库保存。
 
 
 class EvidenceRow(Base):
@@ -57,7 +72,7 @@ class EvidenceRow(Base):
 	evidence_id:Mapped[str]=mapped_column(Text,primary_key=True)
 	run_id:Mapped[str]=mapped_column(Text,ForeignKey("diagnosis_runs.run_id",name="fk_evidences_run_id"),nullable=False)
 	source:Mapped[str]=mapped_column(Text,nullable=False)
-	observed_at:Mapped[datetime]=mapped_column(DateTime(timezone=True),nullable=False)
+	observed_at:Mapped[datetime]=mapped_column(UTCDateTime(),nullable=False)
 	summary:Mapped[str]=mapped_column(Text,nullable=False)
 	source_ref:Mapped[str]=mapped_column(Text,nullable=False)
 	content_hash:Mapped[str]=mapped_column(Text,nullable=False)
@@ -95,11 +110,11 @@ class ExecutionRecordRow(Base):
 	model_request_id:Mapped[str|None]=mapped_column(Text,nullable=True)
 	tool_name:Mapped[str|None]=mapped_column(Text,nullable=True)
 	tool_call_id:Mapped[str|None]=mapped_column(Text,nullable=True)
-	started_at:Mapped[datetime]=mapped_column(DateTime(timezone=True),nullable=False)
-	finished_at:Mapped[datetime]=mapped_column(DateTime(timezone=True),nullable=False)
+	started_at:Mapped[datetime]=mapped_column(UTCDateTime(),nullable=False)
+	finished_at:Mapped[datetime]=mapped_column(UTCDateTime(),nullable=False)
 	duration_ms:Mapped[float]=mapped_column(nullable=False)
 	status:Mapped[str]=mapped_column(Text,nullable=False)
 	error_code:Mapped[str|None]=mapped_column(Text,nullable=True)
-	handler_started_at:Mapped[datetime|None]=mapped_column(DateTime(timezone=True),nullable=True)
-	handler_finished_at:Mapped[datetime|None]=mapped_column(DateTime(timezone=True),nullable=True)
+	handler_started_at:Mapped[datetime|None]=mapped_column(UTCDateTime(),nullable=True)
+	handler_finished_at:Mapped[datetime|None]=mapped_column(UTCDateTime(),nullable=True)
 	query_arguments:Mapped[str|None]=mapped_column(Text,nullable=True)

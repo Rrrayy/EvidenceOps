@@ -86,7 +86,7 @@ class DiagnosisStreamRunner:
 		self._slots=BoundedSemaphore(max_runs)
 		self._executor=ThreadPoolExecutor(max_workers=max_runs,thread_name_prefix="diagnosis-stream")
 
-	def start(self,description:str)->EventChannel:
+	def start(self,description:str,service=None)->EventChannel:
 		# 限制诊断数量而非连接数量；断连不能立即释放仍在工作的任务槽位。
 		if not self._slots.acquire(blocking=False):
 			raise StreamBusyError("流式诊断并发已达上限，请稍后重试")
@@ -94,7 +94,7 @@ class DiagnosisStreamRunner:
 		request_id=f"req-{uuid4()}"
 		def execute():
 			try:
-				self._service.execute(request_id,description,event_sink=channel.publish)
+				(service or self._service).execute(request_id,description,event_sink=channel.publish)
 			except Exception:
 				# Service已经发送终止事件时publish会忽略此兜底；不泄露原始异常。
 				logging.getLogger(__name__).warning("Streaming diagnosis failed: %s",request_id)

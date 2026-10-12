@@ -1,0 +1,3368 @@
+{
+	"schema_version": 1,
+	"batch_id": "eval-8bb090f1-1acd-44a2-86c6-4d686f06b57e",
+	"mode": "mock",
+	"summary": {
+		"case_count": 20,
+		"rule_passed_count": 20,
+		"rule_pass_rate": 1.0,
+		"semantic_passed_count": 0,
+		"semantic_pass_rate": 0.0,
+		"final_passed_count": 0,
+		"final_pass_rate": 0.0,
+		"execution_error_count": 0,
+		"semantic_review_pending": 20
+	},
+	"results": [
+		{
+			"case_id": "correlated-timeout",
+			"checks": [
+				{
+					"name": "status",
+					"passed": true
+				},
+				{
+					"name": "error_code",
+					"passed": true
+				},
+				{
+					"name": "report_presence",
+					"passed": true
+				},
+				{
+					"name": "evidence_sources",
+					"passed": true
+				},
+				{
+					"name": "evidence_ownership",
+					"passed": true
+				},
+				{
+					"name": "evidence_unique",
+					"passed": true
+				},
+				{
+					"name": "record_ownership",
+					"passed": true
+				},
+				{
+					"name": "records_present",
+					"passed": true
+				},
+				{
+					"name": "tool_allowlist",
+					"passed": true
+				},
+				{
+					"name": "tool_success",
+					"passed": true
+				},
+				{
+					"name": "tool_parameters_0",
+					"passed": true
+				},
+				{
+					"name": "tool_parameters_1",
+					"passed": true
+				},
+				{
+					"name": "tool_parameters_2",
+					"passed": true
+				},
+				{
+					"name": "evidence_content_0",
+					"passed": true
+				},
+				{
+					"name": "evidence_content_1",
+					"passed": true
+				},
+				{
+					"name": "evidence_content_2",
+					"passed": true
+				},
+				{
+					"name": "report_references",
+					"passed": true
+				}
+			],
+			"execution_error": null,
+			"input": "请使用query_service_logs查询order-service在production环境2026-10-05T10:00:00+08:00到2026-10-05T10:10:00+08:00的rpc_timeout日志，limit=50；用query_service_metrics查同窗口，limit=50；用query_service_config查2026-10-05T10:02:00+08:00生效配置。区分相关性与因果，不要把配置允许重试当作已经重试。",
+			"fixture_hashes": {
+				"samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
+				"samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+				"samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
+			},
+			"rule_passed": true,
+			"wall_duration_ms": 5.045200001404737,
+			"semantic_review": {
+				"status": "pending",
+				"criteria": [
+					"说明RPC超时与线程池饱和同期出现",
+					"不将inventory-service确认为已经证明的根因",
+					"配置允许重试不代表已经观测到重试"
+				]
+			},
+			"token_usage": null,
+			"cost": null,
+			"response": {
+				"run_id": "run-cd4fbd4e-ffb2-4914-96df-d7c19de53748",
+				"request_id": "eval-8bb090f1-1acd-44a2-86c6-4d686f06b57e-correlated-timeout",
+				"status": "succeeded",
+				"error_code": null,
+				"error_detail": null,
+				"created_at": "2026-10-09T13:39:01.379034+00:00",
+				"started_at": "2026-10-09T13:39:01.379046+00:00",
+				"finished_at": "2026-10-09T13:39:01.382753+00:00",
+				"evidences": [
+					{
+						"evidence_id": "run-cd4fbd4e-ffb2-4914-96df-d7c19de53748-eval-call-0",
+						"source": "log",
+						"observed_at": "2026-10-05T10:02:00+08:00",
+						"summary": "order-service(production)日志查询匹配2条，返回2条，结果未截断",
+						"source_ref": "samples/logs/order-service.jsonl:lines:1-2",
+						"content_hash": "6e4a8e6d6cd5275549169217f4e81cb785251440c1159901753b4e24ddd4865b",
+						"source_version": "local-jsonl-v1"
+					},
+					{
+						"evidence_id": "run-cd4fbd4e-ffb2-4914-96df-d7c19de53748-eval-call-1",
+						"source": "metric",
+						"observed_at": "2026-10-05T10:01:00+08:00",
+						"summary": "order-service(production)指标查询匹配3条，返回3条，结果未截断，返回采样时间范围2026-10-05T10:01:00+08:00至2026-10-05T10:03:00+08:00",
+						"source_ref": "samples/metrics/order-service.jsonl:lines:1-3",
+						"content_hash": "49b742a4143fab3102476b547aeb401acbb3a9bec5836a2b1d50e85d01c35460",
+						"source_version": "local-metric-jsonl-v1"
+					},
+					{
+						"evidence_id": "run-cd4fbd4e-ffb2-4914-96df-d7c19de53748-eval-call-2",
+						"source": "config",
+						"observed_at": "2026-10-01T00:00:00+08:00",
+						"summary": "order-service(production)在2026-10-05T10:02:00+08:00生效的配置版本order-config-v1：线程池容量64，RPC超时1000毫秒，最多额外重试2次",
+						"source_ref": "samples/configs/order-service.jsonl:line:1",
+						"content_hash": "60443d6472b4abf5a9bee8a59ba287221293dd5a2d6ec4ce61eaa8e9a487f330",
+						"source_version": "local-config-jsonl-v1"
+					}
+				],
+				"report": {
+					"run_id": "run-cd4fbd4e-ffb2-4914-96df-d7c19de53748",
+					"root_cause": {
+						"text": "日志匹配2条，返回2条；未截断；指标匹配3条，返回3条；未截断；2026-10-05T10:01:00+08:00线程活跃40/64，排队0；2026-10-05T10:02:00+08:00线程活跃64/64，排队12；2026-10-05T10:03:00+08:00线程活跃64/64，排队15；2026-10-05T10:02:00+08:00生效版本order-config-v1，RPC超时1000毫秒，允许额外重试2次；不证明实际重试。以上为工具观测，不能确定因果或唯一根因。",
+						"evidence_ids": [
+							"run-cd4fbd4e-ffb2-4914-96df-d7c19de53748-eval-call-0",
+							"run-cd4fbd4e-ffb2-4914-96df-d7c19de53748-eval-call-1",
+							"run-cd4fbd4e-ffb2-4914-96df-d7c19de53748-eval-call-2"
+						]
+					},
+					"recommendations": [
+						{
+							"text": "补查下游耗时、调用链和实际重试记录",
+							"evidence_ids": [
+								"run-cd4fbd4e-ffb2-4914-96df-d7c19de53748-eval-call-0",
+								"run-cd4fbd4e-ffb2-4914-96df-d7c19de53748-eval-call-1",
+								"run-cd4fbd4e-ffb2-4914-96df-d7c19de53748-eval-call-2"
+							]
+						}
+					],
+					"confidence": 0.5,
+					"limitations": "Mock模板仅用于工程验证；缺少下游、trace、实际重试数据；配置快照不能证明整个窗口无变更，异窗口数据不能直接建立同时相关性，截断结果不能推断完整趋势"
+				},
+				"execution_records": [
+					{
+						"kind": "model",
+						"run_id": "run-cd4fbd4e-ffb2-4914-96df-d7c19de53748",
+						"model_round": 1,
+						"model_request_id": "11ddc2ab-b3fc-4984-bcdb-82017b73c7be",
+						"tool_name": null,
+						"tool_call_id": null,
+						"query_arguments": null,
+						"started_at": "2026-10-09T13:39:01.379065+00:00",
+						"finished_at": "2026-10-09T13:39:01.379085+00:00",
+						"duration_ms": 0.0197000008483883,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": null,
+						"handler_finished_at": null
+					},
+					{
+						"kind": "tool",
+						"run_id": "run-cd4fbd4e-ffb2-4914-96df-d7c19de53748",
+						"model_round": 1,
+						"model_request_id": null,
+						"tool_name": "query_service_logs",
+						"tool_call_id": "eval-call-0",
+						"query_arguments": {
+							"service_name": "order-service",
+							"environment": "production",
+							"start_time": "2026-10-05T10:00:00+08:00",
+							"end_time": "2026-10-05T10:10:00+08:00",
+							"limit": 50,
+							"error_type": "rpc_timeout"
+						},
+						"started_at": "2026-10-09T13:39:01.379802+00:00",
+						"finished_at": "2026-10-09T13:39:01.381258+00:00",
+						"duration_ms": 1.4573000007658266,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": "2026-10-09T13:39:01.380463+00:00",
+						"handler_finished_at": "2026-10-09T13:39:01.381030+00:00"
+					},
+					{
+						"kind": "tool",
+						"run_id": "run-cd4fbd4e-ffb2-4914-96df-d7c19de53748",
+						"model_round": 1,
+						"model_request_id": null,
+						"tool_name": "query_service_metrics",
+						"tool_call_id": "eval-call-1",
+						"query_arguments": {
+							"service_name": "order-service",
+							"environment": "production",
+							"start_time": "2026-10-05T10:00:00+08:00",
+							"end_time": "2026-10-05T10:10:00+08:00",
+							"limit": 50
+						},
+						"started_at": "2026-10-09T13:39:01.380060+00:00",
+						"finished_at": "2026-10-09T13:39:01.381559+00:00",
+						"duration_ms": 1.499399999374873,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": "2026-10-09T13:39:01.380689+00:00",
+						"handler_finished_at": "2026-10-09T13:39:01.381528+00:00"
+					},
+					{
+						"kind": "tool",
+						"run_id": "run-cd4fbd4e-ffb2-4914-96df-d7c19de53748",
+						"model_round": 1,
+						"model_request_id": null,
+						"tool_name": "query_service_config",
+						"tool_call_id": "eval-call-2",
+						"query_arguments": {
+							"service_name": "order-service",
+							"environment": "production",
+							"at_time": "2026-10-05T10:02:00+08:00"
+						},
+						"started_at": "2026-10-09T13:39:01.380277+00:00",
+						"finished_at": "2026-10-09T13:39:01.381667+00:00",
+						"duration_ms": 1.3915999988967087,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": "2026-10-09T13:39:01.381048+00:00",
+						"handler_finished_at": "2026-10-09T13:39:01.381640+00:00"
+					},
+					{
+						"kind": "model",
+						"run_id": "run-cd4fbd4e-ffb2-4914-96df-d7c19de53748",
+						"model_round": 2,
+						"model_request_id": "318609dd-3cb7-470d-8542-fe5701e1e645",
+						"tool_name": null,
+						"tool_call_id": null,
+						"query_arguments": null,
+						"started_at": "2026-10-09T13:39:01.382179+00:00",
+						"finished_at": "2026-10-09T13:39:01.382321+00:00",
+						"duration_ms": 0.14149999879009556,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": null,
+						"handler_finished_at": null
+					}
+				]
+			}
+		},
+		{
+			"case_id": "missing-config",
+			"checks": [
+				{
+					"name": "status",
+					"passed": true
+				},
+				{
+					"name": "error_code",
+					"passed": true
+				},
+				{
+					"name": "report_presence",
+					"passed": true
+				},
+				{
+					"name": "evidence_sources",
+					"passed": true
+				},
+				{
+					"name": "evidence_ownership",
+					"passed": true
+				},
+				{
+					"name": "evidence_unique",
+					"passed": true
+				},
+				{
+					"name": "record_ownership",
+					"passed": true
+				},
+				{
+					"name": "records_present",
+					"passed": true
+				},
+				{
+					"name": "tool_allowlist",
+					"passed": true
+				},
+				{
+					"name": "failed_tool_record",
+					"passed": true
+				},
+				{
+					"name": "tool_parameters_0",
+					"passed": true
+				}
+			],
+			"execution_error": null,
+			"input": "请仅使用query_service_config查询order-service在production环境2026-07-05T10:02:00+08:00生效配置，不要改动时间或使用其他工具。",
+			"fixture_hashes": {
+				"samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
+				"samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+				"samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
+			},
+			"rule_passed": true,
+			"wall_duration_ms": 1.9241000009060372,
+			"semantic_review": {
+				"status": "pending",
+				"criteria": [
+					"缺少配置时不伪造配置或诊断报告"
+				]
+			},
+			"token_usage": null,
+			"cost": null,
+			"response": {
+				"run_id": "run-0055d39f-52d0-4432-8fbe-35269f50e42d",
+				"request_id": "eval-8bb090f1-1acd-44a2-86c6-4d686f06b57e-missing-config",
+				"status": "failed",
+				"error_code": "TOOL_EXECUTION_FAILED",
+				"error_detail": {
+					"code": "TOOL_EXECUTION_FAILED",
+					"message": "查询时刻没有生效的配置版本:2026-07-05T10:02:00+08:00"
+				},
+				"created_at": "2026-10-09T13:39:01.384061+00:00",
+				"started_at": "2026-10-09T13:39:01.384065+00:00",
+				"finished_at": "2026-10-09T13:39:01.384748+00:00",
+				"evidences": [],
+				"report": null,
+				"execution_records": [
+					{
+						"kind": "model",
+						"run_id": "run-0055d39f-52d0-4432-8fbe-35269f50e42d",
+						"model_round": 1,
+						"model_request_id": "21185de9-c7e1-4f6b-a338-fdfeefa0f974",
+						"tool_name": null,
+						"tool_call_id": null,
+						"query_arguments": null,
+						"started_at": "2026-10-09T13:39:01.384079+00:00",
+						"finished_at": "2026-10-09T13:39:01.384088+00:00",
+						"duration_ms": 0.008600000001024455,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": null,
+						"handler_finished_at": null
+					},
+					{
+						"kind": "tool",
+						"run_id": "run-0055d39f-52d0-4432-8fbe-35269f50e42d",
+						"model_round": 1,
+						"model_request_id": null,
+						"tool_name": "query_service_config",
+						"tool_call_id": "eval-call-0",
+						"query_arguments": {
+							"service_name": "order-service",
+							"environment": "production",
+							"at_time": "2026-07-05T10:02:00+08:00"
+						},
+						"started_at": "2026-10-09T13:39:01.384095+00:00",
+						"finished_at": "2026-10-09T13:39:01.384663+00:00",
+						"duration_ms": 0.5700000001525041,
+						"status": "failed",
+						"error_code": "TOOL_EXECUTION_FAILED",
+						"handler_started_at": "2026-10-09T13:39:01.384421+00:00",
+						"handler_finished_at": "2026-10-09T13:39:01.384607+00:00"
+					}
+				]
+			}
+		},
+		{
+			"case_id": "invalid-time",
+			"checks": [
+				{
+					"name": "status",
+					"passed": true
+				},
+				{
+					"name": "error_code",
+					"passed": true
+				},
+				{
+					"name": "report_presence",
+					"passed": true
+				},
+				{
+					"name": "evidence_sources",
+					"passed": true
+				},
+				{
+					"name": "evidence_ownership",
+					"passed": true
+				},
+				{
+					"name": "evidence_unique",
+					"passed": true
+				},
+				{
+					"name": "record_ownership",
+					"passed": true
+				},
+				{
+					"name": "records_present",
+					"passed": true
+				},
+				{
+					"name": "tool_allowlist",
+					"passed": true
+				},
+				{
+					"name": "failed_tool_record",
+					"passed": true
+				},
+				{
+					"name": "tool_parameters_0",
+					"passed": true
+				}
+			],
+			"execution_error": null,
+			"input": "这是参数校验实验：请仅调用query_service_metrics，service_name=order-service，environment=production，start_time=not-a-date，end_time=2026-10-05T10:10:00+08:00，limit=50。保留原始参数，不纠正时间。",
+			"fixture_hashes": {
+				"samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
+				"samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+				"samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
+			},
+			"rule_passed": true,
+			"wall_duration_ms": 1.24119999964023,
+			"semantic_review": {
+				"status": "pending",
+				"criteria": [
+					"非法时间参数被Runtime拒绝，不产生成功报告"
+				]
+			},
+			"token_usage": null,
+			"cost": null,
+			"response": {
+				"run_id": "run-85133db6-6e4d-495c-9c44-98b2783ee717",
+				"request_id": "eval-8bb090f1-1acd-44a2-86c6-4d686f06b57e-invalid-time",
+				"status": "failed",
+				"error_code": "INVALID_ARGUMENTS",
+				"error_detail": {
+					"code": "INVALID_ARGUMENTS",
+					"message": "start_time时间格式无效；需要带时区的ISO 8601字符串，例如2026-10-05T10:00:00+08:00"
+				},
+				"created_at": "2026-10-09T13:39:01.385954+00:00",
+				"started_at": "2026-10-09T13:39:01.385957+00:00",
+				"finished_at": "2026-10-09T13:39:01.386059+00:00",
+				"evidences": [],
+				"report": null,
+				"execution_records": [
+					{
+						"kind": "model",
+						"run_id": "run-85133db6-6e4d-495c-9c44-98b2783ee717",
+						"model_round": 1,
+						"model_request_id": "5cc5a6c5-dbea-4672-bfc2-3b5e88a61d0a",
+						"tool_name": null,
+						"tool_call_id": null,
+						"query_arguments": null,
+						"started_at": "2026-10-09T13:39:01.385968+00:00",
+						"finished_at": "2026-10-09T13:39:01.385977+00:00",
+						"duration_ms": 0.008600000001024455,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": null,
+						"handler_finished_at": null
+					},
+					{
+						"kind": "tool",
+						"run_id": "run-85133db6-6e4d-495c-9c44-98b2783ee717",
+						"model_round": 1,
+						"model_request_id": null,
+						"tool_name": "query_service_metrics",
+						"tool_call_id": "eval-call-0",
+						"query_arguments": {
+							"service_name": "order-service",
+							"environment": "production",
+							"start_time": "not-a-date",
+							"end_time": "2026-10-05T10:10:00+08:00",
+							"limit": 50
+						},
+						"started_at": "2026-10-09T13:39:01.385984+00:00",
+						"finished_at": "2026-10-09T13:39:01.386008+00:00",
+						"duration_ms": 0.024700000722077675,
+						"status": "failed",
+						"error_code": "INVALID_ARGUMENTS",
+						"handler_started_at": null,
+						"handler_finished_at": null
+					}
+				]
+			}
+		},
+		{
+			"case_id": "logs-only",
+			"checks": [
+				{
+					"name": "status",
+					"passed": true
+				},
+				{
+					"name": "error_code",
+					"passed": true
+				},
+				{
+					"name": "report_presence",
+					"passed": true
+				},
+				{
+					"name": "evidence_sources",
+					"passed": true
+				},
+				{
+					"name": "evidence_ownership",
+					"passed": true
+				},
+				{
+					"name": "evidence_unique",
+					"passed": true
+				},
+				{
+					"name": "record_ownership",
+					"passed": true
+				},
+				{
+					"name": "records_present",
+					"passed": true
+				},
+				{
+					"name": "tool_allowlist",
+					"passed": true
+				},
+				{
+					"name": "tool_success",
+					"passed": true
+				},
+				{
+					"name": "tool_parameters_0",
+					"passed": true
+				},
+				{
+					"name": "evidence_content_0",
+					"passed": true
+				},
+				{
+					"name": "report_references",
+					"passed": true
+				}
+			],
+			"execution_error": null,
+			"input": "仅使用query_service_logs查询order-service/production在2026-10-05T10:00:00+08:00至2026-10-05T10:10:00+08:00的rpc_timeout日志，limit=50。解释日志中可以确认的现象，勿宣称有独立指标或下游服务证据。",
+			"fixture_hashes": {
+				"samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
+				"samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+				"samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
+			},
+			"rule_passed": true,
+			"wall_duration_ms": 1.9039000017073704,
+			"semantic_review": {
+				"status": "pending",
+				"criteria": [
+					"指出两条日志的超时目标为inventory-service",
+					"线程池字段来自日志，不称为独立指标验证",
+					"不确认下游服务已被证明为根因"
+				]
+			},
+			"token_usage": null,
+			"cost": null,
+			"response": {
+				"run_id": "run-4ee773d9-5aea-45b1-90e5-6b5a4dd16e60",
+				"request_id": "eval-8bb090f1-1acd-44a2-86c6-4d686f06b57e-logs-only",
+				"status": "succeeded",
+				"error_code": null,
+				"error_detail": null,
+				"created_at": "2026-10-09T13:39:01.387004+00:00",
+				"started_at": "2026-10-09T13:39:01.387007+00:00",
+				"finished_at": "2026-10-09T13:39:01.387936+00:00",
+				"evidences": [
+					{
+						"evidence_id": "run-4ee773d9-5aea-45b1-90e5-6b5a4dd16e60-eval-call-0",
+						"source": "log",
+						"observed_at": "2026-10-05T10:02:00+08:00",
+						"summary": "order-service(production)日志查询匹配2条，返回2条，结果未截断",
+						"source_ref": "samples/logs/order-service.jsonl:lines:1-2",
+						"content_hash": "6e4a8e6d6cd5275549169217f4e81cb785251440c1159901753b4e24ddd4865b",
+						"source_version": "local-jsonl-v1"
+					}
+				],
+				"report": {
+					"run_id": "run-4ee773d9-5aea-45b1-90e5-6b5a4dd16e60",
+					"root_cause": {
+						"text": "日志匹配2条，返回2条；未截断。以上为工具观测，不能确定因果或唯一根因。",
+						"evidence_ids": [
+							"run-4ee773d9-5aea-45b1-90e5-6b5a4dd16e60-eval-call-0"
+						]
+					},
+					"recommendations": [
+						{
+							"text": "补查下游耗时、调用链和实际重试记录",
+							"evidence_ids": [
+								"run-4ee773d9-5aea-45b1-90e5-6b5a4dd16e60-eval-call-0"
+							]
+						}
+					],
+					"confidence": 0.5,
+					"limitations": "Mock模板仅用于工程验证；缺少下游、trace、实际重试数据；配置快照不能证明整个窗口无变更，异窗口数据不能直接建立同时相关性，截断结果不能推断完整趋势"
+				},
+				"execution_records": [
+					{
+						"kind": "model",
+						"run_id": "run-4ee773d9-5aea-45b1-90e5-6b5a4dd16e60",
+						"model_round": 1,
+						"model_request_id": "21a55f5a-6c7c-4231-8299-f10088982b0d",
+						"tool_name": null,
+						"tool_call_id": null,
+						"query_arguments": null,
+						"started_at": "2026-10-09T13:39:01.387019+00:00",
+						"finished_at": "2026-10-09T13:39:01.387027+00:00",
+						"duration_ms": 0.008600000001024455,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": null,
+						"handler_finished_at": null
+					},
+					{
+						"kind": "tool",
+						"run_id": "run-4ee773d9-5aea-45b1-90e5-6b5a4dd16e60",
+						"model_round": 1,
+						"model_request_id": null,
+						"tool_name": "query_service_logs",
+						"tool_call_id": "eval-call-0",
+						"query_arguments": {
+							"service_name": "order-service",
+							"environment": "production",
+							"start_time": "2026-10-05T10:00:00+08:00",
+							"end_time": "2026-10-05T10:10:00+08:00",
+							"limit": 50,
+							"error_type": "rpc_timeout"
+						},
+						"started_at": "2026-10-09T13:39:01.387034+00:00",
+						"finished_at": "2026-10-09T13:39:01.387691+00:00",
+						"duration_ms": 0.6589999993593665,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": "2026-10-09T13:39:01.387289+00:00",
+						"handler_finished_at": "2026-10-09T13:39:01.387640+00:00"
+					},
+					{
+						"kind": "model",
+						"run_id": "run-4ee773d9-5aea-45b1-90e5-6b5a4dd16e60",
+						"model_round": 2,
+						"model_request_id": "4196f075-5554-4cf8-b991-489a9ce74544",
+						"tool_name": null,
+						"tool_call_id": null,
+						"query_arguments": null,
+						"started_at": "2026-10-09T13:39:01.387780+00:00",
+						"finished_at": "2026-10-09T13:39:01.387816+00:00",
+						"duration_ms": 0.03599999945436139,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": null,
+						"handler_finished_at": null
+					}
+				]
+			}
+		},
+		{
+			"case_id": "metrics-only",
+			"checks": [
+				{
+					"name": "status",
+					"passed": true
+				},
+				{
+					"name": "error_code",
+					"passed": true
+				},
+				{
+					"name": "report_presence",
+					"passed": true
+				},
+				{
+					"name": "evidence_sources",
+					"passed": true
+				},
+				{
+					"name": "evidence_ownership",
+					"passed": true
+				},
+				{
+					"name": "evidence_unique",
+					"passed": true
+				},
+				{
+					"name": "record_ownership",
+					"passed": true
+				},
+				{
+					"name": "records_present",
+					"passed": true
+				},
+				{
+					"name": "tool_allowlist",
+					"passed": true
+				},
+				{
+					"name": "tool_success",
+					"passed": true
+				},
+				{
+					"name": "tool_parameters_0",
+					"passed": true
+				},
+				{
+					"name": "evidence_content_0",
+					"passed": true
+				},
+				{
+					"name": "report_references",
+					"passed": true
+				}
+			],
+			"execution_error": null,
+			"input": "仅使用query_service_metrics查询order-service/production在2026-10-05T10:00:00+08:00至2026-10-05T10:10:00+08:00的线程池指标，limit=50。解释变化，不虚构RPC超时日志或下游故障。",
+			"fixture_hashes": {
+				"samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
+				"samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+				"samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
+			},
+			"rule_passed": true,
+			"wall_duration_ms": 1.7422000000806293,
+			"semantic_review": {
+				"status": "pending",
+				"criteria": [
+					"指出40/64到64/64的变化及pending_tasks由0到12再到15",
+					"不能仅凭指标确认RPC超时或inventory-service故障"
+				]
+			},
+			"token_usage": null,
+			"cost": null,
+			"response": {
+				"run_id": "run-7df2dfff-c99d-4e12-9f1d-d4a567f92554",
+				"request_id": "eval-8bb090f1-1acd-44a2-86c6-4d686f06b57e-metrics-only",
+				"status": "succeeded",
+				"error_code": null,
+				"error_detail": null,
+				"created_at": "2026-10-09T13:39:01.389018+00:00",
+				"started_at": "2026-10-09T13:39:01.389022+00:00",
+				"finished_at": "2026-10-09T13:39:01.389690+00:00",
+				"evidences": [
+					{
+						"evidence_id": "run-7df2dfff-c99d-4e12-9f1d-d4a567f92554-eval-call-0",
+						"source": "metric",
+						"observed_at": "2026-10-05T10:01:00+08:00",
+						"summary": "order-service(production)指标查询匹配3条，返回3条，结果未截断，返回采样时间范围2026-10-05T10:01:00+08:00至2026-10-05T10:03:00+08:00",
+						"source_ref": "samples/metrics/order-service.jsonl:lines:1-3",
+						"content_hash": "49b742a4143fab3102476b547aeb401acbb3a9bec5836a2b1d50e85d01c35460",
+						"source_version": "local-metric-jsonl-v1"
+					}
+				],
+				"report": {
+					"run_id": "run-7df2dfff-c99d-4e12-9f1d-d4a567f92554",
+					"root_cause": {
+						"text": "指标匹配3条，返回3条；未截断；2026-10-05T10:01:00+08:00线程活跃40/64，排队0；2026-10-05T10:02:00+08:00线程活跃64/64，排队12；2026-10-05T10:03:00+08:00线程活跃64/64，排队15。以上为工具观测，不能确定因果或唯一根因。",
+						"evidence_ids": [
+							"run-7df2dfff-c99d-4e12-9f1d-d4a567f92554-eval-call-0"
+						]
+					},
+					"recommendations": [
+						{
+							"text": "补查下游耗时、调用链和实际重试记录",
+							"evidence_ids": [
+								"run-7df2dfff-c99d-4e12-9f1d-d4a567f92554-eval-call-0"
+							]
+						}
+					],
+					"confidence": 0.5,
+					"limitations": "Mock模板仅用于工程验证；缺少下游、trace、实际重试数据；配置快照不能证明整个窗口无变更，异窗口数据不能直接建立同时相关性，截断结果不能推断完整趋势"
+				},
+				"execution_records": [
+					{
+						"kind": "model",
+						"run_id": "run-7df2dfff-c99d-4e12-9f1d-d4a567f92554",
+						"model_round": 1,
+						"model_request_id": "af86080c-8ca1-47e5-8440-5839f5609a00",
+						"tool_name": null,
+						"tool_call_id": null,
+						"query_arguments": null,
+						"started_at": "2026-10-09T13:39:01.389033+00:00",
+						"finished_at": "2026-10-09T13:39:01.389041+00:00",
+						"duration_ms": 0.007300001016119495,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": null,
+						"handler_finished_at": null
+					},
+					{
+						"kind": "tool",
+						"run_id": "run-7df2dfff-c99d-4e12-9f1d-d4a567f92554",
+						"model_round": 1,
+						"model_request_id": null,
+						"tool_name": "query_service_metrics",
+						"tool_call_id": "eval-call-0",
+						"query_arguments": {
+							"service_name": "order-service",
+							"environment": "production",
+							"start_time": "2026-10-05T10:00:00+08:00",
+							"end_time": "2026-10-05T10:10:00+08:00",
+							"limit": 50
+						},
+						"started_at": "2026-10-09T13:39:01.389047+00:00",
+						"finished_at": "2026-10-09T13:39:01.389479+00:00",
+						"duration_ms": 0.4336000001785578,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": "2026-10-09T13:39:01.389253+00:00",
+						"handler_finished_at": "2026-10-09T13:39:01.389447+00:00"
+					},
+					{
+						"kind": "model",
+						"run_id": "run-7df2dfff-c99d-4e12-9f1d-d4a567f92554",
+						"model_round": 2,
+						"model_request_id": "837fc5a4-6b1f-4197-9a77-95f391b12a64",
+						"tool_name": null,
+						"tool_call_id": null,
+						"query_arguments": null,
+						"started_at": "2026-10-09T13:39:01.389553+00:00",
+						"finished_at": "2026-10-09T13:39:01.389582+00:00",
+						"duration_ms": 0.029400000130408444,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": null,
+						"handler_finished_at": null
+					}
+				]
+			}
+		},
+		{
+			"case_id": "logs-metrics",
+			"checks": [
+				{
+					"name": "status",
+					"passed": true
+				},
+				{
+					"name": "error_code",
+					"passed": true
+				},
+				{
+					"name": "report_presence",
+					"passed": true
+				},
+				{
+					"name": "evidence_sources",
+					"passed": true
+				},
+				{
+					"name": "evidence_ownership",
+					"passed": true
+				},
+				{
+					"name": "evidence_unique",
+					"passed": true
+				},
+				{
+					"name": "record_ownership",
+					"passed": true
+				},
+				{
+					"name": "records_present",
+					"passed": true
+				},
+				{
+					"name": "tool_allowlist",
+					"passed": true
+				},
+				{
+					"name": "tool_success",
+					"passed": true
+				},
+				{
+					"name": "tool_parameters_0",
+					"passed": true
+				},
+				{
+					"name": "tool_parameters_1",
+					"passed": true
+				},
+				{
+					"name": "evidence_content_0",
+					"passed": true
+				},
+				{
+					"name": "evidence_content_1",
+					"passed": true
+				},
+				{
+					"name": "report_references",
+					"passed": true
+				}
+			],
+			"execution_error": null,
+			"input": "分别使用query_service_logs和query_service_metrics查询order-service/production在2026-10-05T10:00:00+08:00至2026-10-05T10:10:00+08:00的数据；日志error_type=rpc_timeout，两者limit=50。不查询配置，只分析日志和指标的时间相关性。",
+			"fixture_hashes": {
+				"samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
+				"samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+				"samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
+			},
+			"rule_passed": true,
+			"wall_duration_ms": 2.6806000005308306,
+			"semantic_review": {
+				"status": "pending",
+				"criteria": [
+					"确认超时和线程池满载、队列增加在10:02与10:03同时出现",
+					"没有配置证据时不虚构rpc_timeout_ms或max_retries"
+				]
+			},
+			"token_usage": null,
+			"cost": null,
+			"response": {
+				"run_id": "run-753f2ff8-e8b5-44f2-8a56-94f777d9da66",
+				"request_id": "eval-8bb090f1-1acd-44a2-86c6-4d686f06b57e-logs-metrics",
+				"status": "succeeded",
+				"error_code": null,
+				"error_detail": null,
+				"created_at": "2026-10-09T13:39:01.390666+00:00",
+				"started_at": "2026-10-09T13:39:01.390669+00:00",
+				"finished_at": "2026-10-09T13:39:01.392352+00:00",
+				"evidences": [
+					{
+						"evidence_id": "run-753f2ff8-e8b5-44f2-8a56-94f777d9da66-eval-call-0",
+						"source": "log",
+						"observed_at": "2026-10-05T10:02:00+08:00",
+						"summary": "order-service(production)日志查询匹配2条，返回2条，结果未截断",
+						"source_ref": "samples/logs/order-service.jsonl:lines:1-2",
+						"content_hash": "6e4a8e6d6cd5275549169217f4e81cb785251440c1159901753b4e24ddd4865b",
+						"source_version": "local-jsonl-v1"
+					},
+					{
+						"evidence_id": "run-753f2ff8-e8b5-44f2-8a56-94f777d9da66-eval-call-1",
+						"source": "metric",
+						"observed_at": "2026-10-05T10:01:00+08:00",
+						"summary": "order-service(production)指标查询匹配3条，返回3条，结果未截断，返回采样时间范围2026-10-05T10:01:00+08:00至2026-10-05T10:03:00+08:00",
+						"source_ref": "samples/metrics/order-service.jsonl:lines:1-3",
+						"content_hash": "49b742a4143fab3102476b547aeb401acbb3a9bec5836a2b1d50e85d01c35460",
+						"source_version": "local-metric-jsonl-v1"
+					}
+				],
+				"report": {
+					"run_id": "run-753f2ff8-e8b5-44f2-8a56-94f777d9da66",
+					"root_cause": {
+						"text": "日志匹配2条，返回2条；未截断；指标匹配3条，返回3条；未截断；2026-10-05T10:01:00+08:00线程活跃40/64，排队0；2026-10-05T10:02:00+08:00线程活跃64/64，排队12；2026-10-05T10:03:00+08:00线程活跃64/64，排队15。以上为工具观测，不能确定因果或唯一根因。",
+						"evidence_ids": [
+							"run-753f2ff8-e8b5-44f2-8a56-94f777d9da66-eval-call-0",
+							"run-753f2ff8-e8b5-44f2-8a56-94f777d9da66-eval-call-1"
+						]
+					},
+					"recommendations": [
+						{
+							"text": "补查下游耗时、调用链和实际重试记录",
+							"evidence_ids": [
+								"run-753f2ff8-e8b5-44f2-8a56-94f777d9da66-eval-call-0",
+								"run-753f2ff8-e8b5-44f2-8a56-94f777d9da66-eval-call-1"
+							]
+						}
+					],
+					"confidence": 0.5,
+					"limitations": "Mock模板仅用于工程验证；缺少下游、trace、实际重试数据；配置快照不能证明整个窗口无变更，异窗口数据不能直接建立同时相关性，截断结果不能推断完整趋势"
+				},
+				"execution_records": [
+					{
+						"kind": "model",
+						"run_id": "run-753f2ff8-e8b5-44f2-8a56-94f777d9da66",
+						"model_round": 1,
+						"model_request_id": "4e843ca7-0eb5-43ce-b1d3-678615dfe3b6",
+						"tool_name": null,
+						"tool_call_id": null,
+						"query_arguments": null,
+						"started_at": "2026-10-09T13:39:01.390678+00:00",
+						"finished_at": "2026-10-09T13:39:01.390684+00:00",
+						"duration_ms": 0.005799998689326458,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": null,
+						"handler_finished_at": null
+					},
+					{
+						"kind": "tool",
+						"run_id": "run-753f2ff8-e8b5-44f2-8a56-94f777d9da66",
+						"model_round": 1,
+						"model_request_id": null,
+						"tool_name": "query_service_logs",
+						"tool_call_id": "eval-call-0",
+						"query_arguments": {
+							"service_name": "order-service",
+							"environment": "production",
+							"start_time": "2026-10-05T10:00:00+08:00",
+							"end_time": "2026-10-05T10:10:00+08:00",
+							"limit": 50,
+							"error_type": "rpc_timeout"
+						},
+						"started_at": "2026-10-09T13:39:01.390853+00:00",
+						"finished_at": "2026-10-09T13:39:01.391715+00:00",
+						"duration_ms": 0.8629000003566034,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": "2026-10-09T13:39:01.391233+00:00",
+						"handler_finished_at": "2026-10-09T13:39:01.391621+00:00"
+					},
+					{
+						"kind": "tool",
+						"run_id": "run-753f2ff8-e8b5-44f2-8a56-94f777d9da66",
+						"model_round": 1,
+						"model_request_id": null,
+						"tool_name": "query_service_metrics",
+						"tool_call_id": "eval-call-1",
+						"query_arguments": {
+							"service_name": "order-service",
+							"environment": "production",
+							"start_time": "2026-10-05T10:00:00+08:00",
+							"end_time": "2026-10-05T10:10:00+08:00",
+							"limit": 50
+						},
+						"started_at": "2026-10-09T13:39:01.391047+00:00",
+						"finished_at": "2026-10-09T13:39:01.391876+00:00",
+						"duration_ms": 0.8291999984066933,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": "2026-10-09T13:39:01.391433+00:00",
+						"handler_finished_at": "2026-10-09T13:39:01.391834+00:00"
+					},
+					{
+						"kind": "model",
+						"run_id": "run-753f2ff8-e8b5-44f2-8a56-94f777d9da66",
+						"model_round": 2,
+						"model_request_id": "afd654c9-0614-4b29-9c2b-9579cf57b656",
+						"tool_name": null,
+						"tool_call_id": null,
+						"query_arguments": null,
+						"started_at": "2026-10-09T13:39:01.392175+00:00",
+						"finished_at": "2026-10-09T13:39:01.392216+00:00",
+						"duration_ms": 0.04090000038559083,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": null,
+						"handler_finished_at": null
+					}
+				]
+			}
+		},
+		{
+			"case_id": "symptom-keywords",
+			"checks": [
+				{
+					"name": "status",
+					"passed": true
+				},
+				{
+					"name": "error_code",
+					"passed": true
+				},
+				{
+					"name": "report_presence",
+					"passed": true
+				},
+				{
+					"name": "evidence_sources",
+					"passed": true
+				},
+				{
+					"name": "evidence_ownership",
+					"passed": true
+				},
+				{
+					"name": "evidence_unique",
+					"passed": true
+				},
+				{
+					"name": "record_ownership",
+					"passed": true
+				},
+				{
+					"name": "records_present",
+					"passed": true
+				},
+				{
+					"name": "tool_allowlist",
+					"passed": true
+				},
+				{
+					"name": "tool_success",
+					"passed": true
+				},
+				{
+					"name": "tool_parameters_0",
+					"passed": true
+				},
+				{
+					"name": "evidence_content_0",
+					"passed": true
+				},
+				{
+					"name": "report_references",
+					"passed": true
+				}
+			],
+			"execution_error": null,
+			"input": "仅使用query_service_logs查询order-service/production在2026-10-05T10:00:00+08:00至2026-10-05T10:10:00+08:00的日志，symptom=\"RPC timeout\"，keywords=[\"inventory-service\"]，limit=50，不传error_type。按症状和关键词检索，不把症状自动改成枚举错误类型。",
+			"fixture_hashes": {
+				"samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
+				"samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+				"samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
+			},
+			"rule_passed": true,
+			"wall_duration_ms": 1.7853999997896608,
+			"semantic_review": {
+				"status": "pending",
+				"criteria": [
+					"基于两条匹配记录说明RPC超时",
+					"说明只覆盖当前症状及关键词匹配范围，不代表所有错误"
+				]
+			},
+			"token_usage": null,
+			"cost": null,
+			"response": {
+				"run_id": "run-00bfcb80-b64b-475f-a5a6-d7c5f4b6afa5",
+				"request_id": "eval-8bb090f1-1acd-44a2-86c6-4d686f06b57e-symptom-keywords",
+				"status": "succeeded",
+				"error_code": null,
+				"error_detail": null,
+				"created_at": "2026-10-09T13:39:01.393489+00:00",
+				"started_at": "2026-10-09T13:39:01.393492+00:00",
+				"finished_at": "2026-10-09T13:39:01.394153+00:00",
+				"evidences": [
+					{
+						"evidence_id": "run-00bfcb80-b64b-475f-a5a6-d7c5f4b6afa5-eval-call-0",
+						"source": "log",
+						"observed_at": "2026-10-05T10:02:00+08:00",
+						"summary": "order-service(production)日志查询匹配2条，返回2条，结果未截断",
+						"source_ref": "samples/logs/order-service.jsonl:lines:1-2",
+						"content_hash": "6e4a8e6d6cd5275549169217f4e81cb785251440c1159901753b4e24ddd4865b",
+						"source_version": "local-jsonl-v1"
+					}
+				],
+				"report": {
+					"run_id": "run-00bfcb80-b64b-475f-a5a6-d7c5f4b6afa5",
+					"root_cause": {
+						"text": "日志匹配2条，返回2条；未截断。以上为工具观测，不能确定因果或唯一根因。",
+						"evidence_ids": [
+							"run-00bfcb80-b64b-475f-a5a6-d7c5f4b6afa5-eval-call-0"
+						]
+					},
+					"recommendations": [
+						{
+							"text": "补查下游耗时、调用链和实际重试记录",
+							"evidence_ids": [
+								"run-00bfcb80-b64b-475f-a5a6-d7c5f4b6afa5-eval-call-0"
+							]
+						}
+					],
+					"confidence": 0.5,
+					"limitations": "Mock模板仅用于工程验证；缺少下游、trace、实际重试数据；配置快照不能证明整个窗口无变更，异窗口数据不能直接建立同时相关性，截断结果不能推断完整趋势"
+				},
+				"execution_records": [
+					{
+						"kind": "model",
+						"run_id": "run-00bfcb80-b64b-475f-a5a6-d7c5f4b6afa5",
+						"model_round": 1,
+						"model_request_id": "8fc3b93e-b407-4e98-a54c-7fb991d5d0de",
+						"tool_name": null,
+						"tool_call_id": null,
+						"query_arguments": null,
+						"started_at": "2026-10-09T13:39:01.393501+00:00",
+						"finished_at": "2026-10-09T13:39:01.393508+00:00",
+						"duration_ms": 0.006599999323952943,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": null,
+						"handler_finished_at": null
+					},
+					{
+						"kind": "tool",
+						"run_id": "run-00bfcb80-b64b-475f-a5a6-d7c5f4b6afa5",
+						"model_round": 1,
+						"model_request_id": null,
+						"tool_name": "query_service_logs",
+						"tool_call_id": "eval-call-0",
+						"query_arguments": {
+							"service_name": "order-service",
+							"environment": "production",
+							"start_time": "2026-10-05T10:00:00+08:00",
+							"end_time": "2026-10-05T10:10:00+08:00",
+							"limit": 50
+						},
+						"started_at": "2026-10-09T13:39:01.393515+00:00",
+						"finished_at": "2026-10-09T13:39:01.393966+00:00",
+						"duration_ms": 0.4530000005615875,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": "2026-10-09T13:39:01.393740+00:00",
+						"handler_finished_at": "2026-10-09T13:39:01.393930+00:00"
+					},
+					{
+						"kind": "model",
+						"run_id": "run-00bfcb80-b64b-475f-a5a6-d7c5f4b6afa5",
+						"model_round": 2,
+						"model_request_id": "ac5ebab4-8c00-4df8-88fe-11cbcdeaa00e",
+						"tool_name": null,
+						"tool_call_id": null,
+						"query_arguments": null,
+						"started_at": "2026-10-09T13:39:01.394034+00:00",
+						"finished_at": "2026-10-09T13:39:01.394059+00:00",
+						"duration_ms": 0.025400000595254824,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": null,
+						"handler_finished_at": null
+					}
+				]
+			}
+		},
+		{
+			"case_id": "empty-log-window",
+			"checks": [
+				{
+					"name": "status",
+					"passed": true
+				},
+				{
+					"name": "error_code",
+					"passed": true
+				},
+				{
+					"name": "report_presence",
+					"passed": true
+				},
+				{
+					"name": "evidence_sources",
+					"passed": true
+				},
+				{
+					"name": "evidence_ownership",
+					"passed": true
+				},
+				{
+					"name": "evidence_unique",
+					"passed": true
+				},
+				{
+					"name": "record_ownership",
+					"passed": true
+				},
+				{
+					"name": "records_present",
+					"passed": true
+				},
+				{
+					"name": "tool_allowlist",
+					"passed": true
+				},
+				{
+					"name": "tool_success",
+					"passed": true
+				},
+				{
+					"name": "tool_parameters_0",
+					"passed": true
+				},
+				{
+					"name": "evidence_content_0",
+					"passed": true
+				},
+				{
+					"name": "report_references",
+					"passed": true
+				}
+			],
+			"execution_error": null,
+			"input": "仅用query_service_logs查询order-service/production在2026-10-05T11:00:00+08:00至2026-10-05T11:10:00+08:00的rpc_timeout日志，limit=50。即使无数据也保留原窗口，不回查其他时段，不虚构超时或线程池状态。",
+			"fixture_hashes": {
+				"samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
+				"samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+				"samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
+			},
+			"rule_passed": true,
+			"wall_duration_ms": 1.6078999997262144,
+			"semantic_review": {
+				"status": "pending",
+				"criteria": [
+					"明确本次查询没有匹配日志",
+					"零匹配不能证明服务健康，也不能确认故障根因"
+				]
+			},
+			"token_usage": null,
+			"cost": null,
+			"response": {
+				"run_id": "run-ed72721a-4c5e-424d-b09c-eed84e66542f",
+				"request_id": "eval-8bb090f1-1acd-44a2-86c6-4d686f06b57e-empty-log-window",
+				"status": "succeeded",
+				"error_code": null,
+				"error_detail": null,
+				"created_at": "2026-10-09T13:39:01.395153+00:00",
+				"started_at": "2026-10-09T13:39:01.395155+00:00",
+				"finished_at": "2026-10-09T13:39:01.395741+00:00",
+				"evidences": [
+					{
+						"evidence_id": "run-ed72721a-4c5e-424d-b09c-eed84e66542f-eval-call-0",
+						"source": "log",
+						"observed_at": "2026-10-05T11:10:00+08:00",
+						"summary": "order-service(production)日志查询匹配0条，返回0条，结果未截断",
+						"source_ref": "samples/logs/order-service.jsonl:no-matching-lines",
+						"content_hash": "611a8582a2b46069d694492406d50f038a5a520af7df7368fdb19541037b2a4b",
+						"source_version": "local-jsonl-v1"
+					}
+				],
+				"report": {
+					"run_id": "run-ed72721a-4c5e-424d-b09c-eed84e66542f",
+					"root_cause": {
+						"text": "日志匹配0条，返回0条；未截断；本次条件无匹配，不代表服务没有故障。以上为工具观测，不能确定因果或唯一根因。",
+						"evidence_ids": [
+							"run-ed72721a-4c5e-424d-b09c-eed84e66542f-eval-call-0"
+						]
+					},
+					"recommendations": [
+						{
+							"text": "补查下游耗时、调用链和实际重试记录",
+							"evidence_ids": [
+								"run-ed72721a-4c5e-424d-b09c-eed84e66542f-eval-call-0"
+							]
+						}
+					],
+					"confidence": 0.5,
+					"limitations": "Mock模板仅用于工程验证；缺少下游、trace、实际重试数据；配置快照不能证明整个窗口无变更，异窗口数据不能直接建立同时相关性，截断结果不能推断完整趋势"
+				},
+				"execution_records": [
+					{
+						"kind": "model",
+						"run_id": "run-ed72721a-4c5e-424d-b09c-eed84e66542f",
+						"model_round": 1,
+						"model_request_id": "bb6c5134-054e-48a5-8717-bdf6de9bed60",
+						"tool_name": null,
+						"tool_call_id": null,
+						"query_arguments": null,
+						"started_at": "2026-10-09T13:39:01.395164+00:00",
+						"finished_at": "2026-10-09T13:39:01.395171+00:00",
+						"duration_ms": 0.005899999450775795,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": null,
+						"handler_finished_at": null
+					},
+					{
+						"kind": "tool",
+						"run_id": "run-ed72721a-4c5e-424d-b09c-eed84e66542f",
+						"model_round": 1,
+						"model_request_id": null,
+						"tool_name": "query_service_logs",
+						"tool_call_id": "eval-call-0",
+						"query_arguments": {
+							"service_name": "order-service",
+							"environment": "production",
+							"start_time": "2026-10-05T11:00:00+08:00",
+							"end_time": "2026-10-05T11:10:00+08:00",
+							"limit": 50,
+							"error_type": "rpc_timeout"
+						},
+						"started_at": "2026-10-09T13:39:01.395176+00:00",
+						"finished_at": "2026-10-09T13:39:01.395550+00:00",
+						"duration_ms": 0.37619999966409523,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": "2026-10-09T13:39:01.395338+00:00",
+						"handler_finished_at": "2026-10-09T13:39:01.395519+00:00"
+					},
+					{
+						"kind": "model",
+						"run_id": "run-ed72721a-4c5e-424d-b09c-eed84e66542f",
+						"model_round": 2,
+						"model_request_id": "2d9562cb-1244-4e19-ab10-32c4f51c14c6",
+						"tool_name": null,
+						"tool_call_id": null,
+						"query_arguments": null,
+						"started_at": "2026-10-09T13:39:01.395629+00:00",
+						"finished_at": "2026-10-09T13:39:01.395658+00:00",
+						"duration_ms": 0.029299999368959107,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": null,
+						"handler_finished_at": null
+					}
+				]
+			}
+		},
+		{
+			"case_id": "empty-log-keyword",
+			"checks": [
+				{
+					"name": "status",
+					"passed": true
+				},
+				{
+					"name": "error_code",
+					"passed": true
+				},
+				{
+					"name": "report_presence",
+					"passed": true
+				},
+				{
+					"name": "evidence_sources",
+					"passed": true
+				},
+				{
+					"name": "evidence_ownership",
+					"passed": true
+				},
+				{
+					"name": "evidence_unique",
+					"passed": true
+				},
+				{
+					"name": "record_ownership",
+					"passed": true
+				},
+				{
+					"name": "records_present",
+					"passed": true
+				},
+				{
+					"name": "tool_allowlist",
+					"passed": true
+				},
+				{
+					"name": "tool_success",
+					"passed": true
+				},
+				{
+					"name": "tool_parameters_0",
+					"passed": true
+				},
+				{
+					"name": "evidence_content_0",
+					"passed": true
+				},
+				{
+					"name": "report_references",
+					"passed": true
+				}
+			],
+			"execution_error": null,
+			"input": "仅用query_service_logs查询order-service/production在2026-10-05T10:00:00+08:00至2026-10-05T10:10:00+08:00的rpc_timeout日志，keywords=[\"payment-service\"]，limit=50。不要删除关键词或换成inventory-service。",
+			"fixture_hashes": {
+				"samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
+				"samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+				"samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
+			},
+			"rule_passed": true,
+			"wall_duration_ms": 1.7152000000351109,
+			"semantic_review": {
+				"status": "pending",
+				"criteria": [
+					"明确关键词过滤后没有匹配日志",
+					"不能据此断言payment-service或inventory-service发生故障"
+				]
+			},
+			"token_usage": null,
+			"cost": null,
+			"response": {
+				"run_id": "run-455e5fae-7e59-436b-a0ed-976a7ee118dc",
+				"request_id": "eval-8bb090f1-1acd-44a2-86c6-4d686f06b57e-empty-log-keyword",
+				"status": "succeeded",
+				"error_code": null,
+				"error_detail": null,
+				"created_at": "2026-10-09T13:39:01.396822+00:00",
+				"started_at": "2026-10-09T13:39:01.396825+00:00",
+				"finished_at": "2026-10-09T13:39:01.397485+00:00",
+				"evidences": [
+					{
+						"evidence_id": "run-455e5fae-7e59-436b-a0ed-976a7ee118dc-eval-call-0",
+						"source": "log",
+						"observed_at": "2026-10-05T10:10:00+08:00",
+						"summary": "order-service(production)日志查询匹配0条，返回0条，结果未截断",
+						"source_ref": "samples/logs/order-service.jsonl:no-matching-lines",
+						"content_hash": "6a2bf97d993705f407329ad7e7e1f755294f624b706b4dd4c3cde595908f1f3b",
+						"source_version": "local-jsonl-v1"
+					}
+				],
+				"report": {
+					"run_id": "run-455e5fae-7e59-436b-a0ed-976a7ee118dc",
+					"root_cause": {
+						"text": "日志匹配0条，返回0条；未截断；本次条件无匹配，不代表服务没有故障。以上为工具观测，不能确定因果或唯一根因。",
+						"evidence_ids": [
+							"run-455e5fae-7e59-436b-a0ed-976a7ee118dc-eval-call-0"
+						]
+					},
+					"recommendations": [
+						{
+							"text": "补查下游耗时、调用链和实际重试记录",
+							"evidence_ids": [
+								"run-455e5fae-7e59-436b-a0ed-976a7ee118dc-eval-call-0"
+							]
+						}
+					],
+					"confidence": 0.5,
+					"limitations": "Mock模板仅用于工程验证；缺少下游、trace、实际重试数据；配置快照不能证明整个窗口无变更，异窗口数据不能直接建立同时相关性，截断结果不能推断完整趋势"
+				},
+				"execution_records": [
+					{
+						"kind": "model",
+						"run_id": "run-455e5fae-7e59-436b-a0ed-976a7ee118dc",
+						"model_round": 1,
+						"model_request_id": "2fa625b9-89a7-40f1-aef5-5c9c6d3cd9a1",
+						"tool_name": null,
+						"tool_call_id": null,
+						"query_arguments": null,
+						"started_at": "2026-10-09T13:39:01.396837+00:00",
+						"finished_at": "2026-10-09T13:39:01.396845+00:00",
+						"duration_ms": 0.008400000297115184,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": null,
+						"handler_finished_at": null
+					},
+					{
+						"kind": "tool",
+						"run_id": "run-455e5fae-7e59-436b-a0ed-976a7ee118dc",
+						"model_round": 1,
+						"model_request_id": null,
+						"tool_name": "query_service_logs",
+						"tool_call_id": "eval-call-0",
+						"query_arguments": {
+							"service_name": "order-service",
+							"environment": "production",
+							"start_time": "2026-10-05T10:00:00+08:00",
+							"end_time": "2026-10-05T10:10:00+08:00",
+							"limit": 50,
+							"error_type": "rpc_timeout"
+						},
+						"started_at": "2026-10-09T13:39:01.396853+00:00",
+						"finished_at": "2026-10-09T13:39:01.397331+00:00",
+						"duration_ms": 0.4802000003110152,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": "2026-10-09T13:39:01.397065+00:00",
+						"handler_finished_at": "2026-10-09T13:39:01.397302+00:00"
+					},
+					{
+						"kind": "model",
+						"run_id": "run-455e5fae-7e59-436b-a0ed-976a7ee118dc",
+						"model_round": 2,
+						"model_request_id": "c6c2c16e-787e-4100-97c7-3e51f5f65530",
+						"tool_name": null,
+						"tool_call_id": null,
+						"query_arguments": null,
+						"started_at": "2026-10-09T13:39:01.397397+00:00",
+						"finished_at": "2026-10-09T13:39:01.397419+00:00",
+						"duration_ms": 0.021500000002561137,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": null,
+						"handler_finished_at": null
+					}
+				]
+			}
+		},
+		{
+			"case_id": "empty-metric-window",
+			"checks": [
+				{
+					"name": "status",
+					"passed": true
+				},
+				{
+					"name": "error_code",
+					"passed": true
+				},
+				{
+					"name": "error_detail_code",
+					"passed": true
+				},
+				{
+					"name": "report_presence",
+					"passed": true
+				},
+				{
+					"name": "evidence_sources",
+					"passed": true
+				},
+				{
+					"name": "evidence_ownership",
+					"passed": true
+				},
+				{
+					"name": "evidence_unique",
+					"passed": true
+				},
+				{
+					"name": "record_ownership",
+					"passed": true
+				},
+				{
+					"name": "records_present",
+					"passed": true
+				},
+				{
+					"name": "tool_allowlist",
+					"passed": true
+				},
+				{
+					"name": "collection_after_tool_success",
+					"passed": true
+				},
+				{
+					"name": "tool_parameters_0",
+					"passed": true
+				}
+			],
+			"execution_error": null,
+			"input": "仅用query_service_metrics查询order-service/production在2026-10-05T11:00:00+08:00至2026-10-05T11:10:00+08:00的线程池指标，limit=50。保留原窗口，不补造采样或返回成功诊断。",
+			"fixture_hashes": {
+				"samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
+				"samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+				"samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
+			},
+			"rule_passed": true,
+			"wall_duration_ms": 1.6605999990133569,
+			"semantic_review": {
+				"status": "pending",
+				"criteria": [
+					"工具查询成功但无采样时，证据转换层拒绝生成指标证据",
+					"返回NO_METRIC_SAMPLES且没有成功诊断报告"
+				]
+			},
+			"token_usage": null,
+			"cost": null,
+			"response": {
+				"run_id": "run-a68628b4-d3b5-4ac0-9b34-35edd53a6803",
+				"request_id": "eval-8bb090f1-1acd-44a2-86c6-4d686f06b57e-empty-metric-window",
+				"status": "failed",
+				"error_code": "EVIDENCE_COLLECTION_FAILED",
+				"error_detail": {
+					"code": "NO_METRIC_SAMPLES",
+					"message": "查询窗口内没有指标采样，不能生成指标证据"
+				},
+				"created_at": "2026-10-09T13:39:01.398542+00:00",
+				"started_at": "2026-10-09T13:39:01.398545+00:00",
+				"finished_at": "2026-10-09T13:39:01.399150+00:00",
+				"evidences": [],
+				"report": null,
+				"execution_records": [
+					{
+						"kind": "model",
+						"run_id": "run-a68628b4-d3b5-4ac0-9b34-35edd53a6803",
+						"model_round": 1,
+						"model_request_id": "6084eeee-b01d-42af-9db4-426c53ee3054",
+						"tool_name": null,
+						"tool_call_id": null,
+						"query_arguments": null,
+						"started_at": "2026-10-09T13:39:01.398555+00:00",
+						"finished_at": "2026-10-09T13:39:01.398561+00:00",
+						"duration_ms": 0.006000000212225132,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": null,
+						"handler_finished_at": null
+					},
+					{
+						"kind": "tool",
+						"run_id": "run-a68628b4-d3b5-4ac0-9b34-35edd53a6803",
+						"model_round": 1,
+						"model_request_id": null,
+						"tool_name": "query_service_metrics",
+						"tool_call_id": "eval-call-0",
+						"query_arguments": {
+							"service_name": "order-service",
+							"environment": "production",
+							"start_time": "2026-10-05T11:00:00+08:00",
+							"end_time": "2026-10-05T11:10:00+08:00",
+							"limit": 50
+						},
+						"started_at": "2026-10-09T13:39:01.398567+00:00",
+						"finished_at": "2026-10-09T13:39:01.399046+00:00",
+						"duration_ms": 0.48160000005736947,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": "2026-10-09T13:39:01.398781+00:00",
+						"handler_finished_at": "2026-10-09T13:39:01.399006+00:00"
+					},
+					{
+						"kind": "model",
+						"run_id": "run-a68628b4-d3b5-4ac0-9b34-35edd53a6803",
+						"model_round": 2,
+						"model_request_id": "0b523854-9dcc-4fb1-aa90-014b609cba78",
+						"tool_name": null,
+						"tool_call_id": null,
+						"query_arguments": null,
+						"started_at": "2026-10-09T13:39:01.399104+00:00",
+						"finished_at": "2026-10-09T13:39:01.399123+00:00",
+						"duration_ms": 0.019499999325489625,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": null,
+						"handler_finished_at": null
+					}
+				]
+			}
+		},
+		{
+			"case_id": "healthy-metric-sample",
+			"checks": [
+				{
+					"name": "status",
+					"passed": true
+				},
+				{
+					"name": "error_code",
+					"passed": true
+				},
+				{
+					"name": "report_presence",
+					"passed": true
+				},
+				{
+					"name": "evidence_sources",
+					"passed": true
+				},
+				{
+					"name": "evidence_ownership",
+					"passed": true
+				},
+				{
+					"name": "evidence_unique",
+					"passed": true
+				},
+				{
+					"name": "record_ownership",
+					"passed": true
+				},
+				{
+					"name": "records_present",
+					"passed": true
+				},
+				{
+					"name": "tool_allowlist",
+					"passed": true
+				},
+				{
+					"name": "tool_success",
+					"passed": true
+				},
+				{
+					"name": "tool_parameters_0",
+					"passed": true
+				},
+				{
+					"name": "evidence_content_0",
+					"passed": true
+				},
+				{
+					"name": "report_references",
+					"passed": true
+				}
+			],
+			"execution_error": null,
+			"input": "仅用query_service_metrics查询order-service/production在2026-10-05T10:00:00+08:00至2026-10-05T10:01:00+08:00的线程池指标，limit=50。不要扩大窗口；说明当前采样是否支持线程池耗尽，不能推断服务完全健康。",
+			"fixture_hashes": {
+				"samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
+				"samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+				"samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
+			},
+			"rule_passed": true,
+			"wall_duration_ms": 1.7934999996214174,
+			"semantic_review": {
+				"status": "pending",
+				"criteria": [
+					"说明唯一采样active_threads=40、thread_limit=64、pending_tasks=0",
+					"该采样不支持线程池满载，也不能代表整个服务健康或后续状态"
+				]
+			},
+			"token_usage": null,
+			"cost": null,
+			"response": {
+				"run_id": "run-8a8c1ffb-76d2-48b6-8b02-eddbdc6e57ce",
+				"request_id": "eval-8bb090f1-1acd-44a2-86c6-4d686f06b57e-healthy-metric-sample",
+				"status": "succeeded",
+				"error_code": null,
+				"error_detail": null,
+				"created_at": "2026-10-09T13:39:01.400201+00:00",
+				"started_at": "2026-10-09T13:39:01.400203+00:00",
+				"finished_at": "2026-10-09T13:39:01.400949+00:00",
+				"evidences": [
+					{
+						"evidence_id": "run-8a8c1ffb-76d2-48b6-8b02-eddbdc6e57ce-eval-call-0",
+						"source": "metric",
+						"observed_at": "2026-10-05T10:01:00+08:00",
+						"summary": "order-service(production)指标查询匹配1条，返回1条，结果未截断，返回采样时间范围2026-10-05T10:01:00+08:00至2026-10-05T10:01:00+08:00",
+						"source_ref": "samples/metrics/order-service.jsonl:lines:1-1",
+						"content_hash": "7b8b3b34a1093ef090157e0e6922354c7e5febf8d96ab86a0fb1d4426d2d5a07",
+						"source_version": "local-metric-jsonl-v1"
+					}
+				],
+				"report": {
+					"run_id": "run-8a8c1ffb-76d2-48b6-8b02-eddbdc6e57ce",
+					"root_cause": {
+						"text": "指标匹配1条，返回1条；未截断；2026-10-05T10:01:00+08:00线程活跃40/64，排队0。以上为工具观测，不能确定因果或唯一根因。",
+						"evidence_ids": [
+							"run-8a8c1ffb-76d2-48b6-8b02-eddbdc6e57ce-eval-call-0"
+						]
+					},
+					"recommendations": [
+						{
+							"text": "补查下游耗时、调用链和实际重试记录",
+							"evidence_ids": [
+								"run-8a8c1ffb-76d2-48b6-8b02-eddbdc6e57ce-eval-call-0"
+							]
+						}
+					],
+					"confidence": 0.5,
+					"limitations": "Mock模板仅用于工程验证；缺少下游、trace、实际重试数据；配置快照不能证明整个窗口无变更，异窗口数据不能直接建立同时相关性，截断结果不能推断完整趋势"
+				},
+				"execution_records": [
+					{
+						"kind": "model",
+						"run_id": "run-8a8c1ffb-76d2-48b6-8b02-eddbdc6e57ce",
+						"model_round": 1,
+						"model_request_id": "d3c977a5-45b7-468f-b775-5647753be9e4",
+						"tool_name": null,
+						"tool_call_id": null,
+						"query_arguments": null,
+						"started_at": "2026-10-09T13:39:01.400217+00:00",
+						"finished_at": "2026-10-09T13:39:01.400225+00:00",
+						"duration_ms": 0.007900000127847306,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": null,
+						"handler_finished_at": null
+					},
+					{
+						"kind": "tool",
+						"run_id": "run-8a8c1ffb-76d2-48b6-8b02-eddbdc6e57ce",
+						"model_round": 1,
+						"model_request_id": null,
+						"tool_name": "query_service_metrics",
+						"tool_call_id": "eval-call-0",
+						"query_arguments": {
+							"service_name": "order-service",
+							"environment": "production",
+							"start_time": "2026-10-05T10:00:00+08:00",
+							"end_time": "2026-10-05T10:01:00+08:00",
+							"limit": 50
+						},
+						"started_at": "2026-10-09T13:39:01.400232+00:00",
+						"finished_at": "2026-10-09T13:39:01.400747+00:00",
+						"duration_ms": 0.5173000008653617,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": "2026-10-09T13:39:01.400448+00:00",
+						"handler_finished_at": "2026-10-09T13:39:01.400709+00:00"
+					},
+					{
+						"kind": "model",
+						"run_id": "run-8a8c1ffb-76d2-48b6-8b02-eddbdc6e57ce",
+						"model_round": 2,
+						"model_request_id": "009daab7-7449-4b78-baeb-3e591f5d0437",
+						"tool_name": null,
+						"tool_call_id": null,
+						"query_arguments": null,
+						"started_at": "2026-10-09T13:39:01.400817+00:00",
+						"finished_at": "2026-10-09T13:39:01.400842+00:00",
+						"duration_ms": 0.02519999907235615,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": null,
+						"handler_finished_at": null
+					}
+				]
+			}
+		},
+		{
+			"case_id": "config-only-v1",
+			"checks": [
+				{
+					"name": "status",
+					"passed": true
+				},
+				{
+					"name": "error_code",
+					"passed": true
+				},
+				{
+					"name": "report_presence",
+					"passed": true
+				},
+				{
+					"name": "evidence_sources",
+					"passed": true
+				},
+				{
+					"name": "evidence_ownership",
+					"passed": true
+				},
+				{
+					"name": "evidence_unique",
+					"passed": true
+				},
+				{
+					"name": "record_ownership",
+					"passed": true
+				},
+				{
+					"name": "records_present",
+					"passed": true
+				},
+				{
+					"name": "tool_allowlist",
+					"passed": true
+				},
+				{
+					"name": "tool_success",
+					"passed": true
+				},
+				{
+					"name": "tool_parameters_0",
+					"passed": true
+				},
+				{
+					"name": "evidence_content_0",
+					"passed": true
+				},
+				{
+					"name": "report_references",
+					"passed": true
+				}
+			],
+			"execution_error": null,
+			"input": "仅用query_service_config查询order-service/production在2026-10-05T10:02:00+08:00生效配置。说明容量、超时、重试规则；不查询日志或指标，不把配置当作已发生的运行事实。",
+			"fixture_hashes": {
+				"samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
+				"samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+				"samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
+			},
+			"rule_passed": true,
+			"wall_duration_ms": 1.9245000003138557,
+			"semantic_review": {
+				"status": "pending",
+				"criteria": [
+					"指出order-config-v1的线程池64、超时1000ms、最多额外重试2次",
+					"配置不能证明线程池满载、请求超时或实际重试"
+				]
+			},
+			"token_usage": null,
+			"cost": null,
+			"response": {
+				"run_id": "run-291bc297-12e5-4ff2-8f30-e4cccb94b2cb",
+				"request_id": "eval-8bb090f1-1acd-44a2-86c6-4d686f06b57e-config-only-v1",
+				"status": "succeeded",
+				"error_code": null,
+				"error_detail": null,
+				"created_at": "2026-10-09T13:39:01.402135+00:00",
+				"started_at": "2026-10-09T13:39:01.402140+00:00",
+				"finished_at": "2026-10-09T13:39:01.402852+00:00",
+				"evidences": [
+					{
+						"evidence_id": "run-291bc297-12e5-4ff2-8f30-e4cccb94b2cb-eval-call-0",
+						"source": "config",
+						"observed_at": "2026-10-01T00:00:00+08:00",
+						"summary": "order-service(production)在2026-10-05T10:02:00+08:00生效的配置版本order-config-v1：线程池容量64，RPC超时1000毫秒，最多额外重试2次",
+						"source_ref": "samples/configs/order-service.jsonl:line:1",
+						"content_hash": "60443d6472b4abf5a9bee8a59ba287221293dd5a2d6ec4ce61eaa8e9a487f330",
+						"source_version": "local-config-jsonl-v1"
+					}
+				],
+				"report": {
+					"run_id": "run-291bc297-12e5-4ff2-8f30-e4cccb94b2cb",
+					"root_cause": {
+						"text": "2026-10-05T10:02:00+08:00生效版本order-config-v1，RPC超时1000毫秒，允许额外重试2次；不证明实际重试。以上为工具观测，不能确定因果或唯一根因。",
+						"evidence_ids": [
+							"run-291bc297-12e5-4ff2-8f30-e4cccb94b2cb-eval-call-0"
+						]
+					},
+					"recommendations": [
+						{
+							"text": "补查下游耗时、调用链和实际重试记录",
+							"evidence_ids": [
+								"run-291bc297-12e5-4ff2-8f30-e4cccb94b2cb-eval-call-0"
+							]
+						}
+					],
+					"confidence": 0.5,
+					"limitations": "Mock模板仅用于工程验证；缺少下游、trace、实际重试数据；配置快照不能证明整个窗口无变更，异窗口数据不能直接建立同时相关性，截断结果不能推断完整趋势"
+				},
+				"execution_records": [
+					{
+						"kind": "model",
+						"run_id": "run-291bc297-12e5-4ff2-8f30-e4cccb94b2cb",
+						"model_round": 1,
+						"model_request_id": "e16856e5-d855-4f6d-a58a-210426d5f1cb",
+						"tool_name": null,
+						"tool_call_id": null,
+						"query_arguments": null,
+						"started_at": "2026-10-09T13:39:01.402152+00:00",
+						"finished_at": "2026-10-09T13:39:01.402162+00:00",
+						"duration_ms": 0.009700001101009548,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": null,
+						"handler_finished_at": null
+					},
+					{
+						"kind": "tool",
+						"run_id": "run-291bc297-12e5-4ff2-8f30-e4cccb94b2cb",
+						"model_round": 1,
+						"model_request_id": null,
+						"tool_name": "query_service_config",
+						"tool_call_id": "eval-call-0",
+						"query_arguments": {
+							"service_name": "order-service",
+							"environment": "production",
+							"at_time": "2026-10-05T10:02:00+08:00"
+						},
+						"started_at": "2026-10-09T13:39:01.402171+00:00",
+						"finished_at": "2026-10-09T13:39:01.402627+00:00",
+						"duration_ms": 0.45959999988554046,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": "2026-10-09T13:39:01.402397+00:00",
+						"handler_finished_at": "2026-10-09T13:39:01.402590+00:00"
+					},
+					{
+						"kind": "model",
+						"run_id": "run-291bc297-12e5-4ff2-8f30-e4cccb94b2cb",
+						"model_round": 2,
+						"model_request_id": "457309ff-47cd-41b4-aaf5-8fd6336f4eca",
+						"tool_name": null,
+						"tool_call_id": null,
+						"query_arguments": null,
+						"started_at": "2026-10-09T13:39:01.402711+00:00",
+						"finished_at": "2026-10-09T13:39:01.402737+00:00",
+						"duration_ms": 0.026300000172341242,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": null,
+						"handler_finished_at": null
+					}
+				]
+			}
+		},
+		{
+			"case_id": "config-switch-boundary",
+			"checks": [
+				{
+					"name": "status",
+					"passed": true
+				},
+				{
+					"name": "error_code",
+					"passed": true
+				},
+				{
+					"name": "report_presence",
+					"passed": true
+				},
+				{
+					"name": "evidence_sources",
+					"passed": true
+				},
+				{
+					"name": "evidence_ownership",
+					"passed": true
+				},
+				{
+					"name": "evidence_unique",
+					"passed": true
+				},
+				{
+					"name": "record_ownership",
+					"passed": true
+				},
+				{
+					"name": "records_present",
+					"passed": true
+				},
+				{
+					"name": "tool_allowlist",
+					"passed": true
+				},
+				{
+					"name": "tool_success",
+					"passed": true
+				},
+				{
+					"name": "tool_parameters_0",
+					"passed": true
+				},
+				{
+					"name": "tool_parameters_1",
+					"passed": true
+				},
+				{
+					"name": "evidence_content_0",
+					"passed": true
+				},
+				{
+					"name": "evidence_content_1",
+					"passed": true
+				},
+				{
+					"name": "report_references",
+					"passed": true
+				}
+			],
+			"execution_error": null,
+			"input": "仅调用query_service_config两次，分别查询order-service/production在2026-10-05T23:59:59+08:00和2026-10-06T00:00:00+08:00生效配置。对比版本，说明切换边界，不根据配置变更断言故障恢复。",
+			"fixture_hashes": {
+				"samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
+				"samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+				"samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
+			},
+			"rule_passed": true,
+			"wall_duration_ms": 2.734499999860418,
+			"semantic_review": {
+				"status": "pending",
+				"criteria": [
+					"切换前v1超时1000ms、重试2次；切换时v2超时3000ms、重试0次",
+					"生效区间左闭右开，切换时刻只属于v2",
+					"变更不证明故障发生或恢复"
+				]
+			},
+			"token_usage": null,
+			"cost": null,
+			"response": {
+				"run_id": "run-c45c2650-cdc1-4f37-9481-979768bdbcaa",
+				"request_id": "eval-8bb090f1-1acd-44a2-86c6-4d686f06b57e-config-switch-boundary",
+				"status": "succeeded",
+				"error_code": null,
+				"error_detail": null,
+				"created_at": "2026-10-09T13:39:01.404069+00:00",
+				"started_at": "2026-10-09T13:39:01.404072+00:00",
+				"finished_at": "2026-10-09T13:39:01.405586+00:00",
+				"evidences": [
+					{
+						"evidence_id": "run-c45c2650-cdc1-4f37-9481-979768bdbcaa-eval-call-0",
+						"source": "config",
+						"observed_at": "2026-10-01T00:00:00+08:00",
+						"summary": "order-service(production)在2026-10-05T23:59:59+08:00生效的配置版本order-config-v1：线程池容量64，RPC超时1000毫秒，最多额外重试2次",
+						"source_ref": "samples/configs/order-service.jsonl:line:1",
+						"content_hash": "26eff446e0441e2f9727f3d18042a99f7c6afc349797ad78a47eb12aef5c7925",
+						"source_version": "local-config-jsonl-v1"
+					},
+					{
+						"evidence_id": "run-c45c2650-cdc1-4f37-9481-979768bdbcaa-eval-call-1",
+						"source": "config",
+						"observed_at": "2026-10-06T00:00:00+08:00",
+						"summary": "order-service(production)在2026-10-06T00:00:00+08:00生效的配置版本order-config-v2：线程池容量64，RPC超时3000毫秒，最多额外重试0次",
+						"source_ref": "samples/configs/order-service.jsonl:line:2",
+						"content_hash": "51773c0f1cc2a6471b4dbd942a34706287aaa3e2c624ecc5613e52b97901e312",
+						"source_version": "local-config-jsonl-v1"
+					}
+				],
+				"report": {
+					"run_id": "run-c45c2650-cdc1-4f37-9481-979768bdbcaa",
+					"root_cause": {
+						"text": "2026-10-05T23:59:59+08:00生效版本order-config-v1，RPC超时1000毫秒，允许额外重试2次；不证明实际重试；2026-10-06T00:00:00+08:00生效版本order-config-v2，RPC超时3000毫秒，允许额外重试0次；不证明实际重试。以上为工具观测，不能确定因果或唯一根因。",
+						"evidence_ids": [
+							"run-c45c2650-cdc1-4f37-9481-979768bdbcaa-eval-call-0",
+							"run-c45c2650-cdc1-4f37-9481-979768bdbcaa-eval-call-1"
+						]
+					},
+					"recommendations": [
+						{
+							"text": "补查下游耗时、调用链和实际重试记录",
+							"evidence_ids": [
+								"run-c45c2650-cdc1-4f37-9481-979768bdbcaa-eval-call-0",
+								"run-c45c2650-cdc1-4f37-9481-979768bdbcaa-eval-call-1"
+							]
+						}
+					],
+					"confidence": 0.5,
+					"limitations": "Mock模板仅用于工程验证；缺少下游、trace、实际重试数据；配置快照不能证明整个窗口无变更，异窗口数据不能直接建立同时相关性，截断结果不能推断完整趋势"
+				},
+				"execution_records": [
+					{
+						"kind": "model",
+						"run_id": "run-c45c2650-cdc1-4f37-9481-979768bdbcaa",
+						"model_round": 1,
+						"model_request_id": "39b23f69-a82d-4036-b01c-fdff353c175a",
+						"tool_name": null,
+						"tool_call_id": null,
+						"query_arguments": null,
+						"started_at": "2026-10-09T13:39:01.404083+00:00",
+						"finished_at": "2026-10-09T13:39:01.404091+00:00",
+						"duration_ms": 0.007599999662488699,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": null,
+						"handler_finished_at": null
+					},
+					{
+						"kind": "tool",
+						"run_id": "run-c45c2650-cdc1-4f37-9481-979768bdbcaa",
+						"model_round": 1,
+						"model_request_id": null,
+						"tool_name": "query_service_config",
+						"tool_call_id": "eval-call-0",
+						"query_arguments": {
+							"service_name": "order-service",
+							"environment": "production",
+							"at_time": "2026-10-05T23:59:59+08:00"
+						},
+						"started_at": "2026-10-09T13:39:01.404300+00:00",
+						"finished_at": "2026-10-09T13:39:01.405117+00:00",
+						"duration_ms": 0.8182999990822282,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": "2026-10-09T13:39:01.404692+00:00",
+						"handler_finished_at": "2026-10-09T13:39:01.405030+00:00"
+					},
+					{
+						"kind": "tool",
+						"run_id": "run-c45c2650-cdc1-4f37-9481-979768bdbcaa",
+						"model_round": 1,
+						"model_request_id": null,
+						"tool_name": "query_service_config",
+						"tool_call_id": "eval-call-1",
+						"query_arguments": {
+							"service_name": "order-service",
+							"environment": "production",
+							"at_time": "2026-10-06T00:00:00+08:00"
+						},
+						"started_at": "2026-10-09T13:39:01.404515+00:00",
+						"finished_at": "2026-10-09T13:39:01.405210+00:00",
+						"duration_ms": 0.6955000008019852,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": "2026-10-09T13:39:01.404881+00:00",
+						"handler_finished_at": "2026-10-09T13:39:01.405187+00:00"
+					},
+					{
+						"kind": "model",
+						"run_id": "run-c45c2650-cdc1-4f37-9481-979768bdbcaa",
+						"model_round": 2,
+						"model_request_id": "a2741562-ba2c-418b-8d1d-c02ac4c4a227",
+						"tool_name": null,
+						"tool_call_id": null,
+						"query_arguments": null,
+						"started_at": "2026-10-09T13:39:01.405437+00:00",
+						"finished_at": "2026-10-09T13:39:01.405472+00:00",
+						"duration_ms": 0.03409999953873921,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": null,
+						"handler_finished_at": null
+					}
+				]
+			}
+		},
+		{
+			"case_id": "config-utc-equivalence",
+			"checks": [
+				{
+					"name": "status",
+					"passed": true
+				},
+				{
+					"name": "error_code",
+					"passed": true
+				},
+				{
+					"name": "report_presence",
+					"passed": true
+				},
+				{
+					"name": "evidence_sources",
+					"passed": true
+				},
+				{
+					"name": "evidence_ownership",
+					"passed": true
+				},
+				{
+					"name": "evidence_unique",
+					"passed": true
+				},
+				{
+					"name": "record_ownership",
+					"passed": true
+				},
+				{
+					"name": "records_present",
+					"passed": true
+				},
+				{
+					"name": "tool_allowlist",
+					"passed": true
+				},
+				{
+					"name": "tool_success",
+					"passed": true
+				},
+				{
+					"name": "tool_parameters_0",
+					"passed": true
+				},
+				{
+					"name": "evidence_content_0",
+					"passed": true
+				},
+				{
+					"name": "report_references",
+					"passed": true
+				}
+			],
+			"execution_error": null,
+			"input": "仅调用query_service_config查询order-service/production在2026-10-05T16:00:00+00:00生效配置。工具参数保留+00:00，说明该时刻相当于北京时间2026-10-06零点，按绝对时刻选版本。",
+			"fixture_hashes": {
+				"samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
+				"samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+				"samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
+			},
+			"rule_passed": true,
+			"wall_duration_ms": 1.613599999473081,
+			"semantic_review": {
+				"status": "pending",
+				"criteria": [
+					"返回order-config-v2而非v1",
+					"说明UTC与+08:00的时刻等价，不按日期字符串误选旧版本"
+				]
+			},
+			"token_usage": null,
+			"cost": null,
+			"response": {
+				"run_id": "run-871585b7-40f4-4a55-b1ca-7ac880c25001",
+				"request_id": "eval-8bb090f1-1acd-44a2-86c6-4d686f06b57e-config-utc-equivalence",
+				"status": "succeeded",
+				"error_code": null,
+				"error_detail": null,
+				"created_at": "2026-10-09T13:39:01.406639+00:00",
+				"started_at": "2026-10-09T13:39:01.406642+00:00",
+				"finished_at": "2026-10-09T13:39:01.407222+00:00",
+				"evidences": [
+					{
+						"evidence_id": "run-871585b7-40f4-4a55-b1ca-7ac880c25001-eval-call-0",
+						"source": "config",
+						"observed_at": "2026-10-06T00:00:00+08:00",
+						"summary": "order-service(production)在2026-10-05T16:00:00+00:00生效的配置版本order-config-v2：线程池容量64，RPC超时3000毫秒，最多额外重试0次",
+						"source_ref": "samples/configs/order-service.jsonl:line:2",
+						"content_hash": "2b2cc9df5f42c82ba02fbbfe8b986aebf3aadac24b528455736f0205dd2ca789",
+						"source_version": "local-config-jsonl-v1"
+					}
+				],
+				"report": {
+					"run_id": "run-871585b7-40f4-4a55-b1ca-7ac880c25001",
+					"root_cause": {
+						"text": "2026-10-05T16:00:00+00:00生效版本order-config-v2，RPC超时3000毫秒，允许额外重试0次；不证明实际重试。以上为工具观测，不能确定因果或唯一根因。",
+						"evidence_ids": [
+							"run-871585b7-40f4-4a55-b1ca-7ac880c25001-eval-call-0"
+						]
+					},
+					"recommendations": [
+						{
+							"text": "补查下游耗时、调用链和实际重试记录",
+							"evidence_ids": [
+								"run-871585b7-40f4-4a55-b1ca-7ac880c25001-eval-call-0"
+							]
+						}
+					],
+					"confidence": 0.5,
+					"limitations": "Mock模板仅用于工程验证；缺少下游、trace、实际重试数据；配置快照不能证明整个窗口无变更，异窗口数据不能直接建立同时相关性，截断结果不能推断完整趋势"
+				},
+				"execution_records": [
+					{
+						"kind": "model",
+						"run_id": "run-871585b7-40f4-4a55-b1ca-7ac880c25001",
+						"model_round": 1,
+						"model_request_id": "215eb171-9810-4486-9d97-9a6c4fa662ad",
+						"tool_name": null,
+						"tool_call_id": null,
+						"query_arguments": null,
+						"started_at": "2026-10-09T13:39:01.406652+00:00",
+						"finished_at": "2026-10-09T13:39:01.406658+00:00",
+						"duration_ms": 0.006199999916134402,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": null,
+						"handler_finished_at": null
+					},
+					{
+						"kind": "tool",
+						"run_id": "run-871585b7-40f4-4a55-b1ca-7ac880c25001",
+						"model_round": 1,
+						"model_request_id": null,
+						"tool_name": "query_service_config",
+						"tool_call_id": "eval-call-0",
+						"query_arguments": {
+							"service_name": "order-service",
+							"environment": "production",
+							"at_time": "2026-10-05T16:00:00+00:00"
+						},
+						"started_at": "2026-10-09T13:39:01.406664+00:00",
+						"finished_at": "2026-10-09T13:39:01.407049+00:00",
+						"duration_ms": 0.3870999989885604,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": "2026-10-09T13:39:01.406827+00:00",
+						"handler_finished_at": "2026-10-09T13:39:01.407016+00:00"
+					},
+					{
+						"kind": "model",
+						"run_id": "run-871585b7-40f4-4a55-b1ca-7ac880c25001",
+						"model_round": 2,
+						"model_request_id": "98312e4c-4ca0-4a4c-a548-7128a0d852f9",
+						"tool_name": null,
+						"tool_call_id": null,
+						"query_arguments": null,
+						"started_at": "2026-10-09T13:39:01.407117+00:00",
+						"finished_at": "2026-10-09T13:39:01.407140+00:00",
+						"duration_ms": 0.022899999748915434,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": null,
+						"handler_finished_at": null
+					}
+				]
+			}
+		},
+		{
+			"case_id": "invalid-limit",
+			"checks": [
+				{
+					"name": "status",
+					"passed": true
+				},
+				{
+					"name": "error_code",
+					"passed": true
+				},
+				{
+					"name": "report_presence",
+					"passed": true
+				},
+				{
+					"name": "evidence_sources",
+					"passed": true
+				},
+				{
+					"name": "evidence_ownership",
+					"passed": true
+				},
+				{
+					"name": "evidence_unique",
+					"passed": true
+				},
+				{
+					"name": "record_ownership",
+					"passed": true
+				},
+				{
+					"name": "records_present",
+					"passed": true
+				},
+				{
+					"name": "tool_allowlist",
+					"passed": true
+				},
+				{
+					"name": "failed_tool_record",
+					"passed": true
+				},
+				{
+					"name": "tool_parameters_0",
+					"passed": true
+				}
+			],
+			"execution_error": null,
+			"input": "参数校验实验：仅调用query_service_metrics查询order-service/production，start_time=2026-10-05T10:00:00+08:00，end_time=2026-10-05T10:10:00+08:00，limit=0。必须保留0，不纠正成50。",
+			"fixture_hashes": {
+				"samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
+				"samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+				"samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
+			},
+			"rule_passed": true,
+			"wall_duration_ms": 1.0903000002144836,
+			"semantic_review": {
+				"status": "pending",
+				"criteria": [
+					"limit=0被Runtime拒绝，错误码INVALID_ARGUMENTS",
+					"不修正参数、不生成成功报告"
+				]
+			},
+			"token_usage": null,
+			"cost": null,
+			"response": {
+				"run_id": "run-b0587752-0d55-4b5b-a9b5-ac0996e6ddb7",
+				"request_id": "eval-8bb090f1-1acd-44a2-86c6-4d686f06b57e-invalid-limit",
+				"status": "failed",
+				"error_code": "INVALID_ARGUMENTS",
+				"error_detail": {
+					"code": "INVALID_ARGUMENTS",
+					"message": "limit必须是1到100之间的整数"
+				},
+				"created_at": "2026-10-09T13:39:01.408237+00:00",
+				"started_at": "2026-10-09T13:39:01.408240+00:00",
+				"finished_at": "2026-10-09T13:39:01.408335+00:00",
+				"evidences": [],
+				"report": null,
+				"execution_records": [
+					{
+						"kind": "model",
+						"run_id": "run-b0587752-0d55-4b5b-a9b5-ac0996e6ddb7",
+						"model_round": 1,
+						"model_request_id": "8cd20277-efd5-4071-9278-2d053803e4cf",
+						"tool_name": null,
+						"tool_call_id": null,
+						"query_arguments": null,
+						"started_at": "2026-10-09T13:39:01.408251+00:00",
+						"finished_at": "2026-10-09T13:39:01.408258+00:00",
+						"duration_ms": 0.006600001142942347,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": null,
+						"handler_finished_at": null
+					},
+					{
+						"kind": "tool",
+						"run_id": "run-b0587752-0d55-4b5b-a9b5-ac0996e6ddb7",
+						"model_round": 1,
+						"model_request_id": null,
+						"tool_name": "query_service_metrics",
+						"tool_call_id": "eval-call-0",
+						"query_arguments": {
+							"service_name": "order-service",
+							"environment": "production",
+							"start_time": "2026-10-05T10:00:00+08:00",
+							"end_time": "2026-10-05T10:10:00+08:00",
+							"limit": 0
+						},
+						"started_at": "2026-10-09T13:39:01.408263+00:00",
+						"finished_at": "2026-10-09T13:39:01.408290+00:00",
+						"duration_ms": 0.026899999284069054,
+						"status": "failed",
+						"error_code": "INVALID_ARGUMENTS",
+						"handler_started_at": null,
+						"handler_finished_at": null
+					}
+				]
+			}
+		},
+		{
+			"case_id": "overlong-window",
+			"checks": [
+				{
+					"name": "status",
+					"passed": true
+				},
+				{
+					"name": "error_code",
+					"passed": true
+				},
+				{
+					"name": "report_presence",
+					"passed": true
+				},
+				{
+					"name": "evidence_sources",
+					"passed": true
+				},
+				{
+					"name": "evidence_ownership",
+					"passed": true
+				},
+				{
+					"name": "evidence_unique",
+					"passed": true
+				},
+				{
+					"name": "record_ownership",
+					"passed": true
+				},
+				{
+					"name": "records_present",
+					"passed": true
+				},
+				{
+					"name": "tool_allowlist",
+					"passed": true
+				},
+				{
+					"name": "failed_tool_record",
+					"passed": true
+				},
+				{
+					"name": "tool_parameters_0",
+					"passed": true
+				}
+			],
+			"execution_error": null,
+			"input": "参数校验实验：仅调用query_service_logs，service_name=order-service，environment=production，error_type=rpc_timeout，start_time=2026-10-05T10:00:00+08:00，end_time=2026-10-05T10:31:00+08:00，limit=50。保留31分钟窗口，不拆分不缩短。",
+			"fixture_hashes": {
+				"samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
+				"samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+				"samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
+			},
+			"rule_passed": true,
+			"wall_duration_ms": 0.9808000013435958,
+			"semantic_review": {
+				"status": "pending",
+				"criteria": [
+					"超过30分钟的窗口被Runtime拒绝",
+					"返回INVALID_ARGUMENTS，不通过改写窗口规避校验"
+				]
+			},
+			"token_usage": null,
+			"cost": null,
+			"response": {
+				"run_id": "run-ee8c3b08-3494-4dfe-acf9-1344844eddb4",
+				"request_id": "eval-8bb090f1-1acd-44a2-86c6-4d686f06b57e-overlong-window",
+				"status": "failed",
+				"error_code": "INVALID_ARGUMENTS",
+				"error_detail": {
+					"code": "INVALID_ARGUMENTS",
+					"message": "单次查询时间范围不能超过30分钟"
+				},
+				"created_at": "2026-10-09T13:39:01.409233+00:00",
+				"started_at": "2026-10-09T13:39:01.409235+00:00",
+				"finished_at": "2026-10-09T13:39:01.409320+00:00",
+				"evidences": [],
+				"report": null,
+				"execution_records": [
+					{
+						"kind": "model",
+						"run_id": "run-ee8c3b08-3494-4dfe-acf9-1344844eddb4",
+						"model_round": 1,
+						"model_request_id": "329b5b69-979b-4b7a-b099-57a406139c80",
+						"tool_name": null,
+						"tool_call_id": null,
+						"query_arguments": null,
+						"started_at": "2026-10-09T13:39:01.409243+00:00",
+						"finished_at": "2026-10-09T13:39:01.409249+00:00",
+						"duration_ms": 0.005500000042957254,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": null,
+						"handler_finished_at": null
+					},
+					{
+						"kind": "tool",
+						"run_id": "run-ee8c3b08-3494-4dfe-acf9-1344844eddb4",
+						"model_round": 1,
+						"model_request_id": null,
+						"tool_name": "query_service_logs",
+						"tool_call_id": "eval-call-0",
+						"query_arguments": {
+							"service_name": "order-service",
+							"environment": "production",
+							"start_time": "2026-10-05T10:00:00+08:00",
+							"end_time": "2026-10-05T10:31:00+08:00",
+							"limit": 50,
+							"error_type": "rpc_timeout"
+						},
+						"started_at": "2026-10-09T13:39:01.409254+00:00",
+						"finished_at": "2026-10-09T13:39:01.409278+00:00",
+						"duration_ms": 0.02519999907235615,
+						"status": "failed",
+						"error_code": "INVALID_ARGUMENTS",
+						"handler_started_at": null,
+						"handler_finished_at": null
+					}
+				]
+			}
+		},
+		{
+			"case_id": "unknown-service",
+			"checks": [
+				{
+					"name": "status",
+					"passed": true
+				},
+				{
+					"name": "error_code",
+					"passed": true
+				},
+				{
+					"name": "report_presence",
+					"passed": true
+				},
+				{
+					"name": "evidence_sources",
+					"passed": true
+				},
+				{
+					"name": "evidence_ownership",
+					"passed": true
+				},
+				{
+					"name": "evidence_unique",
+					"passed": true
+				},
+				{
+					"name": "record_ownership",
+					"passed": true
+				},
+				{
+					"name": "records_present",
+					"passed": true
+				},
+				{
+					"name": "tool_allowlist",
+					"passed": true
+				},
+				{
+					"name": "failed_tool_record",
+					"passed": true
+				},
+				{
+					"name": "tool_parameters_0",
+					"passed": true
+				}
+			],
+			"execution_error": null,
+			"input": "服务边界实验：仅用query_service_logs查询billing-service/production在2026-10-05T10:00:00+08:00至2026-10-05T10:10:00+08:00的rpc_timeout日志，limit=50。保留陌生服务名，不换成order-service，不猜测日志路径。",
+			"fixture_hashes": {
+				"samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
+				"samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+				"samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
+			},
+			"rule_passed": true,
+			"wall_duration_ms": 1.251800000318326,
+			"semantic_review": {
+				"status": "pending",
+				"criteria": [
+					"未登记服务返回UNKNOWN_SERVICE",
+					"不读取其他服务的数据，不生成成功诊断"
+				]
+			},
+			"token_usage": null,
+			"cost": null,
+			"response": {
+				"run_id": "run-0f6b7d3a-d1d9-4487-854b-f73421ab2881",
+				"request_id": "eval-8bb090f1-1acd-44a2-86c6-4d686f06b57e-unknown-service",
+				"status": "failed",
+				"error_code": "UNKNOWN_SERVICE",
+				"error_detail": {
+					"code": "UNKNOWN_SERVICE",
+					"message": "没有找到已注册服务:billing-service/production"
+				},
+				"created_at": "2026-10-09T13:39:01.410210+00:00",
+				"started_at": "2026-10-09T13:39:01.410212+00:00",
+				"finished_at": "2026-10-09T13:39:01.410563+00:00",
+				"evidences": [],
+				"report": null,
+				"execution_records": [
+					{
+						"kind": "model",
+						"run_id": "run-0f6b7d3a-d1d9-4487-854b-f73421ab2881",
+						"model_round": 1,
+						"model_request_id": "3c30cd64-c5a8-4737-8576-0b13d31a8883",
+						"tool_name": null,
+						"tool_call_id": null,
+						"query_arguments": null,
+						"started_at": "2026-10-09T13:39:01.410220+00:00",
+						"finished_at": "2026-10-09T13:39:01.410226+00:00",
+						"duration_ms": 0.005500000042957254,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": null,
+						"handler_finished_at": null
+					},
+					{
+						"kind": "tool",
+						"run_id": "run-0f6b7d3a-d1d9-4487-854b-f73421ab2881",
+						"model_round": 1,
+						"model_request_id": null,
+						"tool_name": "query_service_logs",
+						"tool_call_id": "eval-call-0",
+						"query_arguments": {
+							"service_name": "billing-service",
+							"environment": "production",
+							"start_time": "2026-10-05T10:00:00+08:00",
+							"end_time": "2026-10-05T10:10:00+08:00",
+							"limit": 50,
+							"error_type": "rpc_timeout"
+						},
+						"started_at": "2026-10-09T13:39:01.410231+00:00",
+						"finished_at": "2026-10-09T13:39:01.410516+00:00",
+						"duration_ms": 0.28650000058405567,
+						"status": "failed",
+						"error_code": "UNKNOWN_SERVICE",
+						"handler_started_at": "2026-10-09T13:39:01.410433+00:00",
+						"handler_finished_at": "2026-10-09T13:39:01.410449+00:00"
+					}
+				]
+			}
+		},
+		{
+			"case_id": "truncated-logs",
+			"checks": [
+				{
+					"name": "status",
+					"passed": true
+				},
+				{
+					"name": "error_code",
+					"passed": true
+				},
+				{
+					"name": "report_presence",
+					"passed": true
+				},
+				{
+					"name": "evidence_sources",
+					"passed": true
+				},
+				{
+					"name": "evidence_ownership",
+					"passed": true
+				},
+				{
+					"name": "evidence_unique",
+					"passed": true
+				},
+				{
+					"name": "record_ownership",
+					"passed": true
+				},
+				{
+					"name": "records_present",
+					"passed": true
+				},
+				{
+					"name": "tool_allowlist",
+					"passed": true
+				},
+				{
+					"name": "tool_success",
+					"passed": true
+				},
+				{
+					"name": "tool_parameters_0",
+					"passed": true
+				},
+				{
+					"name": "evidence_content_0",
+					"passed": true
+				},
+				{
+					"name": "report_references",
+					"passed": true
+				}
+			],
+			"execution_error": null,
+			"input": "仅用query_service_logs查询order-service/production在2026-10-05T10:00:00+08:00至2026-10-05T10:10:00+08:00的rpc_timeout日志，limit=1。保持limit=1，不追加查询；解释匹配数、返回数和截断限制。",
+			"fixture_hashes": {
+				"samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
+				"samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+				"samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
+			},
+			"rule_passed": true,
+			"wall_duration_ms": 1.6769999983807793,
+			"semantic_review": {
+				"status": "pending",
+				"criteria": [
+					"匹配2条、返回1条，明确结果已截断",
+					"不能用未返回的第二条日志确认pending_tasks增长或完整趋势"
+				]
+			},
+			"token_usage": null,
+			"cost": null,
+			"response": {
+				"run_id": "run-f759a7e8-d6cb-4e77-8dc1-9ed875f848b4",
+				"request_id": "eval-8bb090f1-1acd-44a2-86c6-4d686f06b57e-truncated-logs",
+				"status": "succeeded",
+				"error_code": null,
+				"error_detail": null,
+				"created_at": "2026-10-09T13:39:01.411524+00:00",
+				"started_at": "2026-10-09T13:39:01.411527+00:00",
+				"finished_at": "2026-10-09T13:39:01.412196+00:00",
+				"evidences": [
+					{
+						"evidence_id": "run-f759a7e8-d6cb-4e77-8dc1-9ed875f848b4-eval-call-0",
+						"source": "log",
+						"observed_at": "2026-10-05T10:02:00+08:00",
+						"summary": "order-service(production)日志查询匹配2条，返回1条，结果已截断",
+						"source_ref": "samples/logs/order-service.jsonl:lines:1-1",
+						"content_hash": "806a13d1dc3ad9073d38592d6d6f3db1c922d1d6112aad6c2eac31eb1111be5b",
+						"source_version": "local-jsonl-v1"
+					}
+				],
+				"report": {
+					"run_id": "run-f759a7e8-d6cb-4e77-8dc1-9ed875f848b4",
+					"root_cause": {
+						"text": "日志匹配2条，返回1条；已截断，不能代表全部记录。以上为工具观测，不能确定因果或唯一根因。",
+						"evidence_ids": [
+							"run-f759a7e8-d6cb-4e77-8dc1-9ed875f848b4-eval-call-0"
+						]
+					},
+					"recommendations": [
+						{
+							"text": "补查下游耗时、调用链和实际重试记录",
+							"evidence_ids": [
+								"run-f759a7e8-d6cb-4e77-8dc1-9ed875f848b4-eval-call-0"
+							]
+						}
+					],
+					"confidence": 0.5,
+					"limitations": "Mock模板仅用于工程验证；缺少下游、trace、实际重试数据；配置快照不能证明整个窗口无变更，异窗口数据不能直接建立同时相关性，截断结果不能推断完整趋势"
+				},
+				"execution_records": [
+					{
+						"kind": "model",
+						"run_id": "run-f759a7e8-d6cb-4e77-8dc1-9ed875f848b4",
+						"model_round": 1,
+						"model_request_id": "3c72d222-07fe-4a21-901d-64c8ade56db4",
+						"tool_name": null,
+						"tool_call_id": null,
+						"query_arguments": null,
+						"started_at": "2026-10-09T13:39:01.411535+00:00",
+						"finished_at": "2026-10-09T13:39:01.411542+00:00",
+						"duration_ms": 0.006100000973674469,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": null,
+						"handler_finished_at": null
+					},
+					{
+						"kind": "tool",
+						"run_id": "run-f759a7e8-d6cb-4e77-8dc1-9ed875f848b4",
+						"model_round": 1,
+						"model_request_id": null,
+						"tool_name": "query_service_logs",
+						"tool_call_id": "eval-call-0",
+						"query_arguments": {
+							"service_name": "order-service",
+							"environment": "production",
+							"start_time": "2026-10-05T10:00:00+08:00",
+							"end_time": "2026-10-05T10:10:00+08:00",
+							"limit": 1,
+							"error_type": "rpc_timeout"
+						},
+						"started_at": "2026-10-09T13:39:01.411547+00:00",
+						"finished_at": "2026-10-09T13:39:01.411954+00:00",
+						"duration_ms": 0.4094000014447374,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": "2026-10-09T13:39:01.411719+00:00",
+						"handler_finished_at": "2026-10-09T13:39:01.411913+00:00"
+					},
+					{
+						"kind": "model",
+						"run_id": "run-f759a7e8-d6cb-4e77-8dc1-9ed875f848b4",
+						"model_round": 2,
+						"model_request_id": "d0b3f891-b808-44cd-ba51-f010b3832065",
+						"tool_name": null,
+						"tool_call_id": null,
+						"query_arguments": null,
+						"started_at": "2026-10-09T13:39:01.412047+00:00",
+						"finished_at": "2026-10-09T13:39:01.412082+00:00",
+						"duration_ms": 0.03440000000409782,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": null,
+						"handler_finished_at": null
+					}
+				]
+			}
+		},
+		{
+			"case_id": "truncated-metrics",
+			"checks": [
+				{
+					"name": "status",
+					"passed": true
+				},
+				{
+					"name": "error_code",
+					"passed": true
+				},
+				{
+					"name": "report_presence",
+					"passed": true
+				},
+				{
+					"name": "evidence_sources",
+					"passed": true
+				},
+				{
+					"name": "evidence_ownership",
+					"passed": true
+				},
+				{
+					"name": "evidence_unique",
+					"passed": true
+				},
+				{
+					"name": "record_ownership",
+					"passed": true
+				},
+				{
+					"name": "records_present",
+					"passed": true
+				},
+				{
+					"name": "tool_allowlist",
+					"passed": true
+				},
+				{
+					"name": "tool_success",
+					"passed": true
+				},
+				{
+					"name": "tool_parameters_0",
+					"passed": true
+				},
+				{
+					"name": "evidence_content_0",
+					"passed": true
+				},
+				{
+					"name": "report_references",
+					"passed": true
+				}
+			],
+			"execution_error": null,
+			"input": "仅用query_service_metrics查询order-service/production在2026-10-05T10:00:00+08:00至2026-10-05T10:10:00+08:00的线程池指标，limit=1。保持limit=1，不追加查询；不要根据未返回的数据描述完整趋势。",
+			"fixture_hashes": {
+				"samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
+				"samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+				"samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
+			},
+			"rule_passed": true,
+			"wall_duration_ms": 1.8929999987449264,
+			"semantic_review": {
+				"status": "pending",
+				"criteria": [
+					"匹配3条、只返回最早10:01的40/64与pending_tasks=0，结果已截断",
+					"不能确认10:02或10:03满载，也不能推断整个窗口健康"
+				]
+			},
+			"token_usage": null,
+			"cost": null,
+			"response": {
+				"run_id": "run-e4acfb00-4861-4467-8201-942b54873ec1",
+				"request_id": "eval-8bb090f1-1acd-44a2-86c6-4d686f06b57e-truncated-metrics",
+				"status": "succeeded",
+				"error_code": null,
+				"error_detail": null,
+				"created_at": "2026-10-09T13:39:01.413478+00:00",
+				"started_at": "2026-10-09T13:39:01.413482+00:00",
+				"finished_at": "2026-10-09T13:39:01.414125+00:00",
+				"evidences": [
+					{
+						"evidence_id": "run-e4acfb00-4861-4467-8201-942b54873ec1-eval-call-0",
+						"source": "metric",
+						"observed_at": "2026-10-05T10:01:00+08:00",
+						"summary": "order-service(production)指标查询匹配3条，返回1条，结果已截断，返回采样时间范围2026-10-05T10:01:00+08:00至2026-10-05T10:01:00+08:00",
+						"source_ref": "samples/metrics/order-service.jsonl:lines:1-1",
+						"content_hash": "5bdae1a0aa4e7e99baa2cb110a7312168f42d8abceedf8a32688840d5e784c8a",
+						"source_version": "local-metric-jsonl-v1"
+					}
+				],
+				"report": {
+					"run_id": "run-e4acfb00-4861-4467-8201-942b54873ec1",
+					"root_cause": {
+						"text": "指标匹配3条，返回1条；已截断，不能判断完整趋势；2026-10-05T10:01:00+08:00线程活跃40/64，排队0。以上为工具观测，不能确定因果或唯一根因。",
+						"evidence_ids": [
+							"run-e4acfb00-4861-4467-8201-942b54873ec1-eval-call-0"
+						]
+					},
+					"recommendations": [
+						{
+							"text": "补查下游耗时、调用链和实际重试记录",
+							"evidence_ids": [
+								"run-e4acfb00-4861-4467-8201-942b54873ec1-eval-call-0"
+							]
+						}
+					],
+					"confidence": 0.5,
+					"limitations": "Mock模板仅用于工程验证；缺少下游、trace、实际重试数据；配置快照不能证明整个窗口无变更，异窗口数据不能直接建立同时相关性，截断结果不能推断完整趋势"
+				},
+				"execution_records": [
+					{
+						"kind": "model",
+						"run_id": "run-e4acfb00-4861-4467-8201-942b54873ec1",
+						"model_round": 1,
+						"model_request_id": "de557874-e0f3-42d1-a0ec-8e3e1d8ee0e4",
+						"tool_name": null,
+						"tool_call_id": null,
+						"query_arguments": null,
+						"started_at": "2026-10-09T13:39:01.413493+00:00",
+						"finished_at": "2026-10-09T13:39:01.413503+00:00",
+						"duration_ms": 0.0090000012278324,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": null,
+						"handler_finished_at": null
+					},
+					{
+						"kind": "tool",
+						"run_id": "run-e4acfb00-4861-4467-8201-942b54873ec1",
+						"model_round": 1,
+						"model_request_id": null,
+						"tool_name": "query_service_metrics",
+						"tool_call_id": "eval-call-0",
+						"query_arguments": {
+							"service_name": "order-service",
+							"environment": "production",
+							"start_time": "2026-10-05T10:00:00+08:00",
+							"end_time": "2026-10-05T10:10:00+08:00",
+							"limit": 1
+						},
+						"started_at": "2026-10-09T13:39:01.413511+00:00",
+						"finished_at": "2026-10-09T13:39:01.413938+00:00",
+						"duration_ms": 0.42949999988195486,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": "2026-10-09T13:39:01.413720+00:00",
+						"handler_finished_at": "2026-10-09T13:39:01.413906+00:00"
+					},
+					{
+						"kind": "model",
+						"run_id": "run-e4acfb00-4861-4467-8201-942b54873ec1",
+						"model_round": 2,
+						"model_request_id": "70b57076-2433-4d0e-9249-616e577c984c",
+						"tool_name": null,
+						"tool_call_id": null,
+						"query_arguments": null,
+						"started_at": "2026-10-09T13:39:01.414005+00:00",
+						"finished_at": "2026-10-09T13:39:01.414030+00:00",
+						"duration_ms": 0.02530000165279489,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": null,
+						"handler_finished_at": null
+					}
+				]
+			}
+		},
+		{
+			"case_id": "disjoint-windows",
+			"checks": [
+				{
+					"name": "status",
+					"passed": true
+				},
+				{
+					"name": "error_code",
+					"passed": true
+				},
+				{
+					"name": "report_presence",
+					"passed": true
+				},
+				{
+					"name": "evidence_sources",
+					"passed": true
+				},
+				{
+					"name": "evidence_ownership",
+					"passed": true
+				},
+				{
+					"name": "evidence_unique",
+					"passed": true
+				},
+				{
+					"name": "record_ownership",
+					"passed": true
+				},
+				{
+					"name": "records_present",
+					"passed": true
+				},
+				{
+					"name": "tool_allowlist",
+					"passed": true
+				},
+				{
+					"name": "tool_success",
+					"passed": true
+				},
+				{
+					"name": "tool_parameters_0",
+					"passed": true
+				},
+				{
+					"name": "tool_parameters_1",
+					"passed": true
+				},
+				{
+					"name": "evidence_content_0",
+					"passed": true
+				},
+				{
+					"name": "evidence_content_1",
+					"passed": true
+				},
+				{
+					"name": "report_references",
+					"passed": true
+				}
+			],
+			"execution_error": null,
+			"input": "分别调用query_service_logs查询order-service/production在2026-10-05T10:02:00+08:00至2026-10-05T10:03:00+08:00的rpc_timeout日志，limit=50；调用query_service_metrics查询2026-10-05T10:00:00+08:00至2026-10-05T10:01:00+08:00的指标，limit=50。保留两个不同窗口，指出独立指标不能交叉验证超时发生时的状态。",
+			"fixture_hashes": {
+				"samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
+				"samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+				"samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
+			},
+			"rule_passed": true,
+			"wall_duration_ms": 3.0791000008321134,
+			"semantic_review": {
+				"status": "pending",
+				"criteria": [
+					"明确日志是10:02至10:03，而独立指标只有10:01",
+					"不能把异窗口指标说成同时间验证；日志自带线程字段须与独立采样区分",
+					"不根据时间错位确认因果"
+				]
+			},
+			"token_usage": null,
+			"cost": null,
+			"response": {
+				"run_id": "run-9ed22c13-ad01-408e-b00c-0a0ea354e117",
+				"request_id": "eval-8bb090f1-1acd-44a2-86c6-4d686f06b57e-disjoint-windows",
+				"status": "succeeded",
+				"error_code": null,
+				"error_detail": null,
+				"created_at": "2026-10-09T13:39:01.415234+00:00",
+				"started_at": "2026-10-09T13:39:01.415238+00:00",
+				"finished_at": "2026-10-09T13:39:01.417174+00:00",
+				"evidences": [
+					{
+						"evidence_id": "run-9ed22c13-ad01-408e-b00c-0a0ea354e117-eval-call-0",
+						"source": "log",
+						"observed_at": "2026-10-05T10:02:00+08:00",
+						"summary": "order-service(production)日志查询匹配2条，返回2条，结果未截断",
+						"source_ref": "samples/logs/order-service.jsonl:lines:1-2",
+						"content_hash": "6e4a8e6d6cd5275549169217f4e81cb785251440c1159901753b4e24ddd4865b",
+						"source_version": "local-jsonl-v1"
+					},
+					{
+						"evidence_id": "run-9ed22c13-ad01-408e-b00c-0a0ea354e117-eval-call-1",
+						"source": "metric",
+						"observed_at": "2026-10-05T10:01:00+08:00",
+						"summary": "order-service(production)指标查询匹配1条，返回1条，结果未截断，返回采样时间范围2026-10-05T10:01:00+08:00至2026-10-05T10:01:00+08:00",
+						"source_ref": "samples/metrics/order-service.jsonl:lines:1-1",
+						"content_hash": "7b8b3b34a1093ef090157e0e6922354c7e5febf8d96ab86a0fb1d4426d2d5a07",
+						"source_version": "local-metric-jsonl-v1"
+					}
+				],
+				"report": {
+					"run_id": "run-9ed22c13-ad01-408e-b00c-0a0ea354e117",
+					"root_cause": {
+						"text": "日志匹配2条，返回2条；未截断；指标匹配1条，返回1条；未截断；2026-10-05T10:01:00+08:00线程活跃40/64，排队0。以上为工具观测，不能确定因果或唯一根因。",
+						"evidence_ids": [
+							"run-9ed22c13-ad01-408e-b00c-0a0ea354e117-eval-call-0",
+							"run-9ed22c13-ad01-408e-b00c-0a0ea354e117-eval-call-1"
+						]
+					},
+					"recommendations": [
+						{
+							"text": "补查下游耗时、调用链和实际重试记录",
+							"evidence_ids": [
+								"run-9ed22c13-ad01-408e-b00c-0a0ea354e117-eval-call-0",
+								"run-9ed22c13-ad01-408e-b00c-0a0ea354e117-eval-call-1"
+							]
+						}
+					],
+					"confidence": 0.5,
+					"limitations": "Mock模板仅用于工程验证；缺少下游、trace、实际重试数据；配置快照不能证明整个窗口无变更，异窗口数据不能直接建立同时相关性，截断结果不能推断完整趋势"
+				},
+				"execution_records": [
+					{
+						"kind": "model",
+						"run_id": "run-9ed22c13-ad01-408e-b00c-0a0ea354e117",
+						"model_round": 1,
+						"model_request_id": "7bea298b-eaaa-4a87-a3af-bef46e2efc51",
+						"tool_name": null,
+						"tool_call_id": null,
+						"query_arguments": null,
+						"started_at": "2026-10-09T13:39:01.415251+00:00",
+						"finished_at": "2026-10-09T13:39:01.415261+00:00",
+						"duration_ms": 0.009800000043469481,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": null,
+						"handler_finished_at": null
+					},
+					{
+						"kind": "tool",
+						"run_id": "run-9ed22c13-ad01-408e-b00c-0a0ea354e117",
+						"model_round": 1,
+						"model_request_id": null,
+						"tool_name": "query_service_logs",
+						"tool_call_id": "eval-call-0",
+						"query_arguments": {
+							"service_name": "order-service",
+							"environment": "production",
+							"start_time": "2026-10-05T10:02:00+08:00",
+							"end_time": "2026-10-05T10:03:00+08:00",
+							"limit": 50,
+							"error_type": "rpc_timeout"
+						},
+						"started_at": "2026-10-09T13:39:01.415495+00:00",
+						"finished_at": "2026-10-09T13:39:01.416692+00:00",
+						"duration_ms": 1.1961000000155764,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": "2026-10-09T13:39:01.416004+00:00",
+						"handler_finished_at": "2026-10-09T13:39:01.416600+00:00"
+					},
+					{
+						"kind": "tool",
+						"run_id": "run-9ed22c13-ad01-408e-b00c-0a0ea354e117",
+						"model_round": 1,
+						"model_request_id": null,
+						"tool_name": "query_service_metrics",
+						"tool_call_id": "eval-call-1",
+						"query_arguments": {
+							"service_name": "order-service",
+							"environment": "production",
+							"start_time": "2026-10-05T10:00:00+08:00",
+							"end_time": "2026-10-05T10:01:00+08:00",
+							"limit": 50
+						},
+						"started_at": "2026-10-09T13:39:01.415754+00:00",
+						"finished_at": "2026-10-09T13:39:01.416644+00:00",
+						"duration_ms": 0.8913000001484761,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": "2026-10-09T13:39:01.416271+00:00",
+						"handler_finished_at": "2026-10-09T13:39:01.416541+00:00"
+					},
+					{
+						"kind": "model",
+						"run_id": "run-9ed22c13-ad01-408e-b00c-0a0ea354e117",
+						"model_round": 2,
+						"model_request_id": "2732817e-a20f-415d-a25f-6611a3508462",
+						"tool_name": null,
+						"tool_call_id": null,
+						"query_arguments": null,
+						"started_at": "2026-10-09T13:39:01.416978+00:00",
+						"finished_at": "2026-10-09T13:39:01.417024+00:00",
+						"duration_ms": 0.04549999903247226,
+						"status": "succeeded",
+						"error_code": null,
+						"handler_started_at": null,
+						"handler_finished_at": null
+					}
+				]
+			}
+		}
+	]
+}

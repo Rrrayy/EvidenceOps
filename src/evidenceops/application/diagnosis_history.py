@@ -1,3 +1,4 @@
+"""负责只读加载指定运行的完整诊断档案及实际模型配置。"""
 from dataclasses import dataclass
 
 from evidenceops.application.execution_record import ExecutionRecord
@@ -13,6 +14,7 @@ class DiagnosisHistory:
 	evidences:tuple[EvidenceRecord,...]
 	report:DiagnosisReport|None
 	execution_records:tuple[ExecutionRecord,...]
+	model_config:dict|None=None
 
 
 def load_diagnosis_history(persistence,run_id:str)->DiagnosisHistory|None:
@@ -29,4 +31,5 @@ def load_diagnosis_history(persistence,run_id:str)->DiagnosisHistory|None:
 			evidences=transaction.evidence.list_by_run(run_id),
 			report=transaction.report.get(run_id),
 			execution_records=transaction.execution_record.list_by_run(run_id),
+			model_config=transaction.run.load_model(run_id) if hasattr(transaction.run,"load_model") else None,
 		)

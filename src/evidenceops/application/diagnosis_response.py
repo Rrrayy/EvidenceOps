@@ -39,8 +39,10 @@ def to_response(result:DiagnosisExecution)->dict[str,Any]:
 		}
 
 	return {
+		**({"model_config":result.model_config} if result.model_config is not None else {}), # 旧调用保持兼容。
 		"run_id":run.run_id,
 		"request_id":run.request_id,
+		"description":run.description,
 		"status":run.status.value,
 		"error_code":run.error_code,
 		"error_detail":result.error_detail,

@@ -1,0 +1,3 @@
+# 测试依赖，在运行依赖基础上增加 pytest。
+-r requirements.txt
+pytest==9.1.1

@@ -18,6 +18,13 @@ class AgentDiagnosisAssembly:
 	runtime:ToolRuntime
 	provider:ModelProvider
 	diagnosis_persistence:DiagnosisPersistence|None=None
+	tools:tuple=() # 每次运行复用声明，不修改共享 Provider。
+	service_name:str="order-service" # 保留原 Connector 服务范围。
+	model:str="mock-model" # 系统模型可读声明。
+	provider_name:str="mock" # 供应商与模型分别记录。
+	model_timeout_seconds:float=10 # 保留执行参数。
+	max_steps:int=3 # 冻结执行步数。
+	run_timeout_seconds:float|None=None # 保留运行预算。
 
 	def close(self)->None:
 		# 上层资源关闭失败也必须释放数据库会话锁，不能阻止下一实例启动。
@@ -46,6 +53,8 @@ def build_agent_diagnosis_assembly(
 	response_format:str="json_object",
 	diagnosis_persistence:DiagnosisPersistence|None=None,
 	run_timeout_seconds:float|None=None,
+	model_config:dict|None=None, # 本次冻结且无密钥的配置快照。
+	run_id_factory=None, # 管理服务预先固定 Run 身份。
 )->AgentDiagnosisAssembly:
 	runtime=ToolRuntime(tools,timeout_seconds=tool_timeout_seconds)
 
@@ -66,12 +75,13 @@ def build_agent_diagnosis_assembly(
 	report_generator=DraftReportGenerator()
 
 	diagnosis_service=DiagnosisService(evidence_collector,report_generator,diagnosis_persistence=diagnosis_persistence,
-		run_timeout_seconds=run_timeout_seconds,cancellation_enabled=True)
+		run_timeout_seconds=run_timeout_seconds,cancellation_enabled=True,model_config=model_config,run_id_factory=run_id_factory)
 
 	return AgentDiagnosisAssembly(
 		evidence_collector=evidence_collector,
 		diagnosis_service=diagnosis_service,
 		runtime=runtime,
 		provider=provider,
-		diagnosis_persistence=diagnosis_persistence,
+		diagnosis_persistence=diagnosis_persistence,tools=tools,service_name=service_name,model=model,provider_name=provider_name,
+		model_timeout_seconds=model_timeout_seconds,max_steps=max_steps,run_timeout_seconds=run_timeout_seconds,
 	)

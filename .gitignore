@@ -35,7 +35,18 @@ dist/
 Thumbs.db
 .DS_Store
 
+# Next.js console dependencies and generated artifacts
+frontend/node_modules/
+frontend/.next/
+frontend/*.tsbuildinfo
+frontend/next-env.d.ts
+output/
+.playwright-cli/
+
 # Internal Markdown notes
 *.md
 !/README.md
 !/README.zh-CN.md
+!/frontend/MODEL_CONNECTIONS_CONTRACT.md
+!/frontend/FRONTEND_TEST_REPORT.md
+!/CUSTOMER_INSTALLATION.md

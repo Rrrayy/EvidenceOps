@@ -1,0 +1,48 @@
+// 验证独立安装环境的首次设置、诊断、备份导入与恢复流程。
+async(page)=>{
+	const check=(value,message)=>{if(!value){throw new Error(message);}};
+	const errors=[];page.on("pageerror",error=>errors.push(error.message));
+	await page.setViewportSize({width:1440,height:1000});
+	await page.goto("http://127.0.0.1:3015/");
+	await page.getByRole("heading",{name:"首次安装设置"}).waitFor();
+	await page.screenshot({path:"output/playwright/setup-desktop.png",fullPage:true});
+	await page.getByRole("button",{name:"继续配置模型",exact:true}).click();
+	await page.getByRole("button",{name:"继续确认数据来源",exact:true}).click();
+	check((await page.locator(".setup-panel").innerText()).includes("不会自动读取客户业务系统"),"不得误导已接入客户数据");
+	await page.getByRole("button",{name:"确认并进入工作台",exact:true}).click();
+	await page.getByRole("heading",{name:"诊断工作台",exact:true}).waitFor();
+	await page.getByRole("button",{name:"RPC 超时示例",exact:true}).click();
+	await page.getByRole("button",{name:"开始诊断",exact:true}).click();
+	await page.locator(".report").waitFor({timeout:20000});
+	const run_id=(await page.locator(".run-id").innerText()).trim();
+	await page.getByRole("button",{name:"数据与存储",exact:true}).click();
+	await page.getByRole("heading",{name:"数据与存储",exact:true}).waitFor();
+	await page.getByRole("button",{name:"创建备份",exact:true}).click();
+	await page.getByRole("button",{name:"创建并校验备份",exact:true}).click();
+	await page.getByRole("dialog").waitFor({state:"hidden",timeout:20000});
+	await page.locator("tbody tr").first().waitFor();
+	const download_event=page.waitForEvent("download");await page.getByRole("link",{name:"下载",exact:true}).first().click();
+	const download=await download_event;await download.saveAs("output/playwright/installation-backup.json");
+	await page.getByLabel("选择诊断备份",{exact:true}).setInputFiles("output/playwright/installation-backup.json");
+	await page.getByRole("cell",{name:"导入备份",exact:false}).waitFor();
+	await page.getByRole("button",{name:"恢复",exact:true}).first().waitFor();
+	await page.getByRole("button",{name:"恢复",exact:true}).first().click();
+	check(await page.getByRole("button",{name:"确认恢复",exact:true}).isDisabled(),"未确认不能恢复");
+	await page.getByLabel("输入“恢复备份”确认替换",{exact:true}).fill("恢复备份");
+	await page.getByRole("button",{name:"确认恢复",exact:true}).click();
+	await page.getByRole("dialog").waitFor({state:"hidden",timeout:20000});
+	await page.getByRole("button",{name:"运行历史",exact:true}).click();
+	await page.getByRole("button",{name:`打开 ${run_id}`,exact:true}).click();
+	await page.locator(".report").waitFor();
+	await page.reload();await page.locator(".report").waitFor();
+	check((await page.locator(".run-id").innerText()).trim()===run_id,"恢复后身份必须保持");
+	await page.getByRole("button",{name:"数据与存储",exact:true}).click();
+	await page.screenshot({path:"output/playwright/storage-desktop.png",fullPage:true});
+	await page.setViewportSize({width:390,height:844});
+	check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),"存储页不能横向溢出");
+	await page.getByRole("button",{name:"更改存储方式",exact:true}).click();
+	await page.screenshot({path:"output/playwright/storage-mobile.png",fullPage:true});
+	await page.getByRole("button",{name:"关闭存储表单",exact:true}).click();
+	check(errors.length===0,errors.join("; "));
+	return {passed:true,run_id,checks:["fresh-sqlite","setup","mock-diagnosis","backup","download","import","restore","history","refresh","mobile","page-errors"]};
+}

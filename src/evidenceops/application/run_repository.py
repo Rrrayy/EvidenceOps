@@ -19,6 +19,10 @@ class RunRecord:
 
 
 class RunRepository(Protocol):
+	def list_recent(self,limit:int=20,offset:int=0,status:str|None=None,search:str="")->tuple[RunRecord,...]:
+		# 控制台历史页使用有界查询，不执行模型。
+		...
+
 	def list_unfinished(self,limit:int=100)->tuple[str,...]:
 		...
 

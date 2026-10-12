@@ -1,3 +1,4 @@
+"""负责诊断运行记录和运行时模型快照的数据库读写。"""
 from collections.abc import Iterator
 from contextlib import contextmanager
 
@@ -14,12 +15,26 @@ class SqlAlchemyRunRepository:
 	def __init__(self,session:Session)->None:
 		self._session=session
 
+	def list_recent(self,limit:int=20,offset:int=0,status:str|None=None,search:str="")->tuple[RunRecord,...]:
+
+		if not 1<=limit<=101 or offset<0:
+			raise ValueError("历史分页参数无效")
+		query=select(RunRow)
+
+		if status is not None:
+			query=query.where(RunRow.status==status)
+		if search:
+			query=query.where(RunRow.description.contains(search,autoescape=True)|RunRow.run_id.contains(search,autoescape=True))
+		rows=self._session.scalars(query.order_by(RunRow.created_at.desc(),RunRow.run_id.desc()).offset(offset).limit(limit))
+
+		return tuple(RunRecord(row.run_id,row.request_id,row.description,RunStatus(row.status),row.created_at,row.started_at,row.finished_at,row.error_code) for row in rows)
+
 	def list_unfinished(self,limit:int=100)->tuple[str,...]:
 		query=select(RunRow.run_id).where(RunRow.status.in_(("pending","running")))
 		return tuple(self._session.scalars(query.order_by(RunRow.created_at,RunRow.run_id).limit(limit)))
 
 	def mark_interrupted(self,run_id:str,finished_at,error_code:str)->bool:
-		# 行锁下重查状态；不能用扫描时的旧快照覆盖已完成任务。
+
 		row=self._session.scalar(select(RunRow).where(RunRow.run_id==run_id).with_for_update())
 		if row is None or row.status not in ("pending","running"):
 			return False
@@ -54,6 +69,16 @@ class SqlAlchemyRunRepository:
 		row.finished_at=run.finished_at
 		row.error_code=run.error_code
 		self._session.flush()
+
+	def save_model(self,run_id,model_config):
+		row=self._session.get(RunRow,run_id)
+		if row is None: raise LookupError("诊断运行不存在")
+		row.model_config=dict(model_config) if model_config else None
+		self._session.flush()
+
+	def load_model(self,run_id):
+		row=self._session.get(RunRow,run_id)
+		return row.model_config if row is not None else None
 
 	def get(self,run_id:str)->RunRecord|None:
 		if not isinstance(run_id,str) or not run_id.strip():

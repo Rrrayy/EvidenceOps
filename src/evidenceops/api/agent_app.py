@@ -1,3 +1,4 @@
+"""负责组装模型 Provider、样例工具与诊断应用，并按配置选择持久化实现。"""
 import os
 
 from evidenceops.application.agent_diagnosis_factory import AgentDiagnosisAssembly,build_agent_diagnosis_assembly
@@ -9,7 +10,9 @@ from evidenceops.connectors.local_metric import build_local_metric_tool
 from evidenceops.infrastructure.database.diagnosis_persistence import SqlAlchemyDiagnosisPersistence
 from evidenceops.infrastructure.database.session import DatabaseSettings,create_database_engine,create_session_factory
 from evidenceops.infrastructure.providers.mock_provider import MockProvider
+from evidenceops.infrastructure.providers.diagnosis_mock_provider import DiagnosisMockProvider
 from evidenceops.infrastructure.providers.openai_compatible_provider import OpenAICompatibleProvider
+_UNSET=object() # 安装管理可显式提供持久化，不改变开发入口配置。
 
 
 def build_final_answer(request:ModelRequest)->StructuredFinalAnswer:
@@ -36,9 +39,12 @@ def build_database_persistence()->SqlAlchemyDiagnosisPersistence|None:
 
 	if persistence_mode=="memory":
 		return None
+	if persistence_mode=="sqlite":
+		from evidenceops.infrastructure.local_storage import LocalPersistence,data_directory
+		return LocalPersistence(data_directory()/"diagnosis.sqlite")
 
 	if persistence_mode!="postgres":
-		raise ValueError("EVIDENCEOPS_PERSISTENCE必须是memory或postgres")
+		raise ValueError("EVIDENCEOPS_PERSISTENCE必须是memory、sqlite或postgres")
 
 	settings=DatabaseSettings.from_environment()
 	engine=create_database_engine(settings)
@@ -47,8 +53,8 @@ def build_database_persistence()->SqlAlchemyDiagnosisPersistence|None:
 	return SqlAlchemyDiagnosisPersistence(session_factory,engine)
 
 
-def build_agent_app()->object:
-	provider=MockProvider((
+def build_agent_app(diagnosis_persistence=_UNSET,connection_store=None)->object:
+	provider=DiagnosisMockProvider((
 		ToolCall(
 			"call-log-001",
 			"query_service_logs",
@@ -86,7 +92,7 @@ def build_agent_app()->object:
 
 	tools=(build_local_log_tool(),build_local_metric_tool(),build_local_config_tool(),)
 
-	diagnosis_persistence=build_database_persistence()
+	if diagnosis_persistence is _UNSET: diagnosis_persistence=build_database_persistence()
 
 	assembly=build_agent_diagnosis_assembly(
 		provider,
@@ -98,17 +104,18 @@ def build_agent_app()->object:
 		run_timeout_seconds=float(os.getenv("EVIDENCEOPS_RUN_TIMEOUT_SECONDS","180")),
 	)
 
-	return create_app(assembly)
+	from evidenceops.api.model_connections import ConnectionManager
+	return create_app(assembly,ConnectionManager(assembly,connection_store))
 
 
-def build_openai_agent_app(base_url:str,api_key:str,model:str)->object:
+def build_openai_agent_app(base_url:str,api_key:str,model:str,diagnosis_persistence=_UNSET,connection_store=None)->object:
 	model_timeout_seconds=float(os.getenv("EVIDENCEOPS_MODEL_TIMEOUT_SECONDS","60.0"))
 
 	provider=OpenAICompatibleProvider(base_url=base_url,api_key=api_key)
 
 	tools=(build_local_log_tool(),build_local_metric_tool(),build_local_config_tool(),)
 
-	diagnosis_persistence=build_database_persistence()
+	if diagnosis_persistence is _UNSET: diagnosis_persistence=build_database_persistence()
 
 	assembly=build_agent_diagnosis_assembly(
 		provider,
@@ -122,14 +129,15 @@ def build_openai_agent_app(base_url:str,api_key:str,model:str)->object:
 		run_timeout_seconds=float(os.getenv("EVIDENCEOPS_RUN_TIMEOUT_SECONDS","180")),
 	)
 
-	return create_app(assembly)
+	from evidenceops.api.model_connections import ConnectionManager
+	return create_app(assembly,ConnectionManager(assembly,connection_store))
 
 
-def build_configured_agent_app()->object:
+def build_configured_agent_app(diagnosis_persistence=_UNSET,connection_store=None)->object:
 	provider_mode=os.getenv("EVIDENCEOPS_PROVIDER","mock").strip().lower()
 
 	if provider_mode=="mock":
-		return build_agent_app()
+		return build_agent_app(diagnosis_persistence,connection_store)
 
 	if provider_mode!="openai-compatible":
 		raise ValueError("EVIDENCEOPS_PROVIDER必须是mock或openai-compatible")
@@ -146,7 +154,13 @@ def build_configured_agent_app()->object:
 			"EVIDENCEOPS_MODEL_NAME"
 		)
 
-	return build_openai_agent_app(base_url=base_url,api_key=api_key,model=model)
+	return build_openai_agent_app(base_url=base_url,api_key=api_key,model=model,diagnosis_persistence=diagnosis_persistence,connection_store=connection_store)
 
 
-app=build_configured_agent_app()
+class ConfiguredApp: # 导入工厂不创建数据库或读取客户模型配置。
+	def __init__(self): self.application=None
+	async def __call__(self,scope,receive,send):
+		if self.application is None: self.application=build_configured_agent_app()
+		await self.application(scope,receive,send)
+
+app=ConfiguredApp()

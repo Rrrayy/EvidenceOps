@@ -1,3 +1,4 @@
+"""负责组织诊断执行，并按事务保存运行状态、证据、报告和执行记录。"""
 from collections.abc import Callable
 from contextlib import nullcontext
 from dataclasses import dataclass
@@ -36,6 +37,7 @@ class DiagnosisExecution:
 	report:DiagnosisReport|None
 	error_detail:dict[str,str]|None
 	execution_records:tuple[ExecutionRecord,...]=()
+	model_config:dict|None=None # Run 使用的无密钥快照。
 
 
 class DiagnosisService:
@@ -47,6 +49,7 @@ class DiagnosisService:
 		diagnosis_persistence:DiagnosisPersistence|None=None,
 		run_timeout_seconds:float|None=None,
 		cancellation_enabled:bool=False,
+		model_config:dict|None=None, # 每个管理 Run 独立组装。
 	)->None:
 		self._evidence_collector=evidence_collector
 		self._report_generator=report_generator
@@ -57,6 +60,7 @@ class DiagnosisService:
 		self._run_timeout_seconds=run_timeout_seconds
 		self._cancellation_enabled=cancellation_enabled
 		self._registry=RunRegistry()
+		self._model_config=model_config # 不引用后续修改的全局默认。
 
 	def request_cancel(self,run_id:str)->dict|None:
 		control=self._registry.get(run_id)
@@ -69,6 +73,7 @@ class DiagnosisService:
 		try:
 			with self._diagnosis_persistence.transaction() as transaction:
 				transaction.run.create(run)
+				if self._model_config and hasattr(transaction.run,"save_model"): transaction.run.save_model(run.run_id,self._model_config) # 启动快照与 Run 创建原子提交。
 		except Exception as error:
 			raise RunPersistenceError("create",run.run_id) from error
 
@@ -101,18 +106,19 @@ class DiagnosisService:
 			with self._diagnosis_persistence.transaction() as transaction:
 				for evidence in evidences:
 					transaction.evidence.create(evidence)
-				# 四类数据共享事务，任一步失败都不能留下半份成功档案。
+
 				transaction.report.create(report)
 				transaction.execution_record.create_many(run.run_id,records)
 				transaction.run.update(run)
 				if terminal_event is not None:
+					if self._model_config and hasattr(transaction.run,"save_model"): transaction.run.save_model(run.run_id,self._model_config) # 实际响应模型与成功档案共同提交。
 					transaction.trace_event.create(terminal_event)
 		except Exception as error:
 			raise RunPersistenceError("complete",run.run_id) from error
 
 	def _persist_failure(self,run:DiagnosisRun,evidences:tuple[Evidence,...],records:tuple[ExecutionRecord,...],
 		terminal_event:dict|None=None)->None:
-		# 失败保留已交付的证据和执行记录，不保存成功报告。
+
 		if self._diagnosis_persistence is None:
 			return
 
@@ -123,6 +129,7 @@ class DiagnosisService:
 				transaction.execution_record.create_many(run.run_id,records)
 				transaction.run.update(run)
 				if terminal_event is not None:
+					if self._model_config and hasattr(transaction.run,"save_model"): transaction.run.save_model(run.run_id,self._model_config) # 失败档案同样保留当时配置。
 					transaction.trace_event.create(terminal_event)
 		except Exception as error:
 			raise RunPersistenceError("fail",run.run_id) from error
@@ -164,21 +171,21 @@ class DiagnosisService:
 		events.finish(name,{"result":to_response(result)},commit)
 
 	def _execute_run(self,run:DiagnosisRun,events:RunEvents|None,budget:RunBudget|None=None)->DiagnosisExecution:
-		# 状态更新使用短事务，模型和工具等待期间不持有数据库 Session。
+
 		self._persist_create(run)
 		self._transition_and_persist(run,RunStatus.RUNNING)
-		# 外键先提交；登记与started共用事件锁，防止取消请求抢占第一条序号。
+
 		with events.locked() if events is not None else nullcontext():
 			if self._cancellation_enabled:
 				self._registry.register(run.run_id,RunControl(events,budget))
 			if events is not None:
-				events.emit("run_started",request_id=run.request_id,status=run.status.value)
+				events.emit("run_started",request_id=run.request_id,status=run.status.value,**({"model_config":dict(self._model_config)} if self._model_config else {}))
 		control=self._registry.get(run.run_id)
 
 		records:tuple[ExecutionRecord,...]=()
 
 		def finish(*args):
-			return DiagnosisExecution(*args,execution_records=records)
+			return DiagnosisExecution(*args,execution_records=records,model_config=dict(self._model_config) if self._model_config else None)
 
 		evidences:tuple[Evidence,...]=()
 		draft:DiagnosisDraft|None=None
@@ -283,7 +290,7 @@ class DiagnosisService:
 
 	@staticmethod
 	def _failure_evidences(run:DiagnosisRun,evidences:tuple[Evidence,...])->tuple[Evidence,...]:
-		# 异常负载也需逐项校验，不能绕过归属约束；非法项不进入失败档案。
+
 		accepted=[]
 		for evidence in evidences:
 			try:

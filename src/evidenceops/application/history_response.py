@@ -1,10 +1,13 @@
+"""负责把持久化诊断档案转换为 API 响应。"""
 def history_response(history)->dict:
 	run=history.run
 	return {
 		"run_id":run.run_id,
 		"request_id":run.request_id,
+		"description":run.description,
 		"status":run.status.value,
 		"error_code":run.error_code,
+		"model_config":getattr(history,"model_config",None),
 		"created_at":run.created_at.isoformat(),
 		"started_at":run.started_at.isoformat() if run.started_at else None,
 		"finished_at":run.finished_at.isoformat() if run.finished_at else None,

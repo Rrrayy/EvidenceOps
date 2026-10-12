@@ -1,3 +1,4 @@
+"""负责 Alembic 迁移环境，支持命令行配置及安装服务提供的数据库连接。"""
 from logging.config import fileConfig
 
 from alembic import context
@@ -32,6 +33,11 @@ def run_migrations_offline()->None:
 
 
 def run_migrations_online()->None:
+	provided=config.attributes.get("connection")
+	if provided is not None:
+		context.configure(connection=provided,target_metadata=target_metadata,compare_type=True,render_as_batch=provided.dialect.name=="sqlite")
+		with context.begin_transaction(): run_migrations()
+		return
 	settings=DatabaseSettings.from_environment()
 	engine=create_database_engine(settings)
 
@@ -48,6 +54,10 @@ def run_migrations_online()->None:
 				context.run_migrations()
 	finally:
 		engine.dispose()
+
+
+def run_migrations():
+	context.run_migrations()
 
 
 if context.is_offline_mode():
