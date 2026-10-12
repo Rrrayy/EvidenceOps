@@ -1,7 +1,7 @@
 from collections.abc import Iterator
 from contextlib import contextmanager
 
-from sqlalchemy import Engine
+from sqlalchemy import Engine,select
 from sqlalchemy.orm import Session,sessionmaker
 
 from evidenceops.application.run_repository import RunRecord
@@ -13,6 +13,21 @@ from evidenceops.infrastructure.database.session import transaction_scope
 class SqlAlchemyRunRepository:
 	def __init__(self,session:Session)->None:
 		self._session=session
+
+	def list_unfinished(self,limit:int=100)->tuple[str,...]:
+		query=select(RunRow.run_id).where(RunRow.status.in_(("pending","running")))
+		return tuple(self._session.scalars(query.order_by(RunRow.created_at,RunRow.run_id).limit(limit)))
+
+	def mark_interrupted(self,run_id:str,finished_at,error_code:str)->bool:
+		# 行锁下重查状态；不能用扫描时的旧快照覆盖已完成任务。
+		row=self._session.scalar(select(RunRow).where(RunRow.run_id==run_id).with_for_update())
+		if row is None or row.status not in ("pending","running"):
+			return False
+		row.status="failed"
+		row.finished_at=finished_at
+		row.error_code=error_code
+		self._session.flush()
+		return True
 
 	def create(self,run:DiagnosisRun)->None:
 		row=RunRow(

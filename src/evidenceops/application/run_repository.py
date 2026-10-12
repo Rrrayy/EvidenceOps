@@ -19,6 +19,12 @@ class RunRecord:
 
 
 class RunRepository(Protocol):
+	def list_unfinished(self,limit:int=100)->tuple[str,...]:
+		...
+
+	def mark_interrupted(self,run_id:str,finished_at:datetime,error_code:str)->bool:
+		...
+
 	def create(self,run:DiagnosisRun)->None:
 		...
 

@@ -17,6 +17,9 @@ class DiagnosisTransaction(Protocol):
 
 
 class DiagnosisPersistence(Protocol):
+	def acquire_instance_lock(self)->None:
+		...
+
 	def transaction(self)->AbstractContextManager[DiagnosisTransaction]:
 		...
 

@@ -110,8 +110,9 @@ def test_unknown_and_orphaned_running_runs_are_not_fake_cancelled():
 		diagnosis_persistence=persistence)
 	with TestClient(create_app(assembly)) as client:
 		assert client.post("/api/v1/agent/runs/missing/cancel").status_code==404
-		assert client.post("/api/v1/agent/runs/run-orphan/cancel").status_code==409
-		assert client.get("/api/v1/agent/runs/run-orphan").json()["status"]=="running"
+		assert client.post("/api/v1/agent/runs/run-orphan/cancel").status_code==200
+		history=client.get("/api/v1/agent/runs/run-orphan").json()
+		assert history["status"]=="failed" and history["error_code"]=="RUN_INTERRUPTED"
 
 
 def test_terminal_claim_and_cancel_have_one_winner():
@@ -439,6 +440,21 @@ def test_cancellation_before_success_claim_discards_report_but_preserves_evidenc
 		assert len(result.evidences)==1
 	finally:
 		assembly.close()
+
+
+def test_early_wait_return_does_not_bypass_budget(monkeypatch):
+	clock=[0.0]
+	control=RunControl(budget=RunBudget(0.1,clock=lambda:clock[0]))
+	calls=[]
+	def early_wait(seconds):
+		calls.append(seconds)
+		if len(calls)>1:
+			clock[0]=0.1
+		return False
+	monkeypatch.setattr(control._signal,"wait",early_wait)
+	with pytest.raises(RunBudgetExceeded):
+		control.wait(3)
+	assert len(calls)==2
 
 
 def test_budget_expiry_stops_cooperative_handler_without_user_cancel():

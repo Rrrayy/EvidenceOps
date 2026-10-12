@@ -1,5 +1,6 @@
 from threading import Event,Lock,RLock
 from contextlib import nullcontext
+from time import monotonic
 
 from evidenceops.application.run_events import RunEvents
 from evidenceops.application.run_budget import RunBudget
@@ -26,8 +27,16 @@ class RunControl:
 			self._budget.check()
 
 	def wait(self,seconds:float)->bool:
-		# 协作handler等待也受总余额约束，返回后用check区分取消和预算耗尽。
-		return self._signal.wait(self._budget.limit(seconds) if self._budget is not None else seconds)
+		deadline=monotonic()+max(0,seconds)
+		while True:
+			remaining=max(0,deadline-monotonic())
+			if self._budget is not None:
+				self._budget.check()
+			if remaining<=0:
+				return self._signal.is_set()
+			if self._signal.wait(self._budget.limit(remaining) if self._budget is not None else remaining):
+				return True
+			# Windows等待可能因时间精度提前返回；必须重查时钟，不能误当作工作已完成。
 
 	def request_cancel(self)->dict:
 		# 终态已认领时不等待正在提交的事件锁，取消接口应立即返回finalizing。

@@ -20,17 +20,18 @@ class AgentDiagnosisAssembly:
 	diagnosis_persistence:DiagnosisPersistence|None=None
 
 	def close(self)->None:
-		self.runtime.close()
-
-		close_provider=getattr(self.provider,"close",None)
-
-		if callable(close_provider):
-			close_provider()
-
-		close_persistence=getattr(self.diagnosis_persistence,"close",None)
-
-		if callable(close_persistence):
-			close_persistence()
+		# 上层资源关闭失败也必须释放数据库会话锁，不能阻止下一实例启动。
+		try:
+			self.runtime.close()
+		finally:
+			try:
+				close_provider=getattr(self.provider,"close",None)
+				if callable(close_provider):
+					close_provider()
+			finally:
+				close_persistence=getattr(self.diagnosis_persistence,"close",None)
+				if callable(close_persistence):
+					close_persistence()
 
 
 def build_agent_diagnosis_assembly(
