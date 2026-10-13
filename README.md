@@ -2,12 +2,16 @@
 
 <p align="center"><strong>Evidence-backed diagnosis for software incidents</strong></p>
 <p align="center">
-<a href="README.zh-CN.md">简体中文</a> · <a href="#quick-start">Quick start</a> · <a href="#architecture">Architecture</a> · <a href="#http-api">API</a> · <a href="#evaluation">Evaluation</a>
+<a href="README.zh-CN.md">简体中文</a> · <a href="#quick-start">Run locally</a> · <a href="#capabilities">Capabilities</a> · <a href="#architecture">Architecture</a> · <a href="#http-api">API reference</a> · <a href="#testing">Tests</a>
 </p>
 
-EvidenceOps is a local incident diagnosis application with a web console and a diagnostic Agent. It combines model reasoning with controlled, read-only evidence collection. Structured reports reference evidence from the same Run; execution records and durable lifecycle events support inspection and replay.
+EvidenceOps is a local incident diagnosis workbench. Its Agent investigates a software incident through bounded, read-only tools and returns a report linked to evidence from the same Run. The web console lets operators follow tool activity, inspect evidence, and revisit persisted Runs.
 
-The web console accepts incident descriptions and imports text files locally into the input. The backend queries local JSONL logs, metrics, and historical configuration. Importing a file does not configure a data source or upload a log archive. The included order-service RPC scenario uses repository samples; customer data-source setup, language-specific automatic parsing, and RAG retrieval are not implemented.
+**Try the included scenario:** the repository ships a deterministic Mock provider and sample order-service data. Mock returns fixed demonstration findings; it does not interpret the incident text. Reports label Mock output as a demonstration. A real OpenAI-compatible connection can be configured in the web console, but it still uses the repository's sample data connectors.
+
+**Current scope:** imported text stays in the browser input; it does not upload or configure a customer data source. Customer log integration, language-specific parsing, and RAG retrieval are not implemented. Evidence reference checks establish ownership and existence, not that a source semantically proves a claim.
+
+**Installation status:** the supported path today is source installation below. The repository contains an Inno Setup recipe, but a tested, downloadable `EvidenceOps-Setup.exe` has not been released.
 
 ## Capabilities
 
@@ -25,52 +29,9 @@ The web console accepts incident descriptions and imports text files locally int
 | Startup reconciliation | Single-instance lock; orphaned Runs atomically fail with a terminal event |
 | Evaluation | 20-case offline suite, automated rules, resumable CLI human review |
 
-Reference validation verifies evidence ownership and existence, not whether the evidence semantically proves a claim. Semantic quality is evaluated separately.
-
-## Architecture
-
-```mermaid
-flowchart TD
-    Browser["Web console: Next.js / React"] --> Proxy["Same-origin API proxy / AI SDK SSE adapter"]
-    Proxy --> Install["Installation and storage management"]
-    Install --> API["FastAPI diagnosis API"]
-    Client["HTTP / SSE client"] --> API
-    API --> Service["Diagnosis Service"]
-    Service --> Loop["Agent Loop"]
-    Loop --> Gateway["LLM Gateway"]
-    Gateway --> Provider["Mock / OpenAI-compatible provider"]
-    Loop --> Runtime["Tool Runtime"]
-    Runtime --> Sources["Read-only log / metric / config connectors"]
-    Sources --> Evidence["Evidence Collector"]
-    Evidence --> Loop
-    Loop --> Report["Structured draft / reference validation / report"]
-    Report --> Service
-    Service --> Store["SQLite / PostgreSQL: Runs, Evidence, reports, execution records, events, model snapshots"]
-    API --> History["History and event replay"]
-    History --> Store
-    Proxy --> Connections["Model connection management / encrypted credentials"]
-    Connections --> Provider
-    Eval["Offline evaluation / CLI review"] --> Service
-```
-
-The model proposes tool calls; Tool Runtime validates and executes them. The application layer owns lifecycle, budgets, cancellation, and report construction. Infrastructure supplies database and model adapters.
-
-| Directory | Responsibility |
-| --- | --- |
-| `src/evidenceops/domain/` | Run lifecycle, Evidence and report invariants |
-| `src/evidenceops/application/` | Orchestration, contracts, collection, history, reconciliation |
-| `src/evidenceops/infrastructure/` | SQLAlchemy repositories and model providers |
-| `src/evidenceops/connectors/` | Local read-only data sources |
-| `src/evidenceops/api/` | HTTP endpoints and SSE transport |
-| `src/evidenceops/evaluation/` | Offline checks and review CLI |
-| `frontend/src/components/` | Diagnosis, history, evaluation, model connections and storage pages |
-| `frontend/src/lib/`, `frontend/src/app/api/` | Typed contracts, Run state, SSE parsing and controlled same-origin proxy |
-| `scripts/` | Local service launcher |
-| `alembic/`, `tests/`, `samples/` | Migrations, regression tests, reproducible fixtures |
-
 ## Quick start
 
-The verified Python environment is 3.14. The web console requires Node.js 20.9 or later; the local launcher requires PowerShell 7. Run commands from the repository root. Docker Compose is optional for the included PostgreSQL service; SQLite requires no separately installed database.
+Use Python 3.14, Node.js 20.9 or later, and PowerShell 7. Run commands from the repository root. Docker Compose is only needed for the optional PostgreSQL development service; the installed app uses SQLite by default.
 
 ### Start the complete application (recommended)
 
@@ -102,6 +63,10 @@ Keep this terminal running. Press `Ctrl+C` to stop both services; closing the te
 | Installed API | `http://127.0.0.1:8014` | Web backend and storage management |
 
 The launcher sets the web proxy target and data directory. No separate `npm run start` or manual frontend proxy change is required. The development API commands below start only the backend, without the web console.
+
+### Windows installer status
+
+An Inno Setup recipe is present at `installer/EvidenceOps.iss`, but it has not yet been compiled and verified as a customer installer. Use the source installation above for now. Customer installation, data locations, backups, and operating limits are described in [CUSTOMER_INSTALLATION.md](CUSTOMER_INSTALLATION.md).
 
 | Startup issue | Action |
 | --- | --- |
@@ -160,6 +125,47 @@ $env:EVIDENCEOPS_RUN_TIMEOUT_SECONDS='180'
 ```
 
 Replace the URL/model with provider configuration. The adapter uses Chat Completions tool calls and JSON-object output; compatibility naming alone does not guarantee support. Real requests incur provider charges.
+
+## Architecture
+
+```mermaid
+flowchart TD
+    Browser["Web console: Next.js / React"] --> Proxy["Same-origin API proxy / AI SDK SSE adapter"]
+    Proxy --> Install["Installation and storage management"]
+    Install --> API["FastAPI diagnosis API"]
+    Client["HTTP / SSE client"] --> API
+    API --> Service["Diagnosis Service"]
+    Service --> Loop["Agent Loop"]
+    Loop --> Gateway["LLM Gateway"]
+    Gateway --> Provider["Mock / OpenAI-compatible provider"]
+    Loop --> Runtime["Tool Runtime"]
+    Runtime --> Sources["Read-only log / metric / config connectors"]
+    Sources --> Evidence["Evidence Collector"]
+    Evidence --> Loop
+    Loop --> Report["Structured draft / reference validation / report"]
+    Report --> Service
+    Service --> Store["SQLite / PostgreSQL: Runs, Evidence, reports, execution records, events, model snapshots"]
+    API --> History["History and event replay"]
+    History --> Store
+    Proxy --> Connections["Model connection management / encrypted credentials"]
+    Connections --> Provider
+    Eval["Offline evaluation / CLI review"] --> Service
+```
+
+The model proposes tool calls; Tool Runtime validates and executes them. The application layer owns lifecycle, budgets, cancellation, and report construction. Infrastructure supplies database and model adapters.
+
+| Directory | Responsibility |
+| --- | --- |
+| `src/evidenceops/domain/` | Run lifecycle, Evidence and report invariants |
+| `src/evidenceops/application/` | Orchestration, contracts, collection, history, reconciliation |
+| `src/evidenceops/infrastructure/` | SQLAlchemy repositories and model providers |
+| `src/evidenceops/connectors/` | Local read-only data sources |
+| `src/evidenceops/api/` | HTTP endpoints and SSE transport |
+| `src/evidenceops/evaluation/` | Offline checks and review CLI |
+| `frontend/src/components/` | Diagnosis, history, evaluation, model connections and storage pages |
+| `frontend/src/lib/`, `frontend/src/app/api/` | Typed contracts, Run state, SSE parsing and controlled same-origin proxy |
+| `scripts/` | Local service launcher |
+| `alembic/`, `tests/`, `samples/` | Migrations, regression tests, reproducible fixtures |
 
 ## Web console
 

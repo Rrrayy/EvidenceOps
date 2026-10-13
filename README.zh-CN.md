@@ -2,12 +2,16 @@
 
 <p align="center"><strong>以证据为依据的软件故障诊断 Agent</strong></p>
 <p align="center">
-<a href="README.md">English</a> · <a href="#快速启动">快速启动</a> · <a href="#系统架构">系统架构</a> · <a href="#http-api">API</a> · <a href="#评测">评测</a>
+<a href="README.md">English</a> · <a href="#快速启动">本机运行</a> · <a href="#核心能力">核心能力</a> · <a href="#系统架构">系统架构</a> · <a href="#http-api">API 参考</a> · <a href="#测试">测试</a>
 </p>
 
-EvidenceOps 是一个包含网页控制台与诊断 Agent 的本机故障分析应用，将模型推理与受控的只读证据查询结合。结构化报告引用同一 Run 的证据，执行记录与持久化过程事件支持回查和重放。
+EvidenceOps 是一套本机软件故障诊断工作台。Agent 通过受限的只读工具调查故障，并生成引用本次 Run 证据的报告。网页控制台可查看工具执行、核对证据并回查已持久化的 Run。
 
-网页接收故障描述，也可在浏览器本地读取文本文件并填入诊断输入区。后端查询本地 JSONL 日志、指标与历史配置。导入文本不等于配置数据源，也不上传日志档案。仓库中的 order-service RPC 场景使用内置样例；客户数据源配置、语言专属自动解析及 RAG 检索尚未实现。
+**立即体验：**仓库内置确定性的 Mock 模型和 order-service 样例数据。Mock 返回固定演示结论，不会理解故障描述；报告会明确标记为演示。网页可以配置真实的 OpenAI-compatible 模型，但当前仍使用仓库内置样例数据源。
+
+**当前范围：**导入文本只会填入浏览器输入框，不会上传文件或配置客户数据源。客户日志接入、语言专属解析和 RAG 检索尚未实现。证据引用校验只确认归属和存在，不代表来源在语义上证明了结论。
+
+**安装状态：**目前可用方式是下方的源码安装。仓库中有 Inno Setup 打包配置，但尚未发布经过验证、可下载的 `EvidenceOps-Setup.exe`。
 
 ## 核心能力
 
@@ -25,52 +29,9 @@ EvidenceOps 是一个包含网页控制台与诊断 Agent 的本机故障分析�
 | 启动收尾 | 单实例锁保护；遗留 Run 原子失败并追加终止事件 |
 | 质量评测 | 20 案例离线题库、自动规则、可恢复的 CLI 人工审核 |
 
-引用校验确认 Evidence 存在且属于本次诊断，不自动证明证据语义支持结论；报告语义质量通过独立评测检查。
-
-## 系统架构
-
-```mermaid
-flowchart TD
-    Browser["网页控制台：Next.js / React"] --> Proxy["同源 API 代理 / AI SDK SSE 适配"]
-    Proxy --> Install["安装与存储管理"]
-    Install --> API["FastAPI 诊断 API"]
-    Client["HTTP / SSE 客户端"] --> API
-    API --> Service["Diagnosis Service"]
-    Service --> Loop["Agent Loop"]
-    Loop --> Gateway["LLM Gateway"]
-    Gateway --> Provider["Mock / OpenAI-compatible 模型"]
-    Loop --> Runtime["Tool Runtime"]
-    Runtime --> Sources["日志 / 指标 / 配置只读 Connector"]
-    Sources --> Evidence["Evidence Collector"]
-    Evidence --> Loop
-    Loop --> Report["结构化草稿 / 引用校验 / 报告"]
-    Report --> Service
-    Service --> Store["SQLite / PostgreSQL：Run、证据、报告、执行记录、事件、模型快照"]
-    API --> History["历史查询与事件重放"]
-    History --> Store
-    Proxy --> Connections["模型连接管理 / 加密凭据"]
-    Connections --> Provider
-    Eval["离线评测 / CLI 审核"] --> Service
-```
-
-模型提出工具调用，Tool Runtime 校验和执行。应用层管理状态、预算、取消与报告构建；基础设施提供数据库及模型适配器。
-
-| 目录 | 职责 |
-| --- | --- |
-| `src/evidenceops/domain/` | Run 生命周期、Evidence 与报告约束 |
-| `src/evidenceops/application/` | 编排、接口契约、收集、历史查询与启动收尾 |
-| `src/evidenceops/infrastructure/` | SQLAlchemy 仓储和模型供应商 |
-| `src/evidenceops/connectors/` | 本地只读数据源 |
-| `src/evidenceops/api/` | HTTP 接口与 SSE 传输 |
-| `src/evidenceops/evaluation/` | 离线检查与审核 CLI |
-| `frontend/src/components/` | 诊断、历史、评测、模型连接与存储页面 |
-| `frontend/src/lib/`、`frontend/src/app/api/` | 类型契约、Run 状态、SSE 解析与受控同源代理 |
-| `scripts/` | 本机服务启动入口 |
-| `alembic/`、`tests/`、`samples/` | 迁移、回归测试与可复现样本 |
-
 ## 快速启动
 
-已验证 Python 环境为 3.14。网页需要 Node.js 20.9 或更高版本，本机启动脚本需要 PowerShell 7。以下命令均在仓库根目录执行。Docker Compose 仅用于可选的项目 PostgreSQL 服务；SQLite 不需要单独安装数据库。
+需要 Python 3.14、Node.js 20.9 或更高版本以及 PowerShell 7。以下命令均在仓库根目录执行。只有可选的 PostgreSQL 开发服务需要 Docker Compose；安装版默认使用 SQLite。
 
 ### 启动完整应用（推荐）
 
@@ -102,6 +63,10 @@ pwsh -File scripts/start_installed.ps1
 | 安装版 API | `http://127.0.0.1:8014` | 网页后台及存储管理 |
 
 启动脚本设置网页代理与数据目录，无需额外启动 `npm run start` 或手动修改前端代理地址。下方的单独开发 API 命令仅启动后端，不会启动网页。
+
+### Windows 安装包状态
+
+仓库中包含 `installer/EvidenceOps.iss` Inno Setup 配置，但尚未编译并验证为可交付的客户安装程序。现阶段请按上方源码安装步骤部署。客户安装、数据目录、备份和运行边界见[本机安装与数据存储](CUSTOMER_INSTALLATION.md)。
 
 | 启动问题 | 处理方式 |
 | --- | --- |
@@ -160,6 +125,47 @@ $env:EVIDENCEOPS_RUN_TIMEOUT_SECONDS='180'
 ```
 
 替换为供应商实际地址和模型。适配器使用 Chat Completions 工具调用与 JSON-object 输出；仅声明接口兼容不代表完整支持协议。真实请求产生供应商费用。
+
+## 系统架构
+
+```mermaid
+flowchart TD
+    Browser["网页控制台：Next.js / React"] --> Proxy["同源 API 代理 / AI SDK SSE 适配"]
+    Proxy --> Install["安装与存储管理"]
+    Install --> API["FastAPI 诊断 API"]
+    Client["HTTP / SSE 客户端"] --> API
+    API --> Service["Diagnosis Service"]
+    Service --> Loop["Agent Loop"]
+    Loop --> Gateway["LLM Gateway"]
+    Gateway --> Provider["Mock / OpenAI-compatible 模型"]
+    Loop --> Runtime["Tool Runtime"]
+    Runtime --> Sources["日志 / 指标 / 配置只读 Connector"]
+    Sources --> Evidence["Evidence Collector"]
+    Evidence --> Loop
+    Loop --> Report["结构化草稿 / 引用校验 / 报告"]
+    Report --> Service
+    Service --> Store["SQLite / PostgreSQL：Run、证据、报告、执行记录、事件、模型快照"]
+    API --> History["历史查询与事件重放"]
+    History --> Store
+    Proxy --> Connections["模型连接管理 / 加密凭据"]
+    Connections --> Provider
+    Eval["离线评测 / CLI 审核"] --> Service
+```
+
+模型提出工具调用，Tool Runtime 校验和执行。应用层管理状态、预算、取消与报告构建；基础设施提供数据库及模型适配器。
+
+| 目录 | 职责 |
+| --- | --- |
+| `src/evidenceops/domain/` | Run 生命周期、Evidence 与报告约束 |
+| `src/evidenceops/application/` | 编排、接口契约、收集、历史查询与启动收尾 |
+| `src/evidenceops/infrastructure/` | SQLAlchemy 仓储和模型供应商 |
+| `src/evidenceops/connectors/` | 本地只读数据源 |
+| `src/evidenceops/api/` | HTTP 接口与 SSE 传输 |
+| `src/evidenceops/evaluation/` | 离线检查与审核 CLI |
+| `frontend/src/components/` | 诊断、历史、评测、模型连接与存储页面 |
+| `frontend/src/lib/`、`frontend/src/app/api/` | 类型契约、Run 状态、SSE 解析与受控同源代理 |
+| `scripts/` | 本机服务启动入口 |
+| `alembic/`、`tests/`、`samples/` | 迁移、回归测试与可复现样本 |
 
 ## 网页控制台
 
