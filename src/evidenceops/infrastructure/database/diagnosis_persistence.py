@@ -13,6 +13,7 @@ from evidenceops.infrastructure.database.execution_record_repository import SqlA
 from evidenceops.infrastructure.database.report_repository import SqlAlchemyReportRepository
 from evidenceops.infrastructure.database.run_repository import SqlAlchemyRunRepository
 from evidenceops.infrastructure.database.trace_event_repository import SqlAlchemyTraceEventRepository
+from evidenceops.infrastructure.database.knowledge_repository import SqlAlchemyKnowledgeRepository
 from evidenceops.infrastructure.database.session import transaction_scope
 
 
@@ -26,6 +27,7 @@ class SqlAlchemyDiagnosisTransaction:
 	report:SqlAlchemyReportRepository
 	execution_record:SqlAlchemyExecutionRecordRepository
 	trace_event:SqlAlchemyTraceEventRepository
+	knowledge:SqlAlchemyKnowledgeRepository
 
 
 class SqlAlchemyDiagnosisPersistence:
@@ -91,6 +93,7 @@ class SqlAlchemyDiagnosisPersistence:
 				report=SqlAlchemyReportRepository(session),
 				execution_record=SqlAlchemyExecutionRecordRepository(session),
 				trace_event=SqlAlchemyTraceEventRepository(session),
+				knowledge=SqlAlchemyKnowledgeRepository(session),
 			)
 
 	def close(self)->None:

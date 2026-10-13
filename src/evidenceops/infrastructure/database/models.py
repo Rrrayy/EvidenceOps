@@ -63,7 +63,7 @@ class EvidenceRow(Base):
 
 	__table_args__=(
 		CheckConstraint(
-			"source IN ('log','metric','config')",
+			"source IN ('log','metric','config','knowledge')",
 			name="ck_evidences_source",
 		),
 		Index("ix_evidences_run_id_observed_at","run_id","observed_at"),
@@ -77,6 +77,48 @@ class EvidenceRow(Base):
 	source_ref:Mapped[str]=mapped_column(Text,nullable=False)
 	content_hash:Mapped[str]=mapped_column(Text,nullable=False)
 	source_version:Mapped[str|None]=mapped_column(Text,nullable=True)
+	content_snapshot:Mapped[str|None]=mapped_column(Text,nullable=True)
+	source_metadata:Mapped[dict|None]=mapped_column(JSON().with_variant(JSONB(),"postgresql"),nullable=True)
+
+
+class KnowledgeDocumentRow(Base):
+	__tablename__="knowledge_documents"
+	document_id:Mapped[str]=mapped_column(Text,primary_key=True)
+	title:Mapped[str]=mapped_column(Text,nullable=False)
+	source_ref:Mapped[str]=mapped_column(Text,nullable=False)
+
+
+class KnowledgeVersionRow(Base):
+	__tablename__="knowledge_versions"
+	__table_args__=(UniqueConstraint("document_id","version_id",name="uq_knowledge_versions_document_version"),)
+	version_id:Mapped[str]=mapped_column(Text,primary_key=True)
+	document_id:Mapped[str]=mapped_column(Text,ForeignKey("knowledge_documents.document_id"),nullable=False)
+	source_ref:Mapped[str]=mapped_column(Text,nullable=False)
+	content:Mapped[str]=mapped_column(Text,nullable=False)
+	content_hash:Mapped[str]=mapped_column(Text,nullable=False)
+	status:Mapped[str]=mapped_column(Text,nullable=False,default="draft")
+
+
+class KnowledgeChunkSetRow(Base):
+	__tablename__="knowledge_chunk_sets"
+	chunk_set_id:Mapped[str]=mapped_column(Text,primary_key=True)
+	version_id:Mapped[str]=mapped_column(Text,ForeignKey("knowledge_versions.version_id"),nullable=False)
+	algorithm_version:Mapped[str]=mapped_column(Text,nullable=False)
+	chunk_size:Mapped[int]=mapped_column(nullable=False)
+	chunk_overlap:Mapped[int]=mapped_column(nullable=False)
+
+
+class KnowledgeChunkRow(Base):
+	__tablename__="knowledge_chunks"
+	__table_args__=(UniqueConstraint("chunk_set_id","chunk_index",name="uq_knowledge_chunks_set_index"),)
+	chunk_id:Mapped[str]=mapped_column(Text,primary_key=True)
+	chunk_set_id:Mapped[str]=mapped_column(Text,ForeignKey("knowledge_chunk_sets.chunk_set_id"),nullable=False)
+	chunk_index:Mapped[int]=mapped_column(nullable=False)
+	start_offset:Mapped[int]=mapped_column(nullable=False)
+	end_offset:Mapped[int]=mapped_column(nullable=False)
+	content:Mapped[str]=mapped_column(Text,nullable=False)
+	content_hash:Mapped[str]=mapped_column(Text,nullable=False)
+	heading_path:Mapped[list]=mapped_column(JSON().with_variant(JSONB(),"postgresql"),nullable=False)
 
 
 class DiagnosisReportRow(Base):

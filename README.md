@@ -9,7 +9,7 @@ EvidenceOps is a local incident diagnosis workbench. Its Agent investigates a so
 
 **Try the included scenario:** the repository ships a deterministic Mock provider and sample order-service data. Mock returns fixed demonstration findings; it does not interpret the incident text. Reports label Mock output as a demonstration. A real OpenAI-compatible connection can be configured in the web console, but it still uses the repository's sample data connectors.
 
-**Current scope:** imported text stays in the browser input; it does not upload or configure a customer data source. Customer log integration, language-specific parsing, and RAG retrieval are not implemented. Evidence reference checks establish ownership and existence, not that a source semantically proves a claim.
+**Current scope:** imported text stays in the browser input; it does not upload or configure a customer data source. Backend knowledge components provide Markdown/TXT loading, content versions, paragraph-based chunking, SQLAlchemy knowledge repositories, a keyword retrieval baseline and retrieval metrics. Customer log integration, language-specific parsing and Agent-level knowledge retrieval are not implemented. Evidence reference checks establish ownership and existence, not that a source semantically proves a claim.
 
 **Installation status:** the supported path today is source installation below. The repository contains an Inno Setup recipe, but a tested, downloadable `EvidenceOps-Setup.exe` has not been released.
 
@@ -28,6 +28,8 @@ EvidenceOps is a local incident diagnosis workbench. Its Agent investigates a so
 | Execution control | Shared budget, individual timeouts, and cooperative cancellation |
 | Startup reconciliation | Single-instance lock; orphaned Runs atomically fail with a terminal event |
 | Evaluation | 20-case offline suite, automated rules, resumable CLI human review |
+| Knowledge components | Bounded UTF-8 loading, stable document/version/chunk identities, SQLAlchemy persistence and deterministic keyword retrieval |
+| Retrieval evaluation | Precision, recall and reciprocal rank primitives; Embedding interface with a deterministic test provider |
 
 ## Quick start
 
@@ -153,6 +155,14 @@ flowchart TD
 ```
 
 The model proposes tool calls; Tool Runtime validates and executes them. The application layer owns lifecycle, budgets, cancellation, and report construction. Infrastructure supplies database and model adapters.
+
+### Knowledge components
+
+The knowledge layer prepares reference material separately from incident observations. A logical document has content-addressed versions; each version can have multiple chunk sets bound to a splitting algorithm and configuration. Chunks retain original text ranges, heading paths and content hashes. Local loading requires an explicit knowledge purpose and accepts UTF-8 Markdown/TXT within a configured directory and byte limit.
+
+The SQLAlchemy repository stores documents, versions, chunk sets and chunks. Keyword retrieval provides a reproducible lexical baseline; Precision@K, Recall@K and reciprocal rank functions support comparison with future retrieval strategies. These components currently require Python-level integration and have no knowledge HTTP endpoints or console controls.
+
+An Embedding protocol and hash-based test provider exercise vector interfaces. The hash provider has no semantic retrieval guarantee. Real Embedding, pgvector, hybrid retrieval and reranking are not configured. A per-match Knowledge Evidence conversion function exists, but the Agent does not yet call a knowledge search tool or expose document excerpts in reports. Reference documents offer troubleshooting guidance; they cannot establish an incident's cause without observations from that incident.
 
 | Directory | Responsibility |
 | --- | --- |

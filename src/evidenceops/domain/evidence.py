@@ -8,6 +8,7 @@ class EvidenceSource(StrEnum):
 	LOG="log"
 	METRIC="metric"
 	CONFIG="config"
+	KNOWLEDGE="knowledge"
 
 
 @dataclass(frozen=True,slots=True)
