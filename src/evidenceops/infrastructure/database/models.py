@@ -121,6 +121,30 @@ class KnowledgeChunkRow(Base):
 	heading_path:Mapped[list]=mapped_column(JSON().with_variant(JSONB(),"postgresql"),nullable=False)
 
 
+class KnowledgeEmbeddingSetRow(Base):
+	__tablename__="knowledge_embedding_sets"
+	__table_args__=(CheckConstraint("status IN ('pending','building','ready','failed')",name="ck_embedding_sets_status"),)
+	embedding_set_id:Mapped[str]=mapped_column(Text,primary_key=True)
+	chunk_set_id:Mapped[str]=mapped_column(Text,ForeignKey("knowledge_chunk_sets.chunk_set_id"),nullable=False)
+	config:Mapped[dict]=mapped_column(JSON().with_variant(JSONB(),"postgresql"),nullable=False)
+	config_fingerprint:Mapped[str]=mapped_column(Text,nullable=False)
+	status:Mapped[str]=mapped_column(Text,nullable=False)
+	error_code:Mapped[str|None]=mapped_column(Text,nullable=True)
+
+
+class KnowledgeVectorRow(Base):
+	__tablename__="knowledge_chunk_vectors"
+	embedding_set_id:Mapped[str]=mapped_column(Text,ForeignKey("knowledge_embedding_sets.embedding_set_id"),primary_key=True)
+	chunk_id:Mapped[str]=mapped_column(Text,ForeignKey("knowledge_chunks.chunk_id"),primary_key=True)
+	vector:Mapped[list]=mapped_column(JSON().with_variant(JSONB(),"postgresql"),nullable=False)
+
+
+class KnowledgePublicationRow(Base):
+	__tablename__="knowledge_publications"
+	document_id:Mapped[str]=mapped_column(Text,ForeignKey("knowledge_documents.document_id"),primary_key=True)
+	embedding_set_id:Mapped[str]=mapped_column(Text,ForeignKey("knowledge_embedding_sets.embedding_set_id"),nullable=False)
+
+
 class DiagnosisReportRow(Base):
 	__tablename__="diagnosis_reports"
 

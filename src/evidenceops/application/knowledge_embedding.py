@@ -28,4 +28,20 @@ class HashEmbeddingProvider:
 
 def cosine_similarity(left:tuple[float,...],right:tuple[float,...])->float:
 	if len(left)!=len(right) or not left: raise ValueError("向量维度必须一致且非空")
-	return sum(a*b for a,b in zip(left,right))
+	if any(isinstance(value,bool) or not isinstance(value,(int,float)) for value in (*left,*right)):
+		raise ValueError("向量只能包含数值")
+	try:
+		if any(not math.isfinite(value) for value in (*left,*right)):
+			raise ValueError("向量只能包含有限数值")
+		left_scale=max(abs(value) for value in left)
+		right_scale=max(abs(value) for value in right)
+		if left_scale==0 or right_scale==0: raise ValueError("余弦相似度不接受零向量")
+		left=tuple(value/left_scale for value in left)
+		right=tuple(value/right_scale for value in right)
+		left_norm=math.hypot(*left)
+		right_norm=math.hypot(*right)
+	except OverflowError as error:
+		raise ValueError("向量数值超出可计算范围") from error
+	if left_norm==0 or right_norm==0: raise ValueError("余弦相似度不接受零向量")
+	score=math.fsum((a/left_norm)*(b/right_norm) for a,b in zip(left,right))
+	return max(-1.0,min(1.0,score))
