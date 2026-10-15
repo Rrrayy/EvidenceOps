@@ -2,15 +2,17 @@
 "use client";
 import { useEffect,useState } from "react";
 import { ArrowUpRight,Search,ChevronLeft,ChevronRight,RefreshCw,Archive } from "lucide-react";
-import { status_labels,type RunStatus } from "@/lib/contracts";
+import { history_schema,status_labels,type RunStatus,type RunResult } from "@/lib/contracts";
+import { run_error_message } from "@/lib/run-errors";
 type HistoryItem={
 	run_id: string;
-	description: string;
+	description?: string;
 	status: RunStatus;
 	created_at: string;
 	started_at: string|null;
 	finished_at: string|null;
 	error_code: string|null;
+	error_detail?: RunResult["error_detail"];
 };
 export function History({ on_open,disabled,on_storage }: { on_open: (id: string) => void; disabled: boolean; on_storage?:()=>void }) {
 
@@ -40,7 +42,7 @@ export function History({ on_open,disabled,on_storage }: { on_open: (id: string)
 			.then(async (response) => {
 				const data=await response.json();
 				if(controller.signal.aborted) { return; }
-				if(data.error_code==="PERSISTENCE_DISABLED"||data.error_code==="STORAGE_NOT_READY") {
+				if(data?.error_code==="PERSISTENCE_DISABLED"||data?.error_code==="STORAGE_NOT_READY") {
 					set_storage_unready(data.error_code==="STORAGE_NOT_READY");
 					set_unavailable(true);
 					set_items([]);
@@ -48,15 +50,17 @@ export function History({ on_open,disabled,on_storage }: { on_open: (id: string)
 					return;
 				}
 				if(!response.ok) {
-					throw new Error(data.message??"历史读取失败");
+					throw new Error(data?.message??"历史读取失败");
 				}
-				set_items(data.items);
-				set_has_more(data.has_more);
+				const listing=history_schema.parse(data);
+				set_items(listing.items);
+				set_has_more(listing.has_more);
 			})
 			.catch((reason) => {
 				if(!controller.signal.aborted) {
-					set_error(reason.message);
+					set_error(run_error_message(reason));
 					set_items([]);
+					set_has_more(false);
 				}
 			})
 			.finally(() => {
@@ -138,14 +142,15 @@ export function History({ on_open,disabled,on_storage }: { on_open: (id: string)
 			):error? (
 				<div role="alert" className="error-banner">
 					{error}
+					<button className="secondary-button" onClick={()=>set_revision(value=>value+1)}>重试</button>
 				</div>
 			):loading? (
-				<div className="loading-state">正在读取运行档案…</div>
+				<div className="loading-state" role="status">正在读取运行档案…</div>
 			):items.length===0? (
 				<div className="empty-panel">
 					<Archive size={34} />
-					<h2>这里还没有运行记录</h2>
-					<p>完成诊断后，启用持久化的运行会出现在这里。</p>
+					<h2>{query||status?"没有匹配的运行记录":"这里还没有运行记录"}</h2>
+					<p>{query||status?"请调整搜索内容或状态筛选后重试。":"完成诊断后，启用持久化的运行会出现在这里。"}</p>
 				</div>
 			):(
 				<div className="table-wrap">
@@ -170,14 +175,15 @@ export function History({ on_open,disabled,on_storage }: { on_open: (id: string)
 											disabled={disabled}
 											onClick={() => on_open(item.run_id)}
 										>
-											{item.description}
+											{item.description||"未记录故障描述"}
 										</button>
 										<code className="history-id">{item.run_id}</code>
 									</td>
 									<td>
 										<span className={`status-badge ${item.status}`}>
-											{status_labels[item.status]}
+											{item.status==="failed"&&item.error_code==="EVIDENCE_INSUFFICIENT"?"证据不足":status_labels[item.status]}
 										</span>
+										{item.error_detail?.message&&<p className="history-error-detail">{item.error_detail.message}</p>}
 									</td>
 									<td className="nowrap">
 										{new Date(item.started_at??item.created_at).toLocaleString("zh-CN",{

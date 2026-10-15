@@ -1,18 +1,19 @@
 // 负责展示诊断报告、证据引用和分析边界。
 "use client";
-import { FileText,Gauge,SlidersHorizontal,ArrowUpRight,ShieldCheck,AlertCircle } from "lucide-react";
+import { BookOpen,FileText,Gauge,SlidersHorizontal,ArrowUpRight,ShieldCheck,AlertCircle } from "lucide-react";
 import type { Evidence,RunResult } from "@/lib/contracts";
 import { source_labels } from "@/lib/contracts";
 import { evidence_number } from "@/lib/evidence";
 export function EvidenceIcon({ source }: { source: string }) {
 
-	const Icon=source==="log"? FileText:source==="metric"? Gauge:SlidersHorizontal;
+	const Icon=source==="knowledge"? BookOpen:source==="log"? FileText:source==="metric"? Gauge:SlidersHorizontal;
 	return <Icon size={17} aria-hidden="true" />;
 }
 export function Report({ result,on_evidence }: { result: RunResult; on_evidence: (item: Evidence) => void }) {
 
-	const report=result.report;
-	const demo=result.model_config?.provider_id==="mock";
+	// 失败或取消不能因为异常响应携带报告而显示成功内容。
+	const report=result.status==="succeeded"?result.report:null;
+	const demo=(result.model_config?.provider_id??result.model_config?.provider)==="mock";
 	function citations(ids: string[]) {
 
 		return (
@@ -37,16 +38,21 @@ export function Report({ result,on_evidence }: { result: RunResult; on_evidence:
 	}
 	if(!report) {
 		return (
-			<div className="no-report">
+			<div className="no-report" role="status">
 				<AlertCircle size={30} />
 				<h2>
 					{result.status==="cancelled"
 						? "诊断已取消"
 						:result.status==="running"||result.status==="pending"
 							? "诊断仍在执行"
-							:"本次未生成报告"}
+							:result.error_code==="EVIDENCE_INSUFFICIENT"?"证据不足，需补充信息":"本次未生成报告"}
 				</h2>
 				<p>{result.error_detail?.message??result.error_code??"已归档的证据和过程仍可查看。"}</p>
+				{Boolean(result.error_detail?.missing_information?.length)&&<section className="missing-information" aria-label="需补充的信息">
+					<h3>请补充以下信息</h3>
+					<ul>{result.error_detail!.missing_information!.map((item,index)=><li key={index}>{item}</li>)}</ul>
+				</section>}
+				{result.evidences.some(item=>item.source==="knowledge")&&<p className="muted">已保留的知识参考不代表已确认本次故障根因。</p>}
 				<p className="muted">{result.evidences.length} 条证据已保留</p>
 			</div>
 		);

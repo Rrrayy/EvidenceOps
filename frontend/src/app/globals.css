@@ -1546,6 +1546,56 @@ summary::-webkit-details-marker {
 	color: var(--muted);
 }
 .working-state,
+.knowledge-evidence {
+	margin-block: 20px;
+	overflow-wrap: anywhere;
+}
+.knowledge-details {
+	margin-block: 16px;
+	font-size: 12px;
+}
+.knowledge-details summary {
+	cursor: pointer;
+	padding-block: 8px;
+	color: var(--muted);
+}
+.history-error-detail {
+	max-width: 28ch;
+	font-size: 12px;
+	color: var(--muted);
+	overflow-wrap: anywhere;
+	white-space: pre-wrap;
+}
+.knowledge-snapshot {
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	font: inherit;
+	line-height: 1.7;
+	padding: 16px;
+	background: var(--paper);
+	border: 1px solid var(--line);
+	max-height: 360px;
+	overflow-y: auto;
+}
+.knowledge-metadata-row {
+	display: contents;
+}
+.missing-information {
+	text-align: left;
+	width: fit-content;
+	max-width: 100%;
+	margin: 20px auto;
+	font-size: 13px;
+	color: var(--ink);
+	overflow-wrap: anywhere;
+}
+.missing-information ul {
+	list-style: disc;
+	padding-left: 20px;
+}
+.missing-information li {
+	margin-block: 8px;
+}
 .no-report {
 	padding: 65px 24px;
 	text-align: center;

@@ -37,6 +37,8 @@ export function apply_event(state: RunState,input: unknown): RunState {
 		return state;
 	} // 已确认终态拒绝迟到业务事件。
 	const result=terminal_events.has(item.event)? result_schema.parse(item.data.result):state.result; // 终止事件包含完整归档。
+	const terminal_status:Record<string,string>={run_completed:"succeeded",run_failed:"failed",run_cancelled:"cancelled"};
+	if(terminal_events.has(item.event)&&result?.status!==terminal_status[item.event]){throw new Error("终止事件与运行状态不一致，请重新读取档案。");}
 	if(result&&result.run_id!==item.run_id) {
 		throw new Error("报告不属于当前诊断");
 	} // 校验终态归属。

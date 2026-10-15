@@ -1,7 +1,7 @@
 // 只测试无效请求和已有演示档案，不创建生产运行或调用付费模型。
 async (page) => {
-	const web_url=process.env.EVIDENCEOPS_TEST_WEB_URL??"http://127.0.0.1:3011";
-	const api_url=process.env.EVIDENCEOPS_TEST_API_URL??"http://127.0.0.1:8011";
+	const web_url="http://127.0.0.1:3011";
+	const api_url="http://127.0.0.1:8011";
 	let diagnosis_posts=0;
 	const observe=(request) => {
 		if(request.method()==="POST"&&request.url().endsWith("/api/diagnosis")) diagnosis_posts++;

@@ -3,6 +3,7 @@
 import { useEffect,useRef,useState } from "react";
 import { FileJson,Upload,Check,X,ChevronDown } from "lucide-react"; // 展示真实规则状态。
 import { evaluation_schema,type Evaluation } from "@/lib/evaluation"; // 验证仓库评测 JSON。
+import { ZodError } from "zod";
 export function Evaluations() {
 	// 只读查看已有离线评测，不制造在线执行能力。
 	const input=useRef<HTMLInputElement>(null);
@@ -23,7 +24,8 @@ export function Evaluations() {
 			set_error("");
 		} catch(reason) {
 			if(token!==generation.current){return;}
-			set_error(reason instanceof Error? `无法读取评测：${reason.message}`:"评测文件格式无效");
+			const message=reason instanceof ZodError?reason.issues.find(issue=>issue.code==="custom")?.message??"文件格式不符合要求，请选择本项目导出的评测 JSON。":reason instanceof SyntaxError?"文件不是有效的 JSON。":reason instanceof Error?reason.message:"评测文件格式无效";
+			set_error(`无法读取评测：${message}`);
 		} // 保留上一份有效结果。
 	} // 结束导入。
 	return (

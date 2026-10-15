@@ -33,6 +33,7 @@ import { use_diagnosis } from "@/lib/use-diagnosis";
 import { example_description,source_labels,status_labels,result_schema,type Evidence } from "@/lib/contracts";
 import { EvidenceIcon,Report } from "./report";
 import { Trace } from "./trace";
+import { KnowledgeEvidence } from "./knowledge-evidence";
 import { History } from "./history";
 import { Evaluations } from "./evaluation";
 import { ModelConnections,ModelSelector } from "./model-connections";
@@ -52,7 +53,7 @@ export function Console() {
 	const [input_text,set_input_text]=useState("");
 	const [draft_error,set_draft_error]=useState("");
 	const [selected,set_selected]=useState<Evidence|null>(null);
-	const [capability,set_capability]=useState<{ persistence: boolean; provider_mode: string; storage_management?: boolean; source_mode?: string }|null>(null);
+	const [capability,set_capability]=useState<{ persistence: boolean; provider_mode: string; storage_management?: boolean; source_mode?: string; knowledge_search?: boolean }|null>(null);
 	const [service_revision,set_service_revision]=useState(0);
 	const [service_error,set_service_error]=useState("");
 	const [lookup,set_lookup]=useState("");
@@ -60,7 +61,6 @@ export function Console() {
 	const [copied,set_copied]=useState(false);
 	const [elapsed,set_elapsed]=useState(0);
 	const file_input=useRef<HTMLInputElement>(null);
-	const initialized=useRef(false);
 	const evidence_trigger=useRef<HTMLElement|null>(null);
 	const assistant_runtime=useExternalStoreRuntime({
 		messages: empty_messages,
@@ -76,7 +76,7 @@ export function Console() {
 			await run.start(text,model_selection);
 		}
 	});
-	const status=run.state.result?.status??(run.state.run_id? "running":null);
+	const status=run.state.result?.status??(run.state.events.some(event=>event.event==="run_started")?"running":null);
 	const started_config=result_schema.shape.model_config.safeParse(
 		run.state.events.find((event) => event.event==="run_started")?.data.model_config
 	);
@@ -106,10 +106,7 @@ export function Console() {
 		return()=>controller.abort();
 	},[]);
 	useEffect(() => {
-		if(initialized.current) {
-			return;
-		}
-		initialized.current=true;
+		// 允许 Strict Mode 清理后重新观察，避免刷新历史时永久停在加载状态。
 		const params=new URLSearchParams(window.location.search);
 		const initial_view=params.get("view");
 		if(initial_view==="history"||initial_view==="evaluation"||initial_view==="connections"||initial_view==="storage") {
@@ -427,8 +424,8 @@ export function Console() {
 															)||"故障诊断"}
 													</h1>
 												</div>
-												<span className={`status-badge ${status??"running"}`}>
-													{status? status_labels[status]:"正在创建"}
+												<span className={`status-badge ${status??"unknown"}`}>
+													{status?status==="failed"&&run.state.result?.error_code==="EVIDENCE_INSUFFICIENT"?"证据不足":status_labels[status]:run.error?"状态未确认":run.state.run_id?"正在读取":"正在创建"}
 												</span>
 											</div>
 											<div className="run-meta">
@@ -447,7 +444,7 @@ export function Console() {
 											<details className="submitted-input">
 												<summary>本次模型配置</summary>
 												<p>
-													供应商：{run_model?.provider_id??"未记录"}
+													供应商：{run_model?.provider_id??run_model?.provider??"未记录"}
 													模型 ID：{run_model?.model_id??"未记录"}
 												</p>
 												<p>
@@ -555,12 +552,12 @@ export function Console() {
 														<h2>
 															{run.state.connection==="disconnected"
 																? "观察连接已中断"
-																:"正在沿着证据排查"}
+																:status?"正在沿着证据排查":"正在读取运行档案"}
 														</h2>
 														<p>
 															{run.state.connection==="disconnected"
 																? "诊断可能仍在后台执行，请恢复观察确认结果。"
-																:"执行过程在右侧更新，完成后在这里展示报告。"}
+																:status?"执行过程在右侧更新，完成后在这里展示报告。":"正在确认已保存的运行状态，不会重新执行诊断。"}
 														</p>
 													</div>
 												)}
@@ -607,7 +604,7 @@ export function Console() {
 													观察中
 												</>
 											):has_run? (
-												"已记录"
+												(run.state.connection==="disconnected"?"观察已中断":run.state.result?"已记录":"状态待确认")
 											):(
 												"等待开始"
 											)}
@@ -679,29 +676,30 @@ export function Console() {
 									<>
 										<EvidenceIcon source={selected.source} />
 										<span className="evidence-number">{evidence_number(run.state.result?.evidences??[],selected.evidence_id)}</span>
-										{source_labels[selected.source]??selected.source}证据
+										{selected.source==="knowledge"?"知识参考":`${source_labels[selected.source]??selected.source}证据`}
 									</>
 								):(
 									"证据详情"
 								)}
 							</Dialog.Title>
 							<Dialog.Description className="drawer-description">
-								诊断判断引用的实际观测摘要与来源。
+								{selected?.source==="knowledge"?"运行时检索到的参考资料与片段原文。":"诊断判断引用的实际观测摘要与来源。"}
 							</Dialog.Description>
 							{selected&&(
 								<>
+									{selected.source==="knowledge"&&<KnowledgeEvidence evidence={selected} />}
 									<div className="evidence-summary">
-										<h3>观测摘要</h3>
+										<h3>{selected.source==="knowledge"?"参考摘要":"观测摘要"}</h3>
 										<p>{selected.summary}</p>
 									</div>
 									<dl className="evidence-metadata">
-										<dt>观测时间</dt>
+										<dt>{selected.source==="knowledge"?"检索时间":"观测时间"}</dt>
 										<dd>{new Date(selected.observed_at).toLocaleString("zh-CN")}</dd>
 										<dt>来源定位</dt>
 										<dd>
 											<code>{selected.source_ref}</code>
 										</dd>
-										<dt>来源版本</dt>
+										<dt>{selected.source==="knowledge"?"内容版本":"来源版本"}</dt>
 										<dd>{selected.source_version??"未提供"}</dd>
 										<dt>证据 ID</dt>
 										<dd>
@@ -720,7 +718,7 @@ export function Console() {
 										{copied? "已复制":"复制证据信息"}
 									</button>
 									<p className="drawer-note">
-										来源定位用于核对样本。当前接口提供摘要，不提供完整原始日志正文。
+										{selected.source==="knowledge"?"片段与来源以本次运行归档为准，不受后续知识资料更新影响。":"来源定位用于核对样本。当前接口提供摘要，不提供完整原始日志正文。"}
 									</p>
 								</>
 							)}

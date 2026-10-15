@@ -6,6 +6,7 @@ import { apply_event,empty_run,type RunState } from "./run-state"; // 纯函数�
 import { result_schema,terminal_events } from "./contracts"; // 复用后端响应校验。
 import { read_sse } from "./sse"; // GET 重连仍使用后端原生 SSE。
 import { diagnosis_input_error } from "./diagnosis-input";
+import { run_error_message } from "./run-errors";
 const transport=new DefaultChatTransport({ api: "/api/diagnosis" }); // 所有创建请求经过协议适配。
 export function use_diagnosis() {
 	// 管理一次 Run，历史观察与创建共享状态。
@@ -27,8 +28,9 @@ export function use_diagnosis() {
 			try {
 				set_run(apply_event(state_ref.current,data));
 			} catch(reason) {
-				set_error(reason instanceof Error? reason.message:"事件无法解析");
-				throw reason;
+				const message=run_error_message(reason);
+				set_error(message);
+				throw new Error(message);
 			} // 损坏流停止而非静默跳过。
 		},
 		[set_run]
@@ -41,7 +43,7 @@ export function use_diagnosis() {
 			}
 		},
 		onError: (reason) => {
-			set_error(reason.message);
+			set_error(run_error_message(reason));
 			set_run({ ...state_ref.current,connection: "disconnected" });
 		},
 		onFinish: () => {
@@ -96,6 +98,8 @@ export function use_diagnosis() {
 			controller.current=request_controller; // 为本次操作创建独立取消信号。
 			const token=++generation.current; // 标记本次请求身份。
 			if(fresh) {
+				retry_count.current=0;
+				set_cancel_pending(false);
 				set_run({ ...empty_run,run_id,connection: "connected" });
 			} // 切换档案先清空旧报告，不能把旧结论挂在新 ID 下。
 			set_loading(true);
@@ -106,24 +110,24 @@ export function use_diagnosis() {
 					signal: request_controller.signal
 				}); // 先确认 Run 身份与实际状态。
 				const payload=await response.json(); // 同时处理结构化错误。
+				if(token!==generation.current||request_controller.signal.aborted){return;}
 				if(!response.ok) {
 					if(fresh) {
 						set_run({ ...empty_run });
 					}
-					throw new Error(payload.message??"诊断档案读取失败");
+					throw new Error(payload?.message??"诊断档案读取失败");
 				} // 查不到身份时清空页面而非展示旧报告。
 				const result=result_schema.parse(payload); // 统一历史响应格式。
+				if(result.run_id!==run_id){throw new Error("返回的档案不属于当前诊断，请重新查询运行 ID。");}
 				if(token!==generation.current) {
 					return;
 				} // 旧请求不得污染当前页面。
-				if(fresh) {
-					set_run({
-						...empty_run,
-						run_id,
-						result,
-						connection: result.status==="running"||result.status==="pending"? "connected":"closed"
-					});
-				} // 已归档结果仍加载其真实事件。
+				set_run({
+					...(fresh?empty_run:state_ref.current),
+					run_id,
+					result,
+					connection: result.status==="running"||result.status==="pending"? "connected":"closed"
+				}); // 已归档结果仍加载其真实事件。
 				const cursor=fresh? 0:state_ref.current.cursor; // 重连从最后成功处理的事件之后开始。
 				const stream=await fetch(
 					`/api/backend/runs/${encodeURIComponent(run_id)}/events/stream?after=${cursor}`,
@@ -156,6 +160,8 @@ export function use_diagnosis() {
 						throw new Error("无法确认诊断终态，请重试历史查询");
 					} // 不能只凭连接结束宣布成功。
 					const final_result=result_schema.parse(await latest.json()); // 验证归档结果。
+					if(token!==generation.current||request_controller.signal.aborted){return;}
+					if(final_result.run_id!==run_id){throw new Error("返回的档案不属于当前诊断，请重新查询运行 ID。");}
 					const terminal=["succeeded","failed","cancelled"].includes(final_result.status); // 业务状态独立判断。
 					set_run({
 						...state_ref.current,
@@ -165,7 +171,7 @@ export function use_diagnosis() {
 				} // 完成终态确认。
 			} catch(reason) {
 				if(!request_controller.signal.aborted&&token===generation.current) {
-					set_error(reason instanceof Error? reason.message:"连接中断");
+					set_error(run_error_message(reason));
 					set_run({ ...state_ref.current,connection: "disconnected" });
 				}
 			} finally {
