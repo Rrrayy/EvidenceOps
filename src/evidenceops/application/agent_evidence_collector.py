@@ -1,7 +1,7 @@
 from evidenceops.application.agent_collection_result import AgentCollectionError,AgentCollectionResult
 from evidenceops.application.agent_loop import AgentLoop,AgentLoopResult
 from evidenceops.application.tool_errors import ToolCollectionError
-from evidenceops.application.diagnosis_draft import DiagnosisDraft
+from evidenceops.application.diagnosis_draft import DiagnosisDraft,InsufficientEvidence
 from evidenceops.application.model_protocol import StructuredFinalAnswer
 from evidenceops.application.tool_evidence_collector import ToolEvidenceCollector
 from evidenceops.domain.diagnosis_run import DiagnosisRun
@@ -38,7 +38,12 @@ class AgentEvidenceCollector:
 							tool_result.error_message or "工具执行失败")
 					continue
 				try:
-					evidences.append(self._tool_collector.collect_result(run,tool_result))
+					if tool_result.tool_name=="search_knowledge":
+						if tool_result.bound_evidences is None:
+							raise ToolCollectionError("EVIDENCE_COLLECTION_FAILED","知识结果没有绑定证据")
+						evidences.extend(tool_result.bound_evidences)
+					else:
+						evidences.append(self._tool_collector.collect_result(run,tool_result))
 				except ToolCollectionError as error:
 					# 单项损坏不妨碍其余成功结果归档，保留首个转换错误。
 					if conversion_error is None:
@@ -68,9 +73,18 @@ class AgentEvidenceCollector:
 			raise AgentCollectionError("MODEL_PROTOCOL_ERROR","模型没有返回结构化最终答案")
 
 		try:
-			draft=DiagnosisDraft.from_mapping(loop_result.final_answer.data)
+			data=loop_result.final_answer.data
+			if data.get("outcome")=="insufficient_evidence":
+				insufficient=InsufficientEvidence.from_mapping(data)
+				draft=None
+			else:
+				if "outcome" in data: raise ValueError("不支持的诊断outcome")
+				draft=DiagnosisDraft.from_mapping(data)
 		except Exception as error:
 			raise AgentCollectionError("MODEL_PROTOCOL_ERROR",f"结构化最终答案无法转换为DiagnosisDraft：{error}") from error
+		if draft is None:
+			raise AgentCollectionError("EVIDENCE_INSUFFICIENT",insufficient.reason,
+				details={"missing_information":list(insufficient.missing_information)})
 
 		return AgentCollectionResult(
 			evidences=evidences,

@@ -1,0 +1,182 @@
+{
+	"description": "开发标注集：依据正文职责手工指定，不是独立测试集；required为该题最关键段，relevant为可接受支持段，需架构师审核。无资料题不计算正例指标。",
+	"source_run_id": "run-347c43bb-6b5b-40c9-9226-7bdc3993bfee",
+	"cases": [
+		{
+			"case_id": "rpc-timeout",
+			"query": "RPC timeout与线程池饱和应补查什么",
+			"relevant_chunk_ids": [
+				"chunk-94822a6bedd245d9714351dfdf7d444fe92bbee1d7b8f5b11b146701101cafab",
+				"chunk-db6d9aeb96422aa8aa6d0c5e729b22df1101d6b73cd7da9346fcfb22dfbea3b7"
+			],
+			"required_chunk_ids": [
+				"chunk-94822a6bedd245d9714351dfdf7d444fe92bbee1d7b8f5b11b146701101cafab"
+			]
+		},
+		{
+			"case_id": "retry-proof",
+			"query": "max_retries=2能证明实际重试放大吗",
+			"relevant_chunk_ids": [
+				"chunk-f641521e9dd09ea6e3a4ba65ab6c389d3643f798daf7634a55e0c85f40f8e154"
+			],
+			"required_chunk_ids": [
+				"chunk-f641521e9dd09ea6e3a4ba65ab6c389d3643f798daf7634a55e0c85f40f8e154"
+			]
+		},
+		{
+			"case_id": "python-pandas",
+			"query": "Python ModuleNotFoundError No module named pandas",
+			"relevant_chunk_ids": [
+				"chunk-903deb07956bf0237614d3ee1a17897549e8b819cb30621df29ca72019e8672d",
+				"chunk-71932a62ad052249ddaab4b2d598793a902e1c0cb88bb6c2bba73f8fbf4abd14",
+				"chunk-375570a9e825e12363e501411ad53cfaf207bfec46a179f572fa4fbc2ba9bbf7"
+			],
+			"required_chunk_ids": [
+				"chunk-903deb07956bf0237614d3ee1a17897549e8b819cb30621df29ca72019e8672d"
+			]
+		},
+		{
+			"case_id": "python-environment",
+			"query": "终端pip装好了但服务Python导入不了模块",
+			"relevant_chunk_ids": [
+				"chunk-903deb07956bf0237614d3ee1a17897549e8b819cb30621df29ca72019e8672d",
+				"chunk-375570a9e825e12363e501411ad53cfaf207bfec46a179f572fa4fbc2ba9bbf7"
+			],
+			"required_chunk_ids": [
+				"chunk-903deb07956bf0237614d3ee1a17897549e8b819cb30621df29ca72019e8672d"
+			]
+		},
+		{
+			"case_id": "postgres-refused",
+			"query": "PostgreSQL connection refused宿主机5433容器5432",
+			"relevant_chunk_ids": [
+				"chunk-3a10ede4287fac86b25c9ebdd39e38d60035f7b07b40bb47e0098f690edc9def"
+			],
+			"required_chunk_ids": [
+				"chunk-3a10ede4287fac86b25c9ebdd39e38d60035f7b07b40bb47e0098f690edc9def"
+			]
+		},
+		{
+			"case_id": "postgres-auth",
+			"query": "PostgreSQL password authentication failed连接失败",
+			"relevant_chunk_ids": [
+				"chunk-df44762bcdb738b74666210d97b4abb306c42f19222cfa1577a5920b6005800c"
+			],
+			"required_chunk_ids": [
+				"chunk-df44762bcdb738b74666210d97b4abb306c42f19222cfa1577a5920b6005800c"
+			]
+		},
+		{
+			"case_id": "pool-timeout",
+			"query": "SQLAlchemy QueuePool limit of size overflow reached connection timed out",
+			"relevant_chunk_ids": [
+				"chunk-6e084774bc067e4eeea622120de7ad2789347322b28c2c35876e81ab70a38377",
+				"chunk-5ad705d5e3347c2f160792353e0664867bdb4d89ad7af05cf1db9e8177991d9e"
+			],
+			"required_chunk_ids": [
+				"chunk-6e084774bc067e4eeea622120de7ad2789347322b28c2c35876e81ab70a38377"
+			]
+		},
+		{
+			"case_id": "pool-agent",
+			"query": "Agent调用大模型期间长期持有Session导致连接池耗尽怎么排查",
+			"relevant_chunk_ids": [
+				"chunk-b06798d41f6f52a09149f90abd51876af5303725e6bc0c170d0fff9c06cab72f",
+				"chunk-5ad705d5e3347c2f160792353e0664867bdb4d89ad7af05cf1db9e8177991d9e"
+			],
+			"required_chunk_ids": [
+				"chunk-b06798d41f6f52a09149f90abd51876af5303725e6bc0c170d0fff9c06cab72f"
+			]
+		},
+		{
+			"case_id": "java-heap",
+			"query": "java.lang.OutOfMemoryError Java heap space",
+			"relevant_chunk_ids": [
+				"chunk-ca8464fe892dc2092f67422cdad9ba1d264e3a10f2d81615c2f2b1f58de3624d",
+				"chunk-151ec4d4be87a8ea8106658231f8cfc565c6b1a466588dbddc1502f969172163",
+				"chunk-7dfb3c08e6c8f3d00d6064999a2f9f449939bcec20fc5f2c049240b9a8999861"
+			],
+			"required_chunk_ids": [
+				"chunk-ca8464fe892dc2092f67422cdad9ba1d264e3a10f2d81615c2f2b1f58de3624d"
+			]
+		},
+		{
+			"case_id": "java-xmx",
+			"query": "Java heap space是否只要提高Xmx就能修复",
+			"relevant_chunk_ids": [
+				"chunk-7dfb3c08e6c8f3d00d6064999a2f9f449939bcec20fc5f2c049240b9a8999861",
+				"chunk-151ec4d4be87a8ea8106658231f8cfc565c6b1a466588dbddc1502f969172163"
+			],
+			"required_chunk_ids": [
+				"chunk-7dfb3c08e6c8f3d00d6064999a2f9f449939bcec20fc5f2c049240b9a8999861"
+			]
+		},
+		{
+			"case_id": "go-race",
+			"query": "Go WARNING DATA RACE goroutine读写冲突",
+			"relevant_chunk_ids": [
+				"chunk-5335ea3d97ea9b5c80c5e962da35b5c7ade928a901035dda93dbd337d5001cf9",
+				"chunk-8faf49fa0ca06ce7a1f966fd79063ce4f39a1840c627219d8026df07f40218dd"
+			],
+			"required_chunk_ids": [
+				"chunk-5335ea3d97ea9b5c80c5e962da35b5c7ade928a901035dda93dbd337d5001cf9"
+			]
+		},
+		{
+			"case_id": "go-sleep",
+			"query": "Go goroutine共享变量竞争能否用sleep解决",
+			"relevant_chunk_ids": [
+				"chunk-5040745283ad37b744d676582a03147d4c6a0ca0e8d42fdcea3fc8fe535e3bc3"
+			],
+			"required_chunk_ids": [
+				"chunk-5040745283ad37b744d676582a03147d4c6a0ca0e8d42fdcea3fc8fe535e3bc3"
+			]
+		},
+		{
+			"case_id": "rust-index",
+			"query": "Rust thread panicked index out of bounds",
+			"relevant_chunk_ids": [
+				"chunk-3ee960d2fcebf0d244000ed8963582135a11a9f2cc9035dcad174dcf8d70dd20",
+				"chunk-e8129e35e5f232d8fb34c5c523231e4ac6caddd275fbeaf296eec1be01c576f6"
+			],
+			"required_chunk_ids": [
+				"chunk-3ee960d2fcebf0d244000ed8963582135a11a9f2cc9035dcad174dcf8d70dd20"
+			]
+		},
+		{
+			"case_id": "rust-unwrap",
+			"query": "Rust called Result unwrap on Err怎么获取回溯",
+			"relevant_chunk_ids": [
+				"chunk-553a7a3cef3d409160f8218c9f7ea4b224dc1543c8bae248d9da575cc7d158a3",
+				"chunk-3ee960d2fcebf0d244000ed8963582135a11a9f2cc9035dcad174dcf8d70dd20"
+			],
+			"required_chunk_ids": [
+				"chunk-553a7a3cef3d409160f8218c9f7ea4b224dc1543c8bae248d9da575cc7d158a3"
+			]
+		},
+		{
+			"case_id": "outside-react",
+			"query": "React hydration failed服务端与客户端DOM不一致",
+			"relevant_chunk_ids": [],
+			"required_chunk_ids": []
+		},
+		{
+			"case_id": "outside-certificate",
+			"query": "TLS证书链unknown authority如何排查企业代理根证书",
+			"relevant_chunk_ids": [],
+			"required_chunk_ids": []
+		},
+		{
+			"case_id": "python-real-regression",
+			"query": "Python pandas ModuleNotFoundError 已安装但服务无法导入，解释器与虚拟环境排查",
+			"relevant_chunk_ids": [
+				"chunk-903deb07956bf0237614d3ee1a17897549e8b819cb30621df29ca72019e8672d",
+				"chunk-71932a62ad052249ddaab4b2d598793a902e1c0cb88bb6c2bba73f8fbf4abd14",
+				"chunk-375570a9e825e12363e501411ad53cfaf207bfec46a179f572fa4fbc2ba9bbf7"
+			],
+			"required_chunk_ids": [
+				"chunk-903deb07956bf0237614d3ee1a17897549e8b819cb30621df29ca72019e8672d"
+			]
+		}
+	]
+}

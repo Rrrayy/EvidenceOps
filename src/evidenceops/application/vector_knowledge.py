@@ -1,4 +1,4 @@
-"""小语料向量基础层：构建、发布和查询分离，不连接Agent。"""
+"""小语料向量服务：独立构建发布，支持受控文档清单的精确检索。"""
 from time import monotonic
 import math
 from uuid import uuid4
@@ -6,9 +6,10 @@ from uuid import uuid4
 from sqlalchemy import select
 from evidenceops.application.knowledge_embedding import cosine_similarity
 from evidenceops.application.knowledge_retrieval import KnowledgeMatch
+from evidenceops.application.hybrid_knowledge import fuse_rankings,keyword_ranking
 from evidenceops.domain.knowledge_vectors import EncodingConfig,validate_vectors
 from evidenceops.infrastructure.database.knowledge_repository import SqlAlchemyKnowledgeRepository
-from evidenceops.infrastructure.database.models import KnowledgeEmbeddingSetRow,KnowledgeVectorRow
+from evidenceops.infrastructure.database.models import KnowledgeEmbeddingSetRow,KnowledgeVectorRow,KnowledgeVersionRow
 from evidenceops.infrastructure.database.vector_repository import VectorRepository
 
 
@@ -51,38 +52,67 @@ class VectorKnowledgeService:
 		with self.factory.begin() as session: VectorRepository(session).publish(document_id,set_id,expected_active)
 
 	def search(self,document_id:str,query:str,provider,top_k:int=5,threshold:float|None=None,chunk_ids:frozenset[str]|None=None,budget:float=10)->tuple[KnowledgeMatch,...]:
+		return self.search_many((document_id,),query,provider,top_k,threshold,chunk_ids,budget)
+
+	def search_many(self,document_ids:tuple[str,...],query:str,provider,top_k:int=5,threshold:float|None=None,
+		chunk_ids:frozenset[str]|None=None,budget:float=10,method:str="cosine",candidate_k:int=10)->tuple[KnowledgeMatch,...]:
+		if method not in ("cosine","hybrid"): raise ValueError("检索方法必须为cosine或hybrid")
+		if type(candidate_k) is not int or not 1<=candidate_k<=50: raise ValueError("每路候选必须在1到50之间")
+		if type(top_k) is not int or not 1<=top_k<=50: raise ValueError("top_k必须在1到50之间")
+		if method=="hybrid" and candidate_k<top_k: raise ValueError("每路候选不能小于最终top_k")
+		if method=="hybrid" and threshold is not None: raise ValueError("hybrid不接受cosine阈值")
+		if not isinstance(document_ids,tuple) or not 1<=len(document_ids)<=16:
+			raise ValueError("文档清单必须包含1到16个不同身份")
+		if any(not isinstance(identity,str) or not identity.strip() for identity in document_ids): raise ValueError("文档身份不能为空")
+		if len(set(document_ids))!=len(document_ids): raise ValueError("文档身份不能重复")
 		if not isinstance(query,str) or not query.strip(): raise ValueError("query不能为空")
 		if type(top_k) is not int or not 1<=top_k<=50 or not math.isfinite(budget) or budget<=0: raise ValueError("查询预算或top_k无效")
-		if threshold is not None and not -1<=threshold<=1: raise ValueError("threshold必须在-1到1之间")
+		if threshold is not None and (type(threshold) not in (float,int) or not math.isfinite(threshold) or not -1<=threshold<=1): raise ValueError("threshold必须在-1到1之间")
 		if chunk_ids is not None and not isinstance(chunk_ids,frozenset): raise ValueError("chunk_ids必须为frozenset或None")
 		if chunk_ids==frozenset(): return ()
 		deadline=monotonic()+budget
+		candidates=[]
+		config=provider.config
+		limit=min(self.max_candidates,self.max_values//config.dimensions)
 		with self.factory() as session:
-			set_id=VectorRepository(session).active(document_id)
-			if set_id is None: return ()
-			row=session.get(KnowledgeEmbeddingSetRow,set_id)
-			if row.status!="ready": raise ValueError("发布集合不是ready")
-			config=EncodingConfig(**row.config)
-			if provider.config.fingerprint!=config.fingerprint: raise ValueError("查询编码器与发布集合不兼容")
-			if row.config_fingerprint!=config.fingerprint: raise ValueError("持久化配置指纹损坏")
-			statement=select(KnowledgeVectorRow).where(KnowledgeVectorRow.embedding_set_id==set_id)
-			if chunk_ids is not None: statement=statement.where(KnowledgeVectorRow.chunk_id.in_(chunk_ids))
-			limit=min(self.max_candidates,self.max_values//config.dimensions)
-			rows=session.scalars(statement.order_by(KnowledgeVectorRow.chunk_id).limit(limit+1)).all()
-			if len(rows)>limit: raise ValueError("查询超过候选或向量内存预算")
-			if not rows: return ()
-			chunks=SqlAlchemyKnowledgeRepository(session).load_chunks(document_id,row.chunk_set_id,frozenset(item.chunk_id for item in rows),limit=limit+1)
-			by_id={chunk.chunk_id:chunk for chunk in chunks}
-			candidates=tuple((by_id[item.chunk_id],tuple(item.vector)) for item in rows)
+			for document_id in sorted(document_ids):
+				set_id=VectorRepository(session).active(document_id)
+				if set_id is None:
+					if len(document_ids)==1: return ()
+					raise ValueError("配置的知识文档尚未发布："+document_id)
+				row=session.get(KnowledgeEmbeddingSetRow,set_id)
+				if row is None or row.status!="ready": raise ValueError("发布集合不是ready")
+				stored_config=EncodingConfig(**row.config)
+				if config.fingerprint!=stored_config.fingerprint: raise ValueError("查询编码器与发布集合不兼容")
+				if row.config_fingerprint!=stored_config.fingerprint: raise ValueError("持久化配置指纹损坏")
+				statement=select(KnowledgeVectorRow).where(KnowledgeVectorRow.embedding_set_id==set_id)
+				if chunk_ids is not None: statement=statement.where(KnowledgeVectorRow.chunk_id.in_(chunk_ids))
+				remaining_limit=limit-len(candidates)
+				rows=session.scalars(statement.order_by(KnowledgeVectorRow.chunk_id).limit(remaining_limit+1)).all()
+				if len(rows)>remaining_limit: raise ValueError("查询超过候选或向量内存预算")
+				if not rows: continue
+				chunks=SqlAlchemyKnowledgeRepository(session).load_chunks(document_id,row.chunk_set_id,frozenset(item.chunk_id for item in rows),limit=len(rows)+1)
+				by_id={chunk.chunk_id:chunk for chunk in chunks}
+				version=session.get(KnowledgeVersionRow,chunks[0].chunk_set.version_id)
+				candidates.extend((by_id[item.chunk_id],tuple(item.vector),set_id,document_id,version.source_ref) for item in rows)
+		if not candidates: return ()
 		remaining=deadline-monotonic()
 		if remaining<=0: raise TimeoutError("查询预算耗尽")
 		vector=validate_vectors(provider.encode(config.prepare((query,),"query"),"query",remaining),1,config.dimensions)[0]
 		if monotonic()>=deadline: raise TimeoutError("查询预算耗尽")
 		scored=[]
-		for chunk,stored in candidates:
+		# 所有候选编码配置相同，只编码一次查询；全局预算不能按文档重置。
+		for chunk,stored,set_id,document_id,source_ref in candidates:
 			validated=validate_vectors((stored,),1,config.dimensions)[0]
 			score=cosine_similarity(vector,validated)
-			if threshold is None or score>=threshold: scored.append((score,chunk))
+			if threshold is None or score>=threshold: scored.append((score,chunk,set_id,document_id,source_ref))
 		scored.sort(key=lambda item:(-item[0],item[1].chunk_id))
 		if monotonic()>=deadline: raise TimeoutError("查询预算耗尽")
-		return tuple(KnowledgeMatch(chunk,score,index+1,"exact-cosine-v1") for index,(score,chunk) in enumerate(scored[:top_k]))
+		ranked=tuple(KnowledgeMatch(chunk,score,index+1,"exact-cosine-v1",set_id,config.fingerprint,document_id,source_ref)
+			for index,(score,chunk,set_id,document_id,source_ref) in enumerate(scored))
+		if method=="cosine": return ranked[:top_k]
+		# 两路来自已加载的同一发布集合，不在网络等待后重新读取指针。
+		keyword=keyword_ranking(ranked,query,candidate_k)
+		result=fuse_rankings(ranked[:candidate_k],keyword,top_k)
+		if monotonic()>=deadline: raise TimeoutError("查询预算耗尽")
+		return result

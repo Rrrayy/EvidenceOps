@@ -1,0 +1,13 @@
+{
+	"corpus_id":"evidenceops-troubleshooting-practice-v1",
+	"description":"原创排障练习摘要，参考官方资料；不代表真实故障证据，不自动执行处置",
+	"documents":[
+		{"document_id":"rpc-manual","path":"rpc_timeout.txt","title":"RPC 超时、线程池和重试排查"},
+		{"document_id":"python-import-manual","path":"python_import.md","title":"Python 模块导入失败排查"},
+		{"document_id":"postgres-connection-manual","path":"postgres_connection.md","title":"PostgreSQL 连接失败排查"},
+		{"document_id":"sqlalchemy-pool-manual","path":"sqlalchemy_pool.md","title":"SQLAlchemy 连接池耗尽排查"},
+		{"document_id":"java-heap-manual","path":"java_heap.md","title":"Java 堆内存不足排查"},
+		{"document_id":"go-race-manual","path":"go_race.md","title":"Go 数据竞争排查"},
+		{"document_id":"rust-panic-manual","path":"rust_panic.md","title":"Rust panic 与越界排查"}
+	]
+}

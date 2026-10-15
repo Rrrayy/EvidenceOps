@@ -1,0 +1,21 @@
+{
+	"description":"固定检索案例与人工语义审核标准；expected_document_id不是自动生成质量评分",
+	"cases":[
+		{"case_id":"rpc-timeout","query":"RPC timeout与线程池饱和应补查什么","expected_document_id":"rpc-manual","review_criteria":["区分观测与假设","不将inventory-service确认为已证实根因"]},
+		{"case_id":"retry-proof","query":"max_retries=2能证明实际重试放大吗","expected_document_id":"rpc-manual","review_criteria":["配置允许重试不代表实际发生","请求实际重试日志或计数"]},
+		{"case_id":"python-pandas","query":"Python ModuleNotFoundError No module named pandas","expected_document_id":"python-import-manual","review_criteria":["核对实际解释器和虚拟环境","不承诺安装必定修复"]},
+		{"case_id":"python-environment","query":"终端pip装好了但服务Python导入不了模块","expected_document_id":"python-import-manual","review_criteria":["使用同一解释器的python -m pip","排查环境不一致"]},
+		{"case_id":"postgres-refused","query":"PostgreSQL connection refused宿主机5433容器5432","expected_document_id":"postgres-connection-manual","review_criteria":["核对监听和端口映射","不打印凭据"]},
+		{"case_id":"postgres-auth","query":"PostgreSQL password authentication failed连接失败","expected_document_id":"postgres-connection-manual","review_criteria":["核对实例用户凭据来源","认证故障不是查无数据"]},
+		{"case_id":"pool-timeout","query":"SQLAlchemy QueuePool limit of size overflow reached connection timed out","expected_document_id":"sqlalchemy-pool-manual","review_criteria":["区分池耗尽和服务端连接上限","不直接判定连接泄漏"]},
+		{"case_id":"pool-agent","query":"Agent调用大模型期间长期持有Session导致连接池耗尽怎么排查","expected_document_id":"sqlalchemy-pool-manual","review_criteria":["网络等待放在数据库事务外","检查会话释放和慢事务"]},
+		{"case_id":"java-heap","query":"java.lang.OutOfMemoryError Java heap space","expected_document_id":"java-heap-manual","review_criteria":["不能仅凭OOM认定泄漏","核对GC和容器内存限制"]},
+		{"case_id":"java-xmx","query":"Java heap space是否只要提高Xmx就能修复","expected_document_id":"java-heap-manual","review_criteria":["扩堆不一定是根因修复","dump需评估停顿磁盘和敏感信息"]},
+		{"case_id":"go-race","query":"Go WARNING DATA RACE goroutine读写冲突","expected_document_id":"go-race-manual","review_criteria":["查看冲突读写与创建栈","未报告竞争不证明全部安全"]},
+		{"case_id":"go-sleep","query":"Go goroutine共享变量竞争能否用sleep解决","expected_document_id":"go-race-manual","review_criteria":["sleep不是同步保证","检查所有读写路径"]},
+		{"case_id":"rust-index","query":"Rust thread panicked index out of bounds","expected_document_id":"rust-panic-manual","review_criteria":["核对索引和长度","panic不等于内存不安全"]},
+		{"case_id":"rust-unwrap","query":"Rust called Result unwrap on Err怎么获取回溯","expected_document_id":"rust-panic-manual","review_criteria":["核对Err来源和输入","回溯不能单独证明外部依赖根因"]},
+		{"case_id":"outside-react","query":"React hydration failed服务端与客户端DOM不一致","expected_document_id":null,"review_criteria":["检索有候选不代表资料适用","无合适依据时返回insufficient_evidence而不是伪造引用"]},
+		{"case_id":"outside-certificate","query":"TLS证书链unknown authority如何排查企业代理根证书","expected_document_id":null,"review_criteria":["不把PostgreSQL连接或Python缺包手册当证书依据","明确待补证书链及运行环境"]}
+	]
+}

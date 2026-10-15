@@ -25,7 +25,8 @@ def test_installation_history_and_restart(tmp_path,monkeypatch):
 	with TestClient(app) as client:
 		state=client.get("/api/v1/agent/storage/status").json()
 		assert state["state"]=="ready" and state["mode"]=="sqlite"
-		assert state["schema_version"]=="0005"
+		from evidenceops.infrastructure.schema_versions import current_schema
+		assert state["schema_version"]==current_schema()
 		response=client.post("/api/v1/agent/diagnosis",json={"description":"模拟订单 RPC 超时"}).json()
 		identity=response["run_id"]
 		assert response["status"]=="succeeded"

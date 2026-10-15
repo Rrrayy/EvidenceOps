@@ -45,6 +45,7 @@ output/
 
 # Internal Markdown notes
 *.md
+!/samples/knowledge/*.md
 !/README.md
 !/README.zh-CN.md
 !/frontend/MODEL_CONNECTIONS_CONTRACT.md

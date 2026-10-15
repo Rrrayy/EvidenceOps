@@ -9,7 +9,7 @@ EvidenceOps is a local incident diagnosis workbench. Its Agent investigates a so
 
 **Try the included scenario:** the repository ships a deterministic Mock provider and sample order-service data. Mock returns fixed demonstration findings; it does not interpret the incident text. Reports label Mock output as a demonstration. A real OpenAI-compatible connection can be configured in the web console, but it still uses the repository's sample data connectors.
 
-**Current scope:** imported text stays in the browser input; it does not upload or configure a customer data source. Backend knowledge components provide Markdown/TXT loading, content versions, paragraph-based chunking, SQLAlchemy knowledge repositories, a keyword retrieval baseline and retrieval metrics. Customer log integration, language-specific parsing and Agent-level knowledge retrieval are not implemented. Evidence reference checks establish ownership and existence, not that a source semantically proves a claim.
+**Current scope:** imported text stays in the browser input; it does not upload or configure a customer data source. The optional knowledge tool retrieves published document fragments with exact cosine search and supplies individually cited text snapshots to the Agent. Customer log integration and language-specific parsing are not implemented. Evidence reference checks establish ownership and existence, not that a source semantically proves a claim.
 
 **Installation status:** the supported path today is source installation below. The repository contains an Inno Setup recipe, but a tested, downloadable `EvidenceOps-Setup.exe` has not been released.
 
@@ -160,9 +160,24 @@ The model proposes tool calls; Tool Runtime validates and executes them. The app
 
 The knowledge layer prepares reference material separately from incident observations. A logical document has content-addressed versions; each version can have multiple chunk sets bound to a splitting algorithm and configuration. Chunks retain original text ranges, heading paths and content hashes. Local loading requires an explicit knowledge purpose and accepts UTF-8 Markdown/TXT within a configured directory and byte limit.
 
-The SQLAlchemy repository stores documents, versions, chunk sets and chunks. Keyword retrieval provides a reproducible lexical baseline; Precision@K, Recall@K and reciprocal rank functions support comparison with future retrieval strategies. These components currently require Python-level integration and have no knowledge HTTP endpoints or console controls.
+The SQLAlchemy repository stores documents, immutable versions, chunk sets, encoding configurations and vectors. A default publication pointer selects a ready EmbeddingSet per document. Exact cosine search filters candidates before scoring and rejects incompatible encoders. Keyword retrieval and retrieval metrics provide a deterministic baseline. Ingestion, build and publication use the internal CLI; there are no knowledge administration HTTP endpoints or console controls.
 
-An Embedding protocol and hash-based test provider exercise vector interfaces. The hash provider has no semantic retrieval guarantee. Real Embedding, pgvector, hybrid retrieval and reranking are not configured. A per-match Knowledge Evidence conversion function exists, but the Agent does not yet call a knowledge search tool or expose document excerpts in reports. Reference documents offer troubleshooting guidance; they cannot establish an incident's cause without observations from that incident.
+The independent OpenAI-compatible Embedding adapter supports real encoding. Enable `search_knowledge` explicitly with SQLAlchemy persistence; it searches an operator-configured allowlist of up to 16 documents using compatible encoding configurations, one query encoding and a shared candidate budget. Results are ranked globally. Each returned fragment receives an Evidence ID before the next model request. The exact visible text, content hash, source version, chunk identity, score and encoding-set identity are archived and returned by diagnosis/history responses, including failed runs. Empty search results create no Evidence; retrieval failures retain the existing fail-run policy. The default mock scenario does not invoke this tool automatically.
+
+Configuration: set `EVIDENCEOPS_KNOWLEDGE_ENABLED=true`, `EVIDENCEOPS_KNOWLEDGE_DOCUMENT_IDS` (comma-separated IDs; the singular `EVIDENCEOPS_KNOWLEDGE_DOCUMENT_ID` remains supported), `EMBEDDING_PROVIDER`, `EMBEDDING_ENDPOINT` (full HTTPS `/embeddings` URL), `EMBEDDING_MODEL`, `EMBEDDING_DIMENSIONS` and `EMBEDDING_API_KEY` (or `DASHSCOPE_API_KEY`). Optional revision and document/query prefixes must match the published encoding configuration. Apply `alembic upgrade head` before enabling the tool. Diagnostic model credentials remain separate. `scripts/verify_knowledge_agent.py` verifies real Embedding, PostgreSQL, citations and failure retention with a deterministic generation provider.
+
+The practice corpus in `samples/knowledge/manifest.json` covers RPC timeouts, Python imports, PostgreSQL connections, SQLAlchemy pools, Java heap failures, Go races and Rust panics. These original summaries reference official documentation; they are learning material, not incident observations or a comprehensive language support guarantee. With database and Embedding settings configured, run:
+
+```powershell
+python -m evidenceops.application.knowledge_corpus_cli prepare samples/knowledge/manifest.json --publish
+python -m evidenceops.application.knowledge_corpus_cli evaluate samples/knowledge/manifest.json
+```
+
+Publication is atomic per document, not across the corpus. Repeating an unchanged published build reuses its encoding set. The document-level baseline is complemented by a fragment-labeled cosine/RRF comparison. Set `EVIDENCEOPS_KNOWLEDGE_RETRIEVAL=hybrid` to opt into keyword-frequency + vector rank fusion; cosine remains the default. Both branches share published candidates and encoding configuration. RRF scores are not cosine similarities; branch scores and ranks are archived as retrieval metadata. The keyword branch is not BM25. Without a similarity threshold, unrelated queries can still return Top-K fragments.
+
+When available material does not support a diagnosis, the model may return the explicit `insufficient_evidence` outcome. This is stored as `failed / EVIDENCE_INSUFFICIENT`, with `report=null`, retained observations and `error_detail` containing the reason and `missing_information`. Diagnosis, terminal SSE and history responses expose that explanation. A malformed outcome remains `MODEL_PROTOCOL_ERROR`; normal reports still require valid evidence references. Reference validity does not establish semantic support.
+
+Search is bounded to five fragments and 16,000 characters per call. Without a similarity threshold, unrelated queries can still return Top-K; empty-result handling is not an automatic no-answer classifier. Reference text is untrusted data and cannot establish incident causality. Citation existence checks and prompt boundaries do not guarantee semantic correctness or prevent all prompt injection. pgvector/ANN indexes and reranking are not implemented. Runtime cancellation stops waiting and rejects late results; a running synchronous Embedding HTTP request is not forcibly terminated.
 
 | Directory | Responsibility |
 | --- | --- |
@@ -230,6 +245,8 @@ Runs, reports, evidence summaries, execution records, events and model snapshots
 Storage maintenance waits for active diagnoses and model validations while rejecting new diagnoses. Switching backs up the source, imports into an empty target and verifies contents before publishing configuration. Database failures keep the management interface available and pause diagnosis; they do not silently fall back to memory.
 
 Logical backups can be created, downloaded, imported and restored, up to 100 MB. Restore requires explicit confirmation and preserves Run identities and references. SQLite restore uses a new file; PostgreSQL restore requires an empty target. API keys are excluded by default. Portable credentials require a separate passphrase of at least 12 characters and are reprotected by the destination account; restored connections require validation. Windows DPAPI-protected key files alone are not portable to another user.
+
+The installation entry point resolves the current schema from the migration chain and rejects unknown or multiple-head database revisions. Knowledge capability reflects actual tool registration and storage readiness. Backups include knowledge versions, chunks, encoding sets, vectors, publication pointers and archived Run text snapshots. Legacy archives are validated against their declared shape before conversion; missing historical text is not invented.
 
 ## Configuration
 

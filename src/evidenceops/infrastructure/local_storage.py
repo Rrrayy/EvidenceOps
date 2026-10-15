@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 from sqlalchemy import create_engine,event
 from alembic import command
-from alembic.config import Config
+from evidenceops.infrastructure.schema_versions import migration_config,current_schema,require_supported
 from evidenceops.infrastructure.database.diagnosis_persistence import SqlAlchemyDiagnosisPersistence
 from evidenceops.infrastructure.database.session import create_session_factory
 
@@ -42,13 +42,11 @@ def sqlite_engine(path):
 		connection.execute("PRAGMA synchronous=FULL")
 	return engine
 
-def migrate(engine):
-	root=Path(__file__).resolve().parents[3]
-	config=Config(str(root/"alembic.ini"))
-	config.set_main_option("script_location",str(root/"alembic"))
+def migrate(engine,revision="head"):
+	config=migration_config()
 	with engine.begin() as connection:
 		config.attributes["connection"]=connection
-		command.upgrade(config,"head") # 版本检查由 Alembic 执行。
+		command.upgrade(config,revision)
 
 class LocalPersistence(SqlAlchemyDiagnosisPersistence):
 	def __init__(self,path):
@@ -63,9 +61,14 @@ class LocalPersistence(SqlAlchemyDiagnosisPersistence):
 			from datetime import datetime,timezone
 			if self.path.exists() and self.path.stat().st_size>0:
 				with sqlite3.connect(self.path) as source:
-					version=source.execute("SELECT version_num FROM alembic_version").fetchone() if source.execute("SELECT 1 FROM sqlite_master WHERE name='alembic_version'").fetchone() else None
+					versions=source.execute("SELECT version_num FROM alembic_version").fetchall() if source.execute("SELECT 1 FROM sqlite_master WHERE name='alembic_version'").fetchone() else []
+					if len(versions)>1:
+						from evidenceops.infrastructure.schema_versions import UnsupportedSchema
+						raise UnsupportedSchema("数据库存在多个迁移头，拒绝自动操作")
+					version=versions[0] if versions else None
 					if version is None and source.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").fetchone(): raise ValueError("数据库存在未受管理的表，禁止自动初始化")
-					if version and version[0]!="0005":
+					require_supported(version[0] if version else None)
+					if version and version[0]!=current_schema():
 						backup=self.path.with_name("pre-upgrade-"+datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S-%f")+".sqlite")
 						with sqlite3.connect(backup) as target: source.backup(target) # 包含已提交 WAL 数据。
 			migrate(self._engine)

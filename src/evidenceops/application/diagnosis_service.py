@@ -35,7 +35,7 @@ class DiagnosisExecution:
 	run:DiagnosisRun
 	evidences:tuple[Evidence,...]
 	report:DiagnosisReport|None
-	error_detail:dict[str,str]|None
+	error_detail:dict|None
 	execution_records:tuple[ExecutionRecord,...]=()
 	model_config:dict|None=None # Run 使用的无密钥快照。
 
@@ -236,7 +236,7 @@ class DiagnosisService:
 		except AgentCollectionError as error:
 			records=error.execution_records
 			evidences=self._failure_evidences(run,error.evidences)
-			return stop(error.error_code,{"code":error.error_code,"message":error.error_message})
+			return stop(error.error_code,{**error.details,"code":error.error_code,"message":error.error_message})
 
 		except ToolCollectionError as error:
 			records=getattr(error,"execution_records",records)

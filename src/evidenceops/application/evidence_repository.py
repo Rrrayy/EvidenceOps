@@ -16,6 +16,8 @@ class EvidenceRecord:
 	source_ref:str
 	content_hash:str
 	source_version:str|None
+	content_snapshot:str|None=None
+	source_metadata:dict|None=None
 
 
 class EvidenceRepository(Protocol):

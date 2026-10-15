@@ -6,6 +6,7 @@ from datetime import datetime,timezone
 from threading import Lock
 from time import perf_counter
 from typing import Any
+from evidenceops.domain.evidence import Evidence
 
 from evidenceops.application.tool_errors import UnknownServiceError
 from evidenceops.application.model_protocol import ToolCall,ToolCallBatch
@@ -25,6 +26,7 @@ class ToolResult:
 	tool_call_id:str|None=None
 	evidence_id:str|None=None
 	execution_record:ExecutionRecord|None=None
+	bound_evidences:tuple[Evidence,...]|None=None
 
 	def __post_init__(self)->None:
 		if not self.tool_name.strip():
@@ -53,6 +55,7 @@ class ToolSpec:
 	handler:Callable[[dict[str,Any]],Any]
 	parameters_schema:dict[str,Any]=field(default_factory=dict)
 	controlled_handler:Callable[[dict[str,Any],RunControl],Any]|None=None
+	timeout_seconds:float|None=None
 
 	def __post_init__(self)->None:
 		if not self.name.strip():
@@ -68,6 +71,9 @@ class ToolSpec:
 			raise TypeError("parameters_schema必须是字典")
 		if self.controlled_handler is not None and not callable(self.controlled_handler):
 			raise TypeError("controlled_handler必须可调用")
+		if self.timeout_seconds is not None:
+			import math
+			if not math.isfinite(self.timeout_seconds) or self.timeout_seconds<=0: raise ValueError("工具超时必须为有限正数")
 
 	def to_model_schema(self)->dict[str,Any]:
 		return {"type":"function","function":{"name":self.name,"parameters":self.parameters_schema,},}
@@ -91,6 +97,8 @@ class ToolRuntime:
 			events.emit("tool_started",model_round=model_round,tool_name=tool_name,tool_call_id=tool_call_id)
 		# 仅记录已知只读查询的标量条件；不保存路径、密钥或任意工具负载。
 		query_arguments=None
+		if tool_name=="search_knowledge" and isinstance(arguments,dict):
+			query_arguments={name:value for name,value in arguments.items() if name in ("query","top_k") and type(value) in (str,int)}
 		if tool_name in ("query_service_logs","query_service_metrics","query_service_config") and isinstance(arguments,dict):
 			fields=("service_name","environment","start_time","end_time","at_time","error_type","limit")
 			query_arguments={
@@ -197,13 +205,14 @@ class ToolRuntime:
 		if budget is not None:
 			budget.check()
 		future=self._executor.submit(invoke_handler)
+		timeout=tool.timeout_seconds if tool.timeout_seconds is not None else self._timeout_seconds
 
 		try:
 			if control is None:
-				data=future.result(timeout=budget.limit(self._timeout_seconds) if budget is not None else self._timeout_seconds)
+				data=future.result(timeout=budget.limit(timeout) if budget is not None else timeout)
 			else:
 				# 短等待检查取消，不重置单次工具截止时间；运行线程仍由其handler负责清理。
-				deadline=perf_counter()+(budget.limit(self._timeout_seconds) if budget is not None else self._timeout_seconds)
+				deadline=perf_counter()+(budget.limit(timeout) if budget is not None else timeout)
 				while True:
 					control.check()
 					remaining=deadline-perf_counter()

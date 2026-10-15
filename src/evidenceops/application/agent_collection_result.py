@@ -6,12 +6,13 @@ from evidenceops.application.execution_record import ExecutionRecord
 
 
 class AgentCollectionError(RuntimeError):
-	def __init__(self,error_code:str,error_message:str,execution_records:tuple[ExecutionRecord,...]=(),evidences:tuple[Evidence,...]=())->None:
+	def __init__(self,error_code:str,error_message:str,execution_records:tuple[ExecutionRecord,...]=(),evidences:tuple[Evidence,...]=(),details:dict|None=None)->None:
 		super().__init__(error_message)
 		self.error_code=error_code
 		self.error_message=error_message
 		self.execution_records=execution_records
 		self.evidences=evidences
+		self.details=details or {}
 
 
 @dataclass(frozen=True,slots=True)

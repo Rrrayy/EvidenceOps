@@ -9,7 +9,7 @@ EvidenceOps 是一套本机软件故障诊断工作台。Agent 通过受限的�
 
 **立即体验：**仓库内置确定性的 Mock 模型和 order-service 样例数据。Mock 返回固定演示结论，不会理解故障描述；报告会明确标记为演示。网页可以配置真实的 OpenAI-compatible 模型，但当前仍使用仓库内置样例数据源。
 
-**当前范围：**导入文本只会填入浏览器输入框，不会上传文件或配置客户数据源。后端知识组件提供 Markdown/TXT 加载、内容版本、段落切分、SQLAlchemy 知识仓储、关键词检索基线和检索指标。客户日志接入、语言专属解析及 Agent 知识检索尚未实现。证据引用校验只确认归属和存在，不代表来源在语义上证明了结论。
+**当前范围：**导入文本只会填入浏览器输入框，不会上传文件或配置客户数据源。可选知识工具对已发布文档进行精确 cosine 检索，为 Agent 提供带独立引用的片段正文快照。客户日志接入和语言专属解析尚未实现。证据引用校验只确认归属和存在，不代表来源在语义上证明了结论。
 
 **安装状态：**目前可用方式是下方的源码安装。仓库中有 Inno Setup 打包配置，但尚未发布经过验证、可下载的 `EvidenceOps-Setup.exe`。
 
@@ -160,9 +160,24 @@ flowchart TD
 
 知识层将参考资料与故障观测分开处理。逻辑文档拥有按内容生成身份的版本；同一版本可以有多套绑定切分算法和配置的片段集合。片段保留原文范围、标题路径和内容哈希。本地加载必须明确指定知识用途，只读取配置目录和字节限制内的 UTF-8 Markdown/TXT。
 
-SQLAlchemy 仓储保存文档、版本、切分集合和片段。关键词检索提供可复现的词项匹配基线；Precision@K、Recall@K 和倒数排名函数用于比较后续检索策略。这些组件目前通过 Python 调用，没有知识库 HTTP 接口或工作台操作入口。
+SQLAlchemy 仓储保存文档、不可变版本、切分集合、编码配置和向量。每份文档通过默认发布指针选择 ready 状态的 EmbeddingSet；精确 cosine 检索先过滤候选再评分，并拒绝不兼容编码器。关键词检索和检索指标提供确定性基线。摄取、构建、发布通过内部 CLI 操作，没有知识管理 HTTP 接口或工作台操作入口。
 
-Embedding 协议和基于哈希的测试供应商用于验证向量接口；哈希供应商不保证语义检索质量。真实 Embedding、pgvector、混合检索和重排尚未配置。已有逐片段转换 Knowledge Evidence 的函数，但 Agent 尚未调用知识检索工具，报告也尚未展示文档原文。参考资料提供排障方法，不能在缺少本次故障观测时证明根因。
+独立的 OpenAI 兼容 Embedding 适配器支持真实编码。显式启用 `search_knowledge` 后，Agent 可检索服务端配置的至多 16 份文档白名单，要求编码配置兼容，只编码一次查询，共享候选预算并统一排序；每个片段在下一轮模型请求前绑定独立 Evidence ID。本次可见正文、哈希、来源版本、片段身份、分数和编码集合身份一起归档，并进入诊断及历史响应，失败 Run 同样保留。零命中不生成 Evidence；检索故障沿用终止诊断的工具失败策略。默认 Mock 场景不会自动调用知识工具。
+
+配置项：`EVIDENCEOPS_KNOWLEDGE_ENABLED=true`、`EVIDENCEOPS_KNOWLEDGE_DOCUMENT_IDS`（逗号分隔，兼容旧单数配置 `EVIDENCEOPS_KNOWLEDGE_DOCUMENT_ID`）、`EMBEDDING_PROVIDER`、`EMBEDDING_ENDPOINT`（完整 HTTPS `/embeddings` 地址）、`EMBEDDING_MODEL`、`EMBEDDING_DIMENSIONS`、`EMBEDDING_API_KEY`（或 `DASHSCOPE_API_KEY`）。可选模型修订和文档/查询前缀必须与已发布编码配置一致。启用前执行 `alembic upgrade head`；诊断模型凭据独立配置。`scripts/verify_knowledge_agent.py` 使用真实 Embedding、PostgreSQL 和确定性生成替身验证引用及失败保留。
+
+练习语料清单位于 `samples/knowledge/manifest.json`，覆盖 RPC 超时、Python 导入、PostgreSQL 连接、SQLAlchemy 连接池、Java 堆内存、Go 数据竞争和 Rust panic。资料为引用官方文档的原创摘要，不能视为现场观测或完整的多语言支持承诺。配置数据库与 Embedding 后执行：
+
+```powershell
+python -m evidenceops.application.knowledge_corpus_cli prepare samples/knowledge/manifest.json --publish
+python -m evidenceops.application.knowledge_corpus_cli evaluate samples/knowledge/manifest.json
+```
+
+发布以单份文档为原子单位，不是整库原子切换；重复构建未变化且已发布的资料会复用编码集合。除文档级基线外，提供片段标注题集和 cosine/RRF 同题对照命令。设置 `EVIDENCEOPS_KNOWLEDGE_RETRIEVAL=hybrid` 可选用词频关键词与向量排名融合，默认仍为 cosine；两路共享发布候选与编码配置。RRF 分数不是余弦相似度，两路分数和排名随检索元数据归档。关键词分支不是 BM25。未设相似度阈值时，无关查询也可能返回 Top-K 片段。
+
+资料不足以支持诊断时，模型可返回独立的 `insufficient_evidence` 结果。系统将其保存为 `failed / EVIDENCE_INSUFFICIENT`，`report=null`，保留已有观测，并通过 `error_detail` 返回不足原因及 `missing_information`。诊断响应、终止 SSE 和历史查询均可读取说明。格式错误仍为 `MODEL_PROTOCOL_ERROR`；正常报告仍须引用有效证据，引用存在不等于语义支持成立。
+
+每次检索最多五个片段、总正文最多 16,000 字符。默认不设相似度阈值，无关问题仍可能返回 Top-K；空结果处理不等于自动识别无答案。资料属于不可信数据，不能证明本次故障因果；引用存在性检查和提示约束不保证语义正确，也不能完全防止提示注入。pgvector/近似索引及重排尚未实现。取消会停止等待并拒绝晚到结果，已经运行的同步 Embedding HTTP 请求不会被强制终止。
 
 | 目录 | 职责 |
 | --- | --- |
@@ -228,6 +243,8 @@ npm.cmd run dev
 Run、报告、证据摘要、执行记录、事件和模型快照保存到所选诊断数据库；模型连接使用独立加密配置库。SQLite 无需外部数据库服务。PostgreSQL 使用管理员准备的专用数据库和账号，程序不安装数据库服务器或创建数据库角色。
 
 存储维护等待已有诊断和模型验证结束，同时拒绝新诊断。切换前备份，向空目标导入并校验后发布新配置。数据库故障时管理页面仍可访问，诊断暂停，不自动降级到内存模式。
+
+安装入口从迁移链读取当前结构版本，拒绝未知或多头版本；知识能力按实际工具注册及存储就绪状态声明。逻辑备份保存知识版本、片段、编码集合、向量、发布指针和Run正文快照，按原版本验证后转换旧档案，不伪造缺失正文。
 
 逻辑备份支持创建、下载、导入和恢复，上限 100 MB。恢复需明确确认，并保留 Run 身份与引用关系；SQLite 使用新文件，PostgreSQL 要求目标为空。默认不包含 API Key；携带可迁移凭据需至少 12 字符的独立口令，由目标账号重新保护，恢复后的模型连接需要验证。仅复制 Windows DPAPI 密钥文件不能保证另一用户可以解密。
 

@@ -12,6 +12,7 @@ from evidenceops.infrastructure.database.session import DatabaseSettings,create_
 from evidenceops.infrastructure.providers.mock_provider import MockProvider
 from evidenceops.infrastructure.providers.diagnosis_mock_provider import DiagnosisMockProvider
 from evidenceops.infrastructure.providers.openai_compatible_provider import OpenAICompatibleProvider
+from evidenceops.infrastructure.knowledge_tools import configured_knowledge_tools
 _UNSET=object() # 安装管理可显式提供持久化，不改变开发入口配置。
 
 
@@ -93,6 +94,7 @@ def build_agent_app(diagnosis_persistence=_UNSET,connection_store=None)->object:
 	tools=(build_local_log_tool(),build_local_metric_tool(),build_local_config_tool(),)
 
 	if diagnosis_persistence is _UNSET: diagnosis_persistence=build_database_persistence()
+	tools+=configured_knowledge_tools(diagnosis_persistence)
 
 	assembly=build_agent_diagnosis_assembly(
 		provider,
@@ -116,6 +118,7 @@ def build_openai_agent_app(base_url:str,api_key:str,model:str,diagnosis_persiste
 	tools=(build_local_log_tool(),build_local_metric_tool(),build_local_config_tool(),)
 
 	if diagnosis_persistence is _UNSET: diagnosis_persistence=build_database_persistence()
+	tools+=configured_knowledge_tools(diagnosis_persistence)
 
 	assembly=build_agent_diagnosis_assembly(
 		provider,

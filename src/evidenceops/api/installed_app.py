@@ -20,6 +20,7 @@ from evidenceops.infrastructure.database.models import RunRow
 from evidenceops.infrastructure.model_connections import ConnectionStore
 from evidenceops.infrastructure.storage_archive import atomic_json,export_archive,validate_archive,import_tables,restore_connections,MAX_ARCHIVE_BYTES
 from evidenceops.infrastructure.local_storage import migrate
+from evidenceops.infrastructure.schema_versions import current_schema,database_schema,UnsupportedSchema
 
 def utc_now(): return datetime.now(timezone.utc).isoformat()
 
@@ -79,14 +80,15 @@ class Installation:
 			store.acquire_instance_lock()
 			if value["mode"]=="postgres":
 				with store._engine.connect() as connection:
-					version=connection.scalar(text("SELECT version_num FROM alembic_version")) if inspect(connection).has_table("alembic_version") else None
+					version=database_schema(connection)
 					if version is None and inspect(connection).get_table_names(): raise StorageFailure("failed","目标数据库存在未受管理的表，请使用专用空数据库")
-				if version!="0005":
-					if version and version not in ("0001","0002","0003","0004"): raise StorageFailure("unsupported_version","数据库版本不受当前程序支持，不能自动降级")
+				if version!=current_schema():
 					if not initialize: raise StorageFailure("needs_upgrade" if version else "uninitialized","数据库需要初始化或升级，请在存储设置中确认操作")
 					if version: self.publish_archive(export_archive(store._engine,self.store),"数据库升级前备份",False)
 					migrate(store._engine)
 			with store._engine.connect() as connection:
+				if database_schema(connection)!=current_schema(): raise StorageFailure("failed","迁移未达到当前版本，拒绝启动")
+				connection.rollback()
 				transaction=connection.begin()
 				try:
 					identity="storage-check-"+str(uuid4())
@@ -94,6 +96,9 @@ class Installation:
 					if connection.scalar(select(RunRow.run_id).where(RunRow.run_id==identity))!=identity: raise StorageFailure("failed","存储读写检查失败")
 				finally: transaction.rollback()
 			return store
+		except UnsupportedSchema as error:
+			store.close()
+			raise StorageFailure("unsupported_version",str(error)) from error
 		except BaseException: store.close();raise
 	async def start_child(self,persistence):
 		if self.factory is None:
@@ -152,7 +157,7 @@ class Installation:
 		finally: self.lease.close()
 	def status(self):
 		value=self.config.get("storage",{});manager=self.child.state.connection_manager if self.child else None
-		return {"supported":True,"state":"maintenance" if self.maintenance else self.state,"message":self.message,"mode":value.get("mode","sqlite"),"version":self.config.get("version",0),"setup_completed":self.config.get("setup_completed",False),"source_mode":"samples","schema_version":"0005" if self.state=="ready" else None,"data_location":str(self.root),"database_display":f"{value.get('host')}:{value.get('port')} / {value.get('database')}" if value.get("mode")=="postgres" else str(self.root/value.get("file","diagnosis.sqlite")),"postgres":{"host":value.get("host","127.0.0.1"),"port":value.get("port",5433),"database":value.get("database","evidenceops"),"user":value.get("user","evidenceops"),"password_configured":bool(value.get("password_encrypted"))},"active_runs":sum(manager.store.active.values()) if manager else 0,"backups":list(self.backups.values()),"operations":list(self.operations.values())[-20:]}
+		return {"supported":True,"state":"maintenance" if self.maintenance else self.state,"message":self.message,"mode":value.get("mode","sqlite"),"version":self.config.get("version",0),"setup_completed":self.config.get("setup_completed",False),"source_mode":"samples","schema_version":current_schema() if self.state=="ready" else None,"data_location":str(self.root),"database_display":f"{value.get('host')}:{value.get('port')} / {value.get('database')}" if value.get("mode")=="postgres" else str(self.root/value.get("file","diagnosis.sqlite")),"postgres":{"host":value.get("host","127.0.0.1"),"port":value.get("port",5433),"database":value.get("database","evidenceops"),"user":value.get("user","evidenceops"),"password_configured":bool(value.get("password_encrypted"))},"active_runs":sum(manager.store.active.values()) if manager else 0,"backups":list(self.backups.values()),"operations":list(self.operations.values())[-20:]}
 	def publish_archive(self,archive,label,credentials,password=None):
 		identity=str(uuid4());directory=self.root/"backups";directory.mkdir(exist_ok=True)
 		path=directory/(identity+".json");atomic_json(path,archive)
@@ -282,7 +287,14 @@ def create_installed_app(root=None,factory=None):
 			except Exception: installation.state="degraded";installation.message="存储检查失败，新诊断已暂停，请检查连接并重新初始化"
 		return installation.status()
 	@app.get("/api/v1/agent/capabilities")
-	async def capabilities(): return {"persistence":installation.state=="ready","storage_management":True,"storage_state":installation.state,"source_mode":"samples","input":"description","sources":["log","metric","config"],"model_connections":installation.child is not None,"provider_mode":"mock" if os.getenv("EVIDENCEOPS_PROVIDER","mock")=="mock" else "configured"}
+	async def capabilities():
+		ready=installation.state=="ready" and not installation.maintenance
+		assembly=installation.child.state.assembly if installation.child else None
+		knowledge=bool(ready and assembly and any(getattr(tool,"name",None)=="search_knowledge" for tool in assembly.tools))
+		return {"persistence":ready,"storage_management":True,"storage_state":"maintenance" if installation.maintenance else installation.state,
+			"source_mode":"samples","input":"description","knowledge_search":knowledge,
+			"sources":["log","metric","config"]+(["knowledge"] if knowledge else []),"model_connections":installation.child is not None,
+			"provider_mode":"mock" if assembly is None or assembly.provider_name=="mock" else "configured"}
 	@app.post("/api/v1/agent/storage/check")
 	async def check(value:StorageInput):
 		settings=installation.settings(value.model_dump())

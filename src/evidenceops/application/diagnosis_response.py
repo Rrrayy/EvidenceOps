@@ -16,6 +16,7 @@ def to_response(result:DiagnosisExecution)->dict[str,Any]:
 			"source_ref":evidence.source_ref,
 			"content_hash":evidence.content_hash,
 			"source_version":evidence.source_version,
+			"content_snapshot":evidence.content_snapshot,"source_metadata":evidence.source_metadata,
 		})
 
 	report_item=None

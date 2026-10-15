@@ -5,6 +5,28 @@ from typing import Any
 
 
 @dataclass(frozen=True,slots=True)
+class InsufficientEvidence:
+	reason:str
+	missing_information:tuple[str,...]
+
+	@classmethod
+	def from_mapping(cls,data:Mapping[str,Any])->"InsufficientEvidence":
+		# 拒答是独立结果类型，不能借此混入未经引用的根因或处置结论。
+		if not isinstance(data,Mapping): raise TypeError("证据不足结果必须是JSON对象")
+		if set(data)!={"outcome","reason","missing_information"} or data.get("outcome")!="insufficient_evidence":
+			raise ValueError("证据不足结果必须仅包含outcome、reason、missing_information")
+		reason=data["reason"]
+		missing=data["missing_information"]
+		if not isinstance(reason,str) or not reason.strip() or len(reason)>2000:
+			raise ValueError("reason必须是1到2000字符的非空文本")
+		if not isinstance(missing,list) or not 1<=len(missing)<=8:
+			raise ValueError("missing_information必须包含1到8项")
+		if any(not isinstance(item,str) or not item.strip() or len(item)>500 for item in missing):
+			raise ValueError("缺失信息必须是1到500字符的非空文本")
+		return cls(reason.strip(),tuple(item.strip() for item in missing))
+
+
+@dataclass(frozen=True,slots=True)
 class DiagnosisDraftClaim:
 	text:str
 	evidence_ids:tuple[str,...]

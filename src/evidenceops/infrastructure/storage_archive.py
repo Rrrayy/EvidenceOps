@@ -11,6 +11,7 @@ from cryptography.fernet import Fernet,InvalidToken
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives import hashes
 from evidenceops.infrastructure.database.models import Base,UTCDateTime
+from evidenceops.infrastructure.schema_versions import database_schema,archive_shape,current_schema
 
 MAX_ARCHIVE_BYTES=100*1024*1024
 
@@ -35,12 +36,22 @@ def portable_cipher(password,salt):
 def export_archive(engine,store,password=None):
 	tables={}
 	with engine.connect() as connection:
+		# 同一份数据库快照覆盖全部表，避免并行发布造成指针和向量跨时刻混合。
+		if engine.dialect.name=="postgresql": connection=connection.execution_options(isolation_level="REPEATABLE READ")
+		elif engine.dialect.name=="sqlite": connection.exec_driver_sql("BEGIN")
+		version=database_schema(connection)
+		shape=archive_shape(version)
+		available_tables=set(inspect(connection).get_table_names())
+		if not set(shape)<=available_tables: raise ValueError("数据库结构不完整，无法生成完整备份")
 		for table in Base.metadata.sorted_tables:
+			if table.name not in shape: continue
 			rows=[]
 			available={column["name"] for column in inspect(connection).get_columns(table.name)}
-			missing={column.name for column in table.columns}-available
-			if missing and missing!={"model_config"}: raise ValueError("数据库结构不完整，无法生成完整备份") # 不伪造可恢复备份。
-			for row in connection.execute(select(*[column for column in table.columns if column.name in available])).mappings():
+			missing=shape[table.name]-available
+			# 0006/0007部分历史库缺少可空快照列，由0008补偿；不补造任何正文。
+			if missing and not (version in ("0006","0007") and table.name=="evidences" and missing<={"content_snapshot","source_metadata"}):
+				raise ValueError("数据库结构不完整，无法生成完整备份")
+			for row in connection.execute(select(*[column for column in table.columns if column.name in shape[table.name]&available])).mappings():
 				result={name:value.isoformat() if isinstance(value,datetime) else value for name,value in row.items()}
 				for name in missing: result[name]=None
 				rows.append(result)
@@ -51,8 +62,8 @@ def export_archive(engine,store,password=None):
 		snapshots={identity:json.loads(payload) for identity,payload in database.execute("SELECT run_id,payload FROM snapshots")}
 		secrets={identity:store.cipher.decrypt(secret).decode() for identity,secret in database.execute("SELECT id,secret FROM connections")} if password else None
 	for row in tables["diagnosis_runs"]:
-		if not row.get("model_config"): row["model_config"]=snapshots.get(row["run_id"])
-	payload={"format":"evidenceops-archive-v1","schema":"0005","tables":tables,"connections":connections,"default":default,"snapshots":snapshots}
+		if "model_config" in row and not row["model_config"]: row["model_config"]=snapshots.get(row["run_id"])
+	payload={"format":"evidenceops-archive-v1","schema":version,"tables":tables,"connections":connections,"default":default,"snapshots":snapshots}
 	if password:
 		salt=os.urandom(16);cipher=portable_cipher(password,salt)
 		payload["credentials"]={"salt":base64.b64encode(salt).decode(),"ciphertext":cipher.encrypt(canonical(secrets)).decode()}
@@ -66,12 +77,17 @@ def validate_archive(archive,password=None,allow_locked=False):
 	if not isinstance(payload,dict): raise ValueError("备份数据格式无效")
 	encoded=canonical(payload)
 	if len(encoded)>MAX_ARCHIVE_BYTES or hashlib.sha256(encoded).hexdigest()!=archive["sha256"]: raise ValueError("备份校验失败，文件可能已损坏")
-	if payload.get("format")!="evidenceops-archive-v1" or payload.get("schema")!="0005": raise ValueError("备份版本不受支持")
-	if not isinstance(payload.get("tables"),dict) or set(payload["tables"])!={table.name for table in Base.metadata.sorted_tables}: raise ValueError("备份数据表不完整")
-	for table in Base.metadata.sorted_tables:
-		if not isinstance(payload["tables"][table.name],list): raise ValueError("备份记录格式无效")
-		for row in payload["tables"][table.name]:
-			if not isinstance(row,dict) or set(row)!={column.name for column in table.columns}: raise ValueError("备份字段与当前版本不一致")
+	if payload.get("format")!="evidenceops-archive-v1": raise ValueError("备份版本不受支持")
+	shape=archive_shape(payload.get("schema"))
+	if not isinstance(payload.get("tables"),dict): raise ValueError("备份数据表不完整")
+	# 旧安装版曾把完整新表备份错标为0005；仅兼容完整当前结构，不接受任意缺表。
+	current={table.name:{column.name for column in table.columns} for table in Base.metadata.sorted_tables}
+	if payload["schema"]=="0005" and set(payload["tables"])==set(current): shape=current
+	if set(payload["tables"])!=set(shape): raise ValueError("备份数据表不完整")
+	for name,columns in shape.items():
+		if not isinstance(payload["tables"][name],list): raise ValueError("备份记录格式无效")
+		for row in payload["tables"][name]:
+			if not isinstance(row,dict) or set(row)!=columns: raise ValueError("备份字段与声明版本不一致")
 	connections=payload.get("connections");snapshots=payload.get("snapshots");default=payload.get("default")
 	if not isinstance(connections,list) or len(connections)>100 or not isinstance(snapshots,dict): raise ValueError("模型连接备份格式无效")
 	identities=set()
@@ -86,6 +102,18 @@ def validate_archive(archive,password=None,allow_locked=False):
 		identities.add(entry["id"])
 	if default is not None and (not isinstance(default,dict) or set(default)!={"connection_id","model_id"} or default["connection_id"] not in identities|{"system"} or not isinstance(default["model_id"],str)): raise ValueError("默认连接引用无效")
 	if any(not isinstance(identity,str) or not isinstance(snapshot,dict) for identity,snapshot in snapshots.items()): raise ValueError("运行模型快照格式无效")
+	# 校验和先针对原件验证，再复制升级恢复输入；不改写用户备份或伪造旧证据正文。
+	normalized={}
+	for table in Base.metadata.sorted_tables:
+		normalized[table.name]=[]
+		for source in payload["tables"].get(table.name,[]):
+			row=dict(source)
+			for column in table.columns:
+				if column.name not in row:
+					if not column.nullable: raise ValueError("旧备份缺少必填字段，无法转换")
+					row[column.name]=snapshots.get(row["run_id"]) if table.name=="diagnosis_runs" and column.name=="model_config" else None
+			normalized[table.name].append(row)
+	payload={**payload,"schema":current_schema(),"tables":normalized}
 	secrets={}
 	if "credentials" in payload:
 		block=payload["credentials"]

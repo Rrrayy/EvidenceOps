@@ -11,6 +11,11 @@ class KnowledgeMatch:
 	score:float
 	rank:int
 	retrieval_method:str="keyword-v1"
+	embedding_set_id:str|None=None
+	config_fingerprint:str|None=None
+	document_id:str|None=None
+	source_ref:str|None=None
+	retrieval_details:dict|None=None
 
 
 class KeywordKnowledgeRetriever:
@@ -24,5 +29,5 @@ class KeywordKnowledgeRetriever:
 			text=(" ".join(chunk.heading_path)+" "+chunk.content).lower()
 			hits=sum(text.count(term) for term in terms)
 			if hits: matches.append((hits/len(terms),chunk))
-		matches.sort(key=lambda item:(-item[0],item[1].chunk_index))
+		matches.sort(key=lambda item:(-item[0],item[1].chunk_id))
 		return tuple(KnowledgeMatch(chunk,score,index+1) for index,(score,chunk) in enumerate(matches[:top_k]))

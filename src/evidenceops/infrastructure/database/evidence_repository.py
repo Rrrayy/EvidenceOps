@@ -24,6 +24,7 @@ class SqlAlchemyEvidenceRepository:
 			source_ref=evidence.source_ref,
 			content_hash=evidence.content_hash,
 			source_version=evidence.source_version,
+			content_snapshot=evidence.content_snapshot,source_metadata=evidence.source_metadata,
 		)
 		self._session.add(row)
 		self._session.flush()
@@ -59,6 +60,7 @@ class SqlAlchemyEvidenceRepository:
 			source_ref=row.source_ref,
 			content_hash=row.content_hash,
 			source_version=row.source_version,
+			content_snapshot=row.content_snapshot,source_metadata=row.source_metadata,
 		)
 
 

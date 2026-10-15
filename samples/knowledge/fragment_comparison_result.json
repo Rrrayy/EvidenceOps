@@ -1,0 +1,2677 @@
+{
+	"top_k": 3,
+	"candidate_k": 10,
+	"rrf_constant": 60,
+	"positive_cases": 15,
+	"negative_cases": 2,
+	"snapshot": [
+		[
+			"chunk-03b9cc41ba25b24a5d3c1706484c5a021664af47f80efeb195cd69a157fad9c4",
+			"embedding-ff6dbb43-aa85-47b7-a5e0-f7dd6a8db947",
+			"a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+			"6e3a9d75e50eec108bd2e9928979f4f19f719f2d804b19e34aa1a100f8229cd0"
+		],
+		[
+			"chunk-151ec4d4be87a8ea8106658231f8cfc565c6b1a466588dbddc1502f969172163",
+			"embedding-fbdc3d18-c7ff-46ce-a2de-b41588ab18b9",
+			"a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+			"dd397ceb4862ac9ee7def12806be7458de34b2d8dae8ce3a6f17de12d65bbedb"
+		],
+		[
+			"chunk-314ee95b9dc96cb6e2b38369894758d8015f0cc5bb3661d9db75919b96826fa0",
+			"embedding-fbdc3d18-c7ff-46ce-a2de-b41588ab18b9",
+			"a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+			"f5f8608331a0acc07ac3798db9ed14680bfdc4dbe4a24a4fb0a8237af259895e"
+		],
+		[
+			"chunk-375570a9e825e12363e501411ad53cfaf207bfec46a179f572fa4fbc2ba9bbf7",
+			"embedding-7c47026b-ff1f-4b0c-8ab5-f82ba8ca1de7",
+			"a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+			"e9dbcec387998991ecb3a615fa8ac4dfc9e32e6dfa4cea7ba22fd0172549329a"
+		],
+		[
+			"chunk-3a10ede4287fac86b25c9ebdd39e38d60035f7b07b40bb47e0098f690edc9def",
+			"embedding-65accec8-0562-45d4-84ab-c4f8f5cabf12",
+			"a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+			"e7b821beb3345a5fcd1e3d16ec825af19fac5b4a78041b5ecf8c9fe989f01e16"
+		],
+		[
+			"chunk-3ee960d2fcebf0d244000ed8963582135a11a9f2cc9035dcad174dcf8d70dd20",
+			"embedding-3141a2d5-e45a-4db9-8805-95ce0d58ebd4",
+			"a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+			"473f1619b4ac8d2a31bf59b189acceb2078ecdf4d0ec1a4d35ca77f22295affa"
+		],
+		[
+			"chunk-43307baed30b428663229b5aa0b94959348c955462dabccb872d436b58b42970",
+			"embedding-65accec8-0562-45d4-84ab-c4f8f5cabf12",
+			"a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+			"86548eec7944c482de34ee8c08151d0860bf14806e2f76dc52acfe91fd42b698"
+		],
+		[
+			"chunk-5040745283ad37b744d676582a03147d4c6a0ca0e8d42fdcea3fc8fe535e3bc3",
+			"embedding-ff6dbb43-aa85-47b7-a5e0-f7dd6a8db947",
+			"a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+			"db66750321b72ec864678c75c26c0ca538051e5c2e43a682678d1fe17366c5ec"
+		],
+		[
+			"chunk-5335ea3d97ea9b5c80c5e962da35b5c7ade928a901035dda93dbd337d5001cf9",
+			"embedding-ff6dbb43-aa85-47b7-a5e0-f7dd6a8db947",
+			"a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+			"690205f2b8b0294848905bb99caa145dbbb1b2e983959e024d980663788286fc"
+		],
+		[
+			"chunk-553a7a3cef3d409160f8218c9f7ea4b224dc1543c8bae248d9da575cc7d158a3",
+			"embedding-3141a2d5-e45a-4db9-8805-95ce0d58ebd4",
+			"a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+			"17fd76ee936f3e3248c2c2cb175f252bcbdca9e03eaabbcdf0478498a5bd085c"
+		],
+		[
+			"chunk-55d3fccbd243310027f4dc9dd835c518f8a2d6fd7393ddb8201d028d41d19773",
+			"embedding-7c47026b-ff1f-4b0c-8ab5-f82ba8ca1de7",
+			"a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+			"eba991840066b53eb80a419dab8e8c0ca176a45934eff66ba591007c5fc5a850"
+		],
+		[
+			"chunk-5ad705d5e3347c2f160792353e0664867bdb4d89ad7af05cf1db9e8177991d9e",
+			"embedding-559c52a0-0af2-43d2-880b-95e0787a25d3",
+			"a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+			"bc18c8b9d23eb6103f0794aaa825aef7c64d3a177554dce50c1def431ab0ac88"
+		],
+		[
+			"chunk-6a17ea99fba4007cdb7f7fecda7523ac5966851dab5d481e614647295f535645",
+			"embedding-fbdc3d18-c7ff-46ce-a2de-b41588ab18b9",
+			"a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+			"82d873b9c066257a1dcee61679f71bb3fe340223224d2ac2a83165bb2c15d68f"
+		],
+		[
+			"chunk-6e084774bc067e4eeea622120de7ad2789347322b28c2c35876e81ab70a38377",
+			"embedding-559c52a0-0af2-43d2-880b-95e0787a25d3",
+			"a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+			"97692c68caad1abaecea2a27c5b1cfe37971046bbcbcdddca84b78f157bb3ad5"
+		],
+		[
+			"chunk-71932a62ad052249ddaab4b2d598793a902e1c0cb88bb6c2bba73f8fbf4abd14",
+			"embedding-7c47026b-ff1f-4b0c-8ab5-f82ba8ca1de7",
+			"a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+			"eeca440b1c1ddbe0db46dac766259164c1abfbd4e671a7bb352708d67ae253fd"
+		],
+		[
+			"chunk-7554c4af84a35c951b29faa89d31624e39bf275a0b66455d2027a2b7f15a9d25",
+			"embedding-7c47026b-ff1f-4b0c-8ab5-f82ba8ca1de7",
+			"a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+			"1f96e4eb297cba7b852f1e3c14fa469e1baaf0abcabf3a97da80adb451db33c7"
+		],
+		[
+			"chunk-7dfb3c08e6c8f3d00d6064999a2f9f449939bcec20fc5f2c049240b9a8999861",
+			"embedding-fbdc3d18-c7ff-46ce-a2de-b41588ab18b9",
+			"a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+			"36a91d34f34b0f41887352509ad9ce1d9e1e4476254cb63df8ad1202fa3da52e"
+		],
+		[
+			"chunk-7fda108c2f8651275c13eea9ca364350fe360b7c382bb850052a47143bfc5a57",
+			"embedding-3141a2d5-e45a-4db9-8805-95ce0d58ebd4",
+			"a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+			"fff566ef33f4f8cb0ecc940e4c4eb0e2d1d8ebc81c40d72984ddc57cca95762b"
+		],
+		[
+			"chunk-8f841e5114c09af6b9ab8badce0007150e109599402c0097c68c80a6330dcbe8",
+			"embedding-65accec8-0562-45d4-84ab-c4f8f5cabf12",
+			"a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+			"68ac21682097b03c6efee7c5a90a0f07c0241ca58d67eac8c1fce9e2be72e851"
+		],
+		[
+			"chunk-8faf49fa0ca06ce7a1f966fd79063ce4f39a1840c627219d8026df07f40218dd",
+			"embedding-ff6dbb43-aa85-47b7-a5e0-f7dd6a8db947",
+			"a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+			"64abea8e0a966a96d231848d0453207ec9ccbd34aa74cca694a06a726a44ac47"
+		],
+		[
+			"chunk-903deb07956bf0237614d3ee1a17897549e8b819cb30621df29ca72019e8672d",
+			"embedding-7c47026b-ff1f-4b0c-8ab5-f82ba8ca1de7",
+			"a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+			"f26f69a4f0fe0d4aca1fdd510447040d352dbdf926d3922cce2e718c93990915"
+		],
+		[
+			"chunk-94822a6bedd245d9714351dfdf7d444fe92bbee1d7b8f5b11b146701101cafab",
+			"embedding-540b6135-6dbc-41f8-a649-dbbea41ea788",
+			"a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+			"d6c4717cbc82faaeb90441f9aff6e4436218e68456ffd2b89f6753f84bd9344c"
+		],
+		[
+			"chunk-9aef72af979aa24c1928a45d47783ababeea2d8029360d91cf83cb668207e5c4",
+			"embedding-559c52a0-0af2-43d2-880b-95e0787a25d3",
+			"a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+			"3a928abb91d821acbc5b7a84db6ff77167801bfd02fb62815f3289701d699f20"
+		],
+		[
+			"chunk-a6675fa967433ecf1f7344011e07fa402955fccde87541c38a0ebb4aa8db2f40",
+			"embedding-7c47026b-ff1f-4b0c-8ab5-f82ba8ca1de7",
+			"a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+			"03bc4b9b4e6a7017d3bc30a5a65aca5c8e1a09057e0f37888638b26d223418cf"
+		],
+		[
+			"chunk-b06798d41f6f52a09149f90abd51876af5303725e6bc0c170d0fff9c06cab72f",
+			"embedding-559c52a0-0af2-43d2-880b-95e0787a25d3",
+			"a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+			"2a877ab38cf9970edc996d411139ba902ba6a83571f30c1408f9974cd80de25e"
+		],
+		[
+			"chunk-b399514e28f8df858513ac9e46604c78a6eca186fb52c20d249640ca6759ee8f",
+			"embedding-3141a2d5-e45a-4db9-8805-95ce0d58ebd4",
+			"a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+			"ed5b8ebc20a6e77d8b37cff8bf1302af489ed8cb09032d6d122825385c0fc160"
+		],
+		[
+			"chunk-ba6b22a4a176ce90f39a5368e8d75a474a46e42e617b6e526ebe4db352a2d4df",
+			"embedding-559c52a0-0af2-43d2-880b-95e0787a25d3",
+			"a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+			"187fb9999afbda23a4b6b1af58b30c93344e07ecbf0e577a18a2a818c4f005da"
+		],
+		[
+			"chunk-c410d681c6da22c436f5cc513f3afc85a892fe63c333d6a82f633b22b74e6a2d",
+			"embedding-540b6135-6dbc-41f8-a649-dbbea41ea788",
+			"a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+			"847734fe6248d03fe9444382b64979c1e5259c2a949966874fd7ed1e14533c7b"
+		],
+		[
+			"chunk-ca8464fe892dc2092f67422cdad9ba1d264e3a10f2d81615c2f2b1f58de3624d",
+			"embedding-fbdc3d18-c7ff-46ce-a2de-b41588ab18b9",
+			"a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+			"37690566497f2745090ec6c58a4cff15278313e1e9483be0721d7d126de8fd31"
+		],
+		[
+			"chunk-ca9acaadb8b7764abaeaaf0c97dded1eb30aea789aeb9d95d8ffc367ba99b2e8",
+			"embedding-65accec8-0562-45d4-84ab-c4f8f5cabf12",
+			"a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+			"699f62fcc796e3a73c5243c841da92c22444e319f0ee2058114256b5ead2652f"
+		],
+		[
+			"chunk-db6d9aeb96422aa8aa6d0c5e729b22df1101d6b73cd7da9346fcfb22dfbea3b7",
+			"embedding-540b6135-6dbc-41f8-a649-dbbea41ea788",
+			"a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+			"53cf93e952513f59517fc23bae1e0ff3a458be84dad4407e29a2eb65a06999a3"
+		],
+		[
+			"chunk-dc05d761fcc470fdf1742955aaaf9512034204f7af6e92221596cf74515aa5ee",
+			"embedding-559c52a0-0af2-43d2-880b-95e0787a25d3",
+			"a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+			"9755fd0f36a97a0bd989eb26fad08908c54a16fdbc7d17fc80bd18527770a296"
+		],
+		[
+			"chunk-df44762bcdb738b74666210d97b4abb306c42f19222cfa1577a5920b6005800c",
+			"embedding-65accec8-0562-45d4-84ab-c4f8f5cabf12",
+			"a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+			"b74fcc176c186bc62da910f95cd16d4ed08450a4be386f7ccab4d428da0843f6"
+		],
+		[
+			"chunk-e8129e35e5f232d8fb34c5c523231e4ac6caddd275fbeaf296eec1be01c576f6",
+			"embedding-3141a2d5-e45a-4db9-8805-95ce0d58ebd4",
+			"a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+			"3a279c74f470f2f75ee36032ecf12edfdcb8ca040e9476e6337e8ae2c4375d9e"
+		],
+		[
+			"chunk-eb82c1d22a1dd55d35defcfd82276d0b9ce57a254d472fb84e3d60449ff0a5ca",
+			"embedding-65accec8-0562-45d4-84ab-c4f8f5cabf12",
+			"a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+			"476ed6ddb85529503838d8c0b89f4572c459cc7f63d8745bcf6f84154277520e"
+		],
+		[
+			"chunk-f17aaa80ae334dbeba6fb2fa1743a017f292bbc3a7f77f81529c948b31e77090",
+			"embedding-ff6dbb43-aa85-47b7-a5e0-f7dd6a8db947",
+			"a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+			"eace503eb42701e6f9576ab6deaa57de979c2f1d5e952179793ea0975a7f5346"
+		],
+		[
+			"chunk-f641521e9dd09ea6e3a4ba65ab6c389d3643f798daf7634a55e0c85f40f8e154",
+			"embedding-540b6135-6dbc-41f8-a649-dbbea41ea788",
+			"a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+			"331472308f34b84b963d3a39e9b8f7b59dbb2b02c609b44821c71596c44e33c5"
+		]
+	],
+	"summary": {
+		"cosine": {
+			"precision_at_k": 0.4222222222222222,
+			"recall_at_k": 0.7222222222222222,
+			"reciprocal_rank": 0.788888888888889,
+			"required_passes": 13,
+			"required_cases": 15
+		},
+		"hybrid": {
+			"precision_at_k": 0.4444444444444444,
+			"recall_at_k": 0.7444444444444444,
+			"reciprocal_rank": 0.8,
+			"required_passes": 14,
+			"required_cases": 15
+		}
+	},
+	"results": [
+		{
+			"case_id": "rpc-timeout",
+			"query": "RPC timeout与线程池饱和应补查什么",
+			"positive": true,
+			"shared_query_seconds": 0.5564,
+			"modes": {
+				"cosine": {
+					"precision_at_k": 0.6666666666666666,
+					"recall_at_k": 1,
+					"reciprocal_rank": 1,
+					"required_hit": true,
+					"returned_count": 3,
+					"matches": [
+						{
+							"chunk_id": "chunk-94822a6bedd245d9714351dfdf7d444fe92bbee1d7b8f5b11b146701101cafab",
+							"document_id": "rpc-manual",
+							"score": 0.8210512578741971,
+							"rank": 1,
+							"method": "exact-cosine-v1",
+							"embedding_set_id": "embedding-540b6135-6dbc-41f8-a649-dbbea41ea788",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-3ed4fa36ce5d100b7df09b610fd7720eb564b9e6e37e478bef990925a0475683",
+							"content_hash": "d6c4717cbc82faaeb90441f9aff6e4436218e68456ffd2b89f6753f84bd9344c",
+							"retrieval_details": null
+						},
+						{
+							"chunk_id": "chunk-db6d9aeb96422aa8aa6d0c5e729b22df1101d6b73cd7da9346fcfb22dfbea3b7",
+							"document_id": "rpc-manual",
+							"score": 0.6024568145345499,
+							"rank": 2,
+							"method": "exact-cosine-v1",
+							"embedding_set_id": "embedding-540b6135-6dbc-41f8-a649-dbbea41ea788",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-3ed4fa36ce5d100b7df09b610fd7720eb564b9e6e37e478bef990925a0475683",
+							"content_hash": "53cf93e952513f59517fc23bae1e0ff3a458be84dad4407e29a2eb65a06999a3",
+							"retrieval_details": null
+						},
+						{
+							"chunk_id": "chunk-6e084774bc067e4eeea622120de7ad2789347322b28c2c35876e81ab70a38377",
+							"document_id": "sqlalchemy-pool-manual",
+							"score": 0.5622131957440961,
+							"rank": 3,
+							"method": "exact-cosine-v1",
+							"embedding_set_id": "embedding-559c52a0-0af2-43d2-880b-95e0787a25d3",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-5e8607db97e750a012be06d5e51c3e62b6d2b9bb678cc34bd5346907cfea4903",
+							"content_hash": "97692c68caad1abaecea2a27c5b1cfe37971046bbcbcdddca84b78f157bb3ad5",
+							"retrieval_details": null
+						}
+					]
+				},
+				"hybrid": {
+					"precision_at_k": 0.3333333333333333,
+					"recall_at_k": 0.5,
+					"reciprocal_rank": 1,
+					"required_hit": true,
+					"returned_count": 3,
+					"matches": [
+						{
+							"chunk_id": "chunk-94822a6bedd245d9714351dfdf7d444fe92bbee1d7b8f5b11b146701101cafab",
+							"document_id": "rpc-manual",
+							"score": 0.03252247488101534,
+							"rank": 1,
+							"method": "hybrid-rrf-keyword-v1",
+							"embedding_set_id": "embedding-540b6135-6dbc-41f8-a649-dbbea41ea788",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-3ed4fa36ce5d100b7df09b610fd7720eb564b9e6e37e478bef990925a0475683",
+							"content_hash": "d6c4717cbc82faaeb90441f9aff6e4436218e68456ffd2b89f6753f84bd9344c",
+							"retrieval_details": {
+								"score_kind": "rrf",
+								"rrf_constant": 60,
+								"branches": {
+									"vector": {
+										"rank": 1,
+										"score": 0.8210512578741971
+									},
+									"keyword": {
+										"rank": 2,
+										"score": 0.9230769230769231
+									}
+								},
+								"vector_candidates": 10,
+								"keyword_candidates": 10
+							}
+						},
+						{
+							"chunk_id": "chunk-6e084774bc067e4eeea622120de7ad2789347322b28c2c35876e81ab70a38377",
+							"document_id": "sqlalchemy-pool-manual",
+							"score": 0.032266458495966696,
+							"rank": 2,
+							"method": "hybrid-rrf-keyword-v1",
+							"embedding_set_id": "embedding-559c52a0-0af2-43d2-880b-95e0787a25d3",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-5e8607db97e750a012be06d5e51c3e62b6d2b9bb678cc34bd5346907cfea4903",
+							"content_hash": "97692c68caad1abaecea2a27c5b1cfe37971046bbcbcdddca84b78f157bb3ad5",
+							"retrieval_details": {
+								"score_kind": "rrf",
+								"rrf_constant": 60,
+								"branches": {
+									"vector": {
+										"rank": 3,
+										"score": 0.5622131957440961
+									},
+									"keyword": {
+										"rank": 1,
+										"score": 0.9230769230769231
+									}
+								},
+								"vector_candidates": 10,
+								"keyword_candidates": 10
+							}
+						},
+						{
+							"chunk_id": "chunk-ba6b22a4a176ce90f39a5368e8d75a474a46e42e617b6e526ebe4db352a2d4df",
+							"document_id": "sqlalchemy-pool-manual",
+							"score": 0.03125,
+							"rank": 3,
+							"method": "hybrid-rrf-keyword-v1",
+							"embedding_set_id": "embedding-559c52a0-0af2-43d2-880b-95e0787a25d3",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-5e8607db97e750a012be06d5e51c3e62b6d2b9bb678cc34bd5346907cfea4903",
+							"content_hash": "187fb9999afbda23a4b6b1af58b30c93344e07ecbf0e577a18a2a818c4f005da",
+							"retrieval_details": {
+								"score_kind": "rrf",
+								"rrf_constant": 60,
+								"branches": {
+									"vector": {
+										"rank": 4,
+										"score": 0.5428521385528104
+									},
+									"keyword": {
+										"rank": 4,
+										"score": 0.7692307692307693
+									}
+								},
+								"vector_candidates": 10,
+								"keyword_candidates": 10
+							}
+						}
+					]
+				}
+			}
+		},
+		{
+			"case_id": "retry-proof",
+			"query": "max_retries=2能证明实际重试放大吗",
+			"positive": true,
+			"shared_query_seconds": 0.4746,
+			"modes": {
+				"cosine": {
+					"precision_at_k": 0.3333333333333333,
+					"recall_at_k": 1,
+					"reciprocal_rank": 1,
+					"required_hit": true,
+					"returned_count": 3,
+					"matches": [
+						{
+							"chunk_id": "chunk-f641521e9dd09ea6e3a4ba65ab6c389d3643f798daf7634a55e0c85f40f8e154",
+							"document_id": "rpc-manual",
+							"score": 0.7749268246654417,
+							"rank": 1,
+							"method": "exact-cosine-v1",
+							"embedding_set_id": "embedding-540b6135-6dbc-41f8-a649-dbbea41ea788",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-3ed4fa36ce5d100b7df09b610fd7720eb564b9e6e37e478bef990925a0475683",
+							"content_hash": "331472308f34b84b963d3a39e9b8f7b59dbb2b02c609b44821c71596c44e33c5",
+							"retrieval_details": null
+						},
+						{
+							"chunk_id": "chunk-7dfb3c08e6c8f3d00d6064999a2f9f449939bcec20fc5f2c049240b9a8999861",
+							"document_id": "java-heap-manual",
+							"score": 0.4422120938806889,
+							"rank": 2,
+							"method": "exact-cosine-v1",
+							"embedding_set_id": "embedding-fbdc3d18-c7ff-46ce-a2de-b41588ab18b9",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-a321d7cc4c593a0895bff0b47d39cac00662232d25c90cd6ad298bc17d119b29",
+							"content_hash": "36a91d34f34b0f41887352509ad9ce1d9e1e4476254cb63df8ad1202fa3da52e",
+							"retrieval_details": null
+						},
+						{
+							"chunk_id": "chunk-8f841e5114c09af6b9ab8badce0007150e109599402c0097c68c80a6330dcbe8",
+							"document_id": "postgres-connection-manual",
+							"score": 0.4320086622668595,
+							"rank": 3,
+							"method": "exact-cosine-v1",
+							"embedding_set_id": "embedding-65accec8-0562-45d4-84ab-c4f8f5cabf12",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-53386b230b13881c73ecc142fec9a020009f81492cf9c3a6ca50cfe91c40718b",
+							"content_hash": "68ac21682097b03c6efee7c5a90a0f07c0241ca58d67eac8c1fce9e2be72e851",
+							"retrieval_details": null
+						}
+					]
+				},
+				"hybrid": {
+					"precision_at_k": 0.3333333333333333,
+					"recall_at_k": 1,
+					"reciprocal_rank": 1,
+					"required_hit": true,
+					"returned_count": 3,
+					"matches": [
+						{
+							"chunk_id": "chunk-f641521e9dd09ea6e3a4ba65ab6c389d3643f798daf7634a55e0c85f40f8e154",
+							"document_id": "rpc-manual",
+							"score": 0.03278688524590164,
+							"rank": 1,
+							"method": "hybrid-rrf-keyword-v1",
+							"embedding_set_id": "embedding-540b6135-6dbc-41f8-a649-dbbea41ea788",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-3ed4fa36ce5d100b7df09b610fd7720eb564b9e6e37e478bef990925a0475683",
+							"content_hash": "331472308f34b84b963d3a39e9b8f7b59dbb2b02c609b44821c71596c44e33c5",
+							"retrieval_details": {
+								"score_kind": "rrf",
+								"rrf_constant": 60,
+								"branches": {
+									"vector": {
+										"rank": 1,
+										"score": 0.7749268246654417
+									},
+									"keyword": {
+										"rank": 1,
+										"score": 1.25
+									}
+								},
+								"vector_candidates": 10,
+								"keyword_candidates": 10
+							}
+						},
+						{
+							"chunk_id": "chunk-8f841e5114c09af6b9ab8badce0007150e109599402c0097c68c80a6330dcbe8",
+							"document_id": "postgres-connection-manual",
+							"score": 0.03149801587301587,
+							"rank": 2,
+							"method": "hybrid-rrf-keyword-v1",
+							"embedding_set_id": "embedding-65accec8-0562-45d4-84ab-c4f8f5cabf12",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-53386b230b13881c73ecc142fec9a020009f81492cf9c3a6ca50cfe91c40718b",
+							"content_hash": "68ac21682097b03c6efee7c5a90a0f07c0241ca58d67eac8c1fce9e2be72e851",
+							"retrieval_details": {
+								"score_kind": "rrf",
+								"rrf_constant": 60,
+								"branches": {
+									"vector": {
+										"rank": 3,
+										"score": 0.4320086622668595
+									},
+									"keyword": {
+										"rank": 4,
+										"score": 0.5
+									}
+								},
+								"vector_candidates": 10,
+								"keyword_candidates": 10
+							}
+						},
+						{
+							"chunk_id": "chunk-7dfb3c08e6c8f3d00d6064999a2f9f449939bcec20fc5f2c049240b9a8999861",
+							"document_id": "java-heap-manual",
+							"score": 0.030834914611005692,
+							"rank": 3,
+							"method": "hybrid-rrf-keyword-v1",
+							"embedding_set_id": "embedding-fbdc3d18-c7ff-46ce-a2de-b41588ab18b9",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-a321d7cc4c593a0895bff0b47d39cac00662232d25c90cd6ad298bc17d119b29",
+							"content_hash": "36a91d34f34b0f41887352509ad9ce1d9e1e4476254cb63df8ad1202fa3da52e",
+							"retrieval_details": {
+								"score_kind": "rrf",
+								"rrf_constant": 60,
+								"branches": {
+									"vector": {
+										"rank": 2,
+										"score": 0.4422120938806889
+									},
+									"keyword": {
+										"rank": 8,
+										"score": 0.4166666666666667
+									}
+								},
+								"vector_candidates": 10,
+								"keyword_candidates": 10
+							}
+						}
+					]
+				}
+			}
+		},
+		{
+			"case_id": "python-pandas",
+			"query": "Python ModuleNotFoundError No module named pandas",
+			"positive": true,
+			"shared_query_seconds": 0.4624,
+			"modes": {
+				"cosine": {
+					"precision_at_k": 0.3333333333333333,
+					"recall_at_k": 0.3333333333333333,
+					"reciprocal_rank": 0.5,
+					"required_hit": false,
+					"returned_count": 3,
+					"matches": [
+						{
+							"chunk_id": "chunk-7554c4af84a35c951b29faa89d31624e39bf275a0b66455d2027a2b7f15a9d25",
+							"document_id": "python-import-manual",
+							"score": 0.8140831942297329,
+							"rank": 1,
+							"method": "exact-cosine-v1",
+							"embedding_set_id": "embedding-7c47026b-ff1f-4b0c-8ab5-f82ba8ca1de7",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-eb17ac14f7e03fa091a3059d8424f749d4fe6f46a694e416f42be5fb5afbe0f4",
+							"content_hash": "1f96e4eb297cba7b852f1e3c14fa469e1baaf0abcabf3a97da80adb451db33c7",
+							"retrieval_details": null
+						},
+						{
+							"chunk_id": "chunk-71932a62ad052249ddaab4b2d598793a902e1c0cb88bb6c2bba73f8fbf4abd14",
+							"document_id": "python-import-manual",
+							"score": 0.6160082579757391,
+							"rank": 2,
+							"method": "exact-cosine-v1",
+							"embedding_set_id": "embedding-7c47026b-ff1f-4b0c-8ab5-f82ba8ca1de7",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-eb17ac14f7e03fa091a3059d8424f749d4fe6f46a694e416f42be5fb5afbe0f4",
+							"content_hash": "eeca440b1c1ddbe0db46dac766259164c1abfbd4e671a7bb352708d67ae253fd",
+							"retrieval_details": null
+						},
+						{
+							"chunk_id": "chunk-55d3fccbd243310027f4dc9dd835c518f8a2d6fd7393ddb8201d028d41d19773",
+							"document_id": "python-import-manual",
+							"score": 0.602070392055784,
+							"rank": 3,
+							"method": "exact-cosine-v1",
+							"embedding_set_id": "embedding-7c47026b-ff1f-4b0c-8ab5-f82ba8ca1de7",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-eb17ac14f7e03fa091a3059d8424f749d4fe6f46a694e416f42be5fb5afbe0f4",
+							"content_hash": "eba991840066b53eb80a419dab8e8c0ca176a45934eff66ba591007c5fc5a850",
+							"retrieval_details": null
+						}
+					]
+				},
+				"hybrid": {
+					"precision_at_k": 0.3333333333333333,
+					"recall_at_k": 0.3333333333333333,
+					"reciprocal_rank": 0.3333333333333333,
+					"required_hit": false,
+					"returned_count": 3,
+					"matches": [
+						{
+							"chunk_id": "chunk-7554c4af84a35c951b29faa89d31624e39bf275a0b66455d2027a2b7f15a9d25",
+							"document_id": "python-import-manual",
+							"score": 0.03252247488101534,
+							"rank": 1,
+							"method": "hybrid-rrf-keyword-v1",
+							"embedding_set_id": "embedding-7c47026b-ff1f-4b0c-8ab5-f82ba8ca1de7",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-eb17ac14f7e03fa091a3059d8424f749d4fe6f46a694e416f42be5fb5afbe0f4",
+							"content_hash": "1f96e4eb297cba7b852f1e3c14fa469e1baaf0abcabf3a97da80adb451db33c7",
+							"retrieval_details": {
+								"score_kind": "rrf",
+								"rrf_constant": 60,
+								"branches": {
+									"vector": {
+										"rank": 1,
+										"score": 0.8140831942297329
+									},
+									"keyword": {
+										"rank": 2,
+										"score": 1.5
+									}
+								},
+								"vector_candidates": 10,
+								"keyword_candidates": 10
+							}
+						},
+						{
+							"chunk_id": "chunk-55d3fccbd243310027f4dc9dd835c518f8a2d6fd7393ddb8201d028d41d19773",
+							"document_id": "python-import-manual",
+							"score": 0.032266458495966696,
+							"rank": 2,
+							"method": "hybrid-rrf-keyword-v1",
+							"embedding_set_id": "embedding-7c47026b-ff1f-4b0c-8ab5-f82ba8ca1de7",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-eb17ac14f7e03fa091a3059d8424f749d4fe6f46a694e416f42be5fb5afbe0f4",
+							"content_hash": "eba991840066b53eb80a419dab8e8c0ca176a45934eff66ba591007c5fc5a850",
+							"retrieval_details": {
+								"score_kind": "rrf",
+								"rrf_constant": 60,
+								"branches": {
+									"vector": {
+										"rank": 3,
+										"score": 0.602070392055784
+									},
+									"keyword": {
+										"rank": 1,
+										"score": 1.5
+									}
+								},
+								"vector_candidates": 10,
+								"keyword_candidates": 10
+							}
+						},
+						{
+							"chunk_id": "chunk-71932a62ad052249ddaab4b2d598793a902e1c0cb88bb6c2bba73f8fbf4abd14",
+							"document_id": "python-import-manual",
+							"score": 0.031754032258064516,
+							"rank": 3,
+							"method": "hybrid-rrf-keyword-v1",
+							"embedding_set_id": "embedding-7c47026b-ff1f-4b0c-8ab5-f82ba8ca1de7",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-eb17ac14f7e03fa091a3059d8424f749d4fe6f46a694e416f42be5fb5afbe0f4",
+							"content_hash": "eeca440b1c1ddbe0db46dac766259164c1abfbd4e671a7bb352708d67ae253fd",
+							"retrieval_details": {
+								"score_kind": "rrf",
+								"rrf_constant": 60,
+								"branches": {
+									"vector": {
+										"rank": 2,
+										"score": 0.6160082579757391
+									},
+									"keyword": {
+										"rank": 4,
+										"score": 1
+									}
+								},
+								"vector_candidates": 10,
+								"keyword_candidates": 10
+							}
+						}
+					]
+				}
+			}
+		},
+		{
+			"case_id": "python-environment",
+			"query": "终端pip装好了但服务Python导入不了模块",
+			"positive": true,
+			"shared_query_seconds": 0.4444,
+			"modes": {
+				"cosine": {
+					"precision_at_k": 0.3333333333333333,
+					"recall_at_k": 0.5,
+					"reciprocal_rank": 0.5,
+					"required_hit": true,
+					"returned_count": 3,
+					"matches": [
+						{
+							"chunk_id": "chunk-71932a62ad052249ddaab4b2d598793a902e1c0cb88bb6c2bba73f8fbf4abd14",
+							"document_id": "python-import-manual",
+							"score": 0.6362285309306579,
+							"rank": 1,
+							"method": "exact-cosine-v1",
+							"embedding_set_id": "embedding-7c47026b-ff1f-4b0c-8ab5-f82ba8ca1de7",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-eb17ac14f7e03fa091a3059d8424f749d4fe6f46a694e416f42be5fb5afbe0f4",
+							"content_hash": "eeca440b1c1ddbe0db46dac766259164c1abfbd4e671a7bb352708d67ae253fd",
+							"retrieval_details": null
+						},
+						{
+							"chunk_id": "chunk-903deb07956bf0237614d3ee1a17897549e8b819cb30621df29ca72019e8672d",
+							"document_id": "python-import-manual",
+							"score": 0.6344537415951805,
+							"rank": 2,
+							"method": "exact-cosine-v1",
+							"embedding_set_id": "embedding-7c47026b-ff1f-4b0c-8ab5-f82ba8ca1de7",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-eb17ac14f7e03fa091a3059d8424f749d4fe6f46a694e416f42be5fb5afbe0f4",
+							"content_hash": "f26f69a4f0fe0d4aca1fdd510447040d352dbdf926d3922cce2e718c93990915",
+							"retrieval_details": null
+						},
+						{
+							"chunk_id": "chunk-a6675fa967433ecf1f7344011e07fa402955fccde87541c38a0ebb4aa8db2f40",
+							"document_id": "python-import-manual",
+							"score": 0.625467732745964,
+							"rank": 3,
+							"method": "exact-cosine-v1",
+							"embedding_set_id": "embedding-7c47026b-ff1f-4b0c-8ab5-f82ba8ca1de7",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-eb17ac14f7e03fa091a3059d8424f749d4fe6f46a694e416f42be5fb5afbe0f4",
+							"content_hash": "03bc4b9b4e6a7017d3bc30a5a65aca5c8e1a09057e0f37888638b26d223418cf",
+							"retrieval_details": null
+						}
+					]
+				},
+				"hybrid": {
+					"precision_at_k": 0.6666666666666666,
+					"recall_at_k": 1,
+					"reciprocal_rank": 1,
+					"required_hit": true,
+					"returned_count": 3,
+					"matches": [
+						{
+							"chunk_id": "chunk-903deb07956bf0237614d3ee1a17897549e8b819cb30621df29ca72019e8672d",
+							"document_id": "python-import-manual",
+							"score": 0.03252247488101534,
+							"rank": 1,
+							"method": "hybrid-rrf-keyword-v1",
+							"embedding_set_id": "embedding-7c47026b-ff1f-4b0c-8ab5-f82ba8ca1de7",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-eb17ac14f7e03fa091a3059d8424f749d4fe6f46a694e416f42be5fb5afbe0f4",
+							"content_hash": "f26f69a4f0fe0d4aca1fdd510447040d352dbdf926d3922cce2e718c93990915",
+							"retrieval_details": {
+								"score_kind": "rrf",
+								"rrf_constant": 60,
+								"branches": {
+									"vector": {
+										"rank": 2,
+										"score": 0.6344537415951805
+									},
+									"keyword": {
+										"rank": 1,
+										"score": 1.7333333333333334
+									}
+								},
+								"vector_candidates": 10,
+								"keyword_candidates": 10
+							}
+						},
+						{
+							"chunk_id": "chunk-71932a62ad052249ddaab4b2d598793a902e1c0cb88bb6c2bba73f8fbf4abd14",
+							"document_id": "python-import-manual",
+							"score": 0.032266458495966696,
+							"rank": 2,
+							"method": "hybrid-rrf-keyword-v1",
+							"embedding_set_id": "embedding-7c47026b-ff1f-4b0c-8ab5-f82ba8ca1de7",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-eb17ac14f7e03fa091a3059d8424f749d4fe6f46a694e416f42be5fb5afbe0f4",
+							"content_hash": "eeca440b1c1ddbe0db46dac766259164c1abfbd4e671a7bb352708d67ae253fd",
+							"retrieval_details": {
+								"score_kind": "rrf",
+								"rrf_constant": 60,
+								"branches": {
+									"vector": {
+										"rank": 1,
+										"score": 0.6362285309306579
+									},
+									"keyword": {
+										"rank": 3,
+										"score": 1.4666666666666666
+									}
+								},
+								"vector_candidates": 10,
+								"keyword_candidates": 10
+							}
+						},
+						{
+							"chunk_id": "chunk-375570a9e825e12363e501411ad53cfaf207bfec46a179f572fa4fbc2ba9bbf7",
+							"document_id": "python-import-manual",
+							"score": 0.0315136476426799,
+							"rank": 3,
+							"method": "hybrid-rrf-keyword-v1",
+							"embedding_set_id": "embedding-7c47026b-ff1f-4b0c-8ab5-f82ba8ca1de7",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-eb17ac14f7e03fa091a3059d8424f749d4fe6f46a694e416f42be5fb5afbe0f4",
+							"content_hash": "e9dbcec387998991ecb3a615fa8ac4dfc9e32e6dfa4cea7ba22fd0172549329a",
+							"retrieval_details": {
+								"score_kind": "rrf",
+								"rrf_constant": 60,
+								"branches": {
+									"vector": {
+										"rank": 5,
+										"score": 0.6001864344865401
+									},
+									"keyword": {
+										"rank": 2,
+										"score": 1.4666666666666666
+									}
+								},
+								"vector_candidates": 10,
+								"keyword_candidates": 10
+							}
+						}
+					]
+				}
+			}
+		},
+		{
+			"case_id": "postgres-refused",
+			"query": "PostgreSQL connection refused宿主机5433容器5432",
+			"positive": true,
+			"shared_query_seconds": 0.433,
+			"modes": {
+				"cosine": {
+					"precision_at_k": 0.3333333333333333,
+					"recall_at_k": 1,
+					"reciprocal_rank": 1,
+					"required_hit": true,
+					"returned_count": 3,
+					"matches": [
+						{
+							"chunk_id": "chunk-3a10ede4287fac86b25c9ebdd39e38d60035f7b07b40bb47e0098f690edc9def",
+							"document_id": "postgres-connection-manual",
+							"score": 0.7721681667107164,
+							"rank": 1,
+							"method": "exact-cosine-v1",
+							"embedding_set_id": "embedding-65accec8-0562-45d4-84ab-c4f8f5cabf12",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-53386b230b13881c73ecc142fec9a020009f81492cf9c3a6ca50cfe91c40718b",
+							"content_hash": "e7b821beb3345a5fcd1e3d16ec825af19fac5b4a78041b5ecf8c9fe989f01e16",
+							"retrieval_details": null
+						},
+						{
+							"chunk_id": "chunk-43307baed30b428663229b5aa0b94959348c955462dabccb872d436b58b42970",
+							"document_id": "postgres-connection-manual",
+							"score": 0.6272896231928378,
+							"rank": 2,
+							"method": "exact-cosine-v1",
+							"embedding_set_id": "embedding-65accec8-0562-45d4-84ab-c4f8f5cabf12",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-53386b230b13881c73ecc142fec9a020009f81492cf9c3a6ca50cfe91c40718b",
+							"content_hash": "86548eec7944c482de34ee8c08151d0860bf14806e2f76dc52acfe91fd42b698",
+							"retrieval_details": null
+						},
+						{
+							"chunk_id": "chunk-eb82c1d22a1dd55d35defcfd82276d0b9ce57a254d472fb84e3d60449ff0a5ca",
+							"document_id": "postgres-connection-manual",
+							"score": 0.5443694722799692,
+							"rank": 3,
+							"method": "exact-cosine-v1",
+							"embedding_set_id": "embedding-65accec8-0562-45d4-84ab-c4f8f5cabf12",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-53386b230b13881c73ecc142fec9a020009f81492cf9c3a6ca50cfe91c40718b",
+							"content_hash": "476ed6ddb85529503838d8c0b89f4572c459cc7f63d8745bcf6f84154277520e",
+							"retrieval_details": null
+						}
+					]
+				},
+				"hybrid": {
+					"precision_at_k": 0.3333333333333333,
+					"recall_at_k": 1,
+					"reciprocal_rank": 1,
+					"required_hit": true,
+					"returned_count": 3,
+					"matches": [
+						{
+							"chunk_id": "chunk-3a10ede4287fac86b25c9ebdd39e38d60035f7b07b40bb47e0098f690edc9def",
+							"document_id": "postgres-connection-manual",
+							"score": 0.03278688524590164,
+							"rank": 1,
+							"method": "hybrid-rrf-keyword-v1",
+							"embedding_set_id": "embedding-65accec8-0562-45d4-84ab-c4f8f5cabf12",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-53386b230b13881c73ecc142fec9a020009f81492cf9c3a6ca50cfe91c40718b",
+							"content_hash": "e7b821beb3345a5fcd1e3d16ec825af19fac5b4a78041b5ecf8c9fe989f01e16",
+							"retrieval_details": {
+								"score_kind": "rrf",
+								"rrf_constant": 60,
+								"branches": {
+									"vector": {
+										"rank": 1,
+										"score": 0.7721681667107164
+									},
+									"keyword": {
+										"rank": 1,
+										"score": 2.7
+									}
+								},
+								"vector_candidates": 10,
+								"keyword_candidates": 10
+							}
+						},
+						{
+							"chunk_id": "chunk-43307baed30b428663229b5aa0b94959348c955462dabccb872d436b58b42970",
+							"document_id": "postgres-connection-manual",
+							"score": 0.03200204813108039,
+							"rank": 2,
+							"method": "hybrid-rrf-keyword-v1",
+							"embedding_set_id": "embedding-65accec8-0562-45d4-84ab-c4f8f5cabf12",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-53386b230b13881c73ecc142fec9a020009f81492cf9c3a6ca50cfe91c40718b",
+							"content_hash": "86548eec7944c482de34ee8c08151d0860bf14806e2f76dc52acfe91fd42b698",
+							"retrieval_details": {
+								"score_kind": "rrf",
+								"rrf_constant": 60,
+								"branches": {
+									"vector": {
+										"rank": 2,
+										"score": 0.6272896231928378
+									},
+									"keyword": {
+										"rank": 3,
+										"score": 0.5
+									}
+								},
+								"vector_candidates": 10,
+								"keyword_candidates": 10
+							}
+						},
+						{
+							"chunk_id": "chunk-8f841e5114c09af6b9ab8badce0007150e109599402c0097c68c80a6330dcbe8",
+							"document_id": "postgres-connection-manual",
+							"score": 0.031009615384615385,
+							"rank": 3,
+							"method": "hybrid-rrf-keyword-v1",
+							"embedding_set_id": "embedding-65accec8-0562-45d4-84ab-c4f8f5cabf12",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-53386b230b13881c73ecc142fec9a020009f81492cf9c3a6ca50cfe91c40718b",
+							"content_hash": "68ac21682097b03c6efee7c5a90a0f07c0241ca58d67eac8c1fce9e2be72e851",
+							"retrieval_details": {
+								"score_kind": "rrf",
+								"rrf_constant": 60,
+								"branches": {
+									"vector": {
+										"rank": 4,
+										"score": 0.47694844775103973
+									},
+									"keyword": {
+										"rank": 5,
+										"score": 0.4
+									}
+								},
+								"vector_candidates": 10,
+								"keyword_candidates": 10
+							}
+						}
+					]
+				}
+			}
+		},
+		{
+			"case_id": "postgres-auth",
+			"query": "PostgreSQL password authentication failed连接失败",
+			"positive": true,
+			"shared_query_seconds": 0.5453,
+			"modes": {
+				"cosine": {
+					"precision_at_k": 0.3333333333333333,
+					"recall_at_k": 1,
+					"reciprocal_rank": 1,
+					"required_hit": true,
+					"returned_count": 3,
+					"matches": [
+						{
+							"chunk_id": "chunk-df44762bcdb738b74666210d97b4abb306c42f19222cfa1577a5920b6005800c",
+							"document_id": "postgres-connection-manual",
+							"score": 0.7567251607170604,
+							"rank": 1,
+							"method": "exact-cosine-v1",
+							"embedding_set_id": "embedding-65accec8-0562-45d4-84ab-c4f8f5cabf12",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-53386b230b13881c73ecc142fec9a020009f81492cf9c3a6ca50cfe91c40718b",
+							"content_hash": "b74fcc176c186bc62da910f95cd16d4ed08450a4be386f7ccab4d428da0843f6",
+							"retrieval_details": null
+						},
+						{
+							"chunk_id": "chunk-43307baed30b428663229b5aa0b94959348c955462dabccb872d436b58b42970",
+							"document_id": "postgres-connection-manual",
+							"score": 0.683004588794792,
+							"rank": 2,
+							"method": "exact-cosine-v1",
+							"embedding_set_id": "embedding-65accec8-0562-45d4-84ab-c4f8f5cabf12",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-53386b230b13881c73ecc142fec9a020009f81492cf9c3a6ca50cfe91c40718b",
+							"content_hash": "86548eec7944c482de34ee8c08151d0860bf14806e2f76dc52acfe91fd42b698",
+							"retrieval_details": null
+						},
+						{
+							"chunk_id": "chunk-eb82c1d22a1dd55d35defcfd82276d0b9ce57a254d472fb84e3d60449ff0a5ca",
+							"document_id": "postgres-connection-manual",
+							"score": 0.6236372881642567,
+							"rank": 3,
+							"method": "exact-cosine-v1",
+							"embedding_set_id": "embedding-65accec8-0562-45d4-84ab-c4f8f5cabf12",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-53386b230b13881c73ecc142fec9a020009f81492cf9c3a6ca50cfe91c40718b",
+							"content_hash": "476ed6ddb85529503838d8c0b89f4572c459cc7f63d8745bcf6f84154277520e",
+							"retrieval_details": null
+						}
+					]
+				},
+				"hybrid": {
+					"precision_at_k": 0.3333333333333333,
+					"recall_at_k": 1,
+					"reciprocal_rank": 1,
+					"required_hit": true,
+					"returned_count": 3,
+					"matches": [
+						{
+							"chunk_id": "chunk-df44762bcdb738b74666210d97b4abb306c42f19222cfa1577a5920b6005800c",
+							"document_id": "postgres-connection-manual",
+							"score": 0.03252247488101534,
+							"rank": 1,
+							"method": "hybrid-rrf-keyword-v1",
+							"embedding_set_id": "embedding-65accec8-0562-45d4-84ab-c4f8f5cabf12",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-53386b230b13881c73ecc142fec9a020009f81492cf9c3a6ca50cfe91c40718b",
+							"content_hash": "b74fcc176c186bc62da910f95cd16d4ed08450a4be386f7ccab4d428da0843f6",
+							"retrieval_details": {
+								"score_kind": "rrf",
+								"rrf_constant": 60,
+								"branches": {
+									"vector": {
+										"rank": 1,
+										"score": 0.7567251607170604
+									},
+									"keyword": {
+										"rank": 2,
+										"score": 1.75
+									}
+								},
+								"vector_candidates": 10,
+								"keyword_candidates": 10
+							}
+						},
+						{
+							"chunk_id": "chunk-43307baed30b428663229b5aa0b94959348c955462dabccb872d436b58b42970",
+							"document_id": "postgres-connection-manual",
+							"score": 0.03200204813108039,
+							"rank": 2,
+							"method": "hybrid-rrf-keyword-v1",
+							"embedding_set_id": "embedding-65accec8-0562-45d4-84ab-c4f8f5cabf12",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-53386b230b13881c73ecc142fec9a020009f81492cf9c3a6ca50cfe91c40718b",
+							"content_hash": "86548eec7944c482de34ee8c08151d0860bf14806e2f76dc52acfe91fd42b698",
+							"retrieval_details": {
+								"score_kind": "rrf",
+								"rrf_constant": 60,
+								"branches": {
+									"vector": {
+										"rank": 2,
+										"score": 0.683004588794792
+									},
+									"keyword": {
+										"rank": 3,
+										"score": 1.625
+									}
+								},
+								"vector_candidates": 10,
+								"keyword_candidates": 10
+							}
+						},
+						{
+							"chunk_id": "chunk-8f841e5114c09af6b9ab8badce0007150e109599402c0097c68c80a6330dcbe8",
+							"document_id": "postgres-connection-manual",
+							"score": 0.031544957774465976,
+							"rank": 3,
+							"method": "hybrid-rrf-keyword-v1",
+							"embedding_set_id": "embedding-65accec8-0562-45d4-84ab-c4f8f5cabf12",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-53386b230b13881c73ecc142fec9a020009f81492cf9c3a6ca50cfe91c40718b",
+							"content_hash": "68ac21682097b03c6efee7c5a90a0f07c0241ca58d67eac8c1fce9e2be72e851",
+							"retrieval_details": {
+								"score_kind": "rrf",
+								"rrf_constant": 60,
+								"branches": {
+									"vector": {
+										"rank": 6,
+										"score": 0.44412846013560053
+									},
+									"keyword": {
+										"rank": 1,
+										"score": 2.5
+									}
+								},
+								"vector_candidates": 10,
+								"keyword_candidates": 10
+							}
+						}
+					]
+				}
+			}
+		},
+		{
+			"case_id": "pool-timeout",
+			"query": "SQLAlchemy QueuePool limit of size overflow reached connection timed out",
+			"positive": true,
+			"shared_query_seconds": 0.5127,
+			"modes": {
+				"cosine": {
+					"precision_at_k": 0.3333333333333333,
+					"recall_at_k": 0.5,
+					"reciprocal_rank": 0.3333333333333333,
+					"required_hit": true,
+					"returned_count": 3,
+					"matches": [
+						{
+							"chunk_id": "chunk-9aef72af979aa24c1928a45d47783ababeea2d8029360d91cf83cb668207e5c4",
+							"document_id": "sqlalchemy-pool-manual",
+							"score": 0.8878841981920947,
+							"rank": 1,
+							"method": "exact-cosine-v1",
+							"embedding_set_id": "embedding-559c52a0-0af2-43d2-880b-95e0787a25d3",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-5e8607db97e750a012be06d5e51c3e62b6d2b9bb678cc34bd5346907cfea4903",
+							"content_hash": "3a928abb91d821acbc5b7a84db6ff77167801bfd02fb62815f3289701d699f20",
+							"retrieval_details": null
+						},
+						{
+							"chunk_id": "chunk-dc05d761fcc470fdf1742955aaaf9512034204f7af6e92221596cf74515aa5ee",
+							"document_id": "sqlalchemy-pool-manual",
+							"score": 0.8003447126771448,
+							"rank": 2,
+							"method": "exact-cosine-v1",
+							"embedding_set_id": "embedding-559c52a0-0af2-43d2-880b-95e0787a25d3",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-5e8607db97e750a012be06d5e51c3e62b6d2b9bb678cc34bd5346907cfea4903",
+							"content_hash": "9755fd0f36a97a0bd989eb26fad08908c54a16fdbc7d17fc80bd18527770a296",
+							"retrieval_details": null
+						},
+						{
+							"chunk_id": "chunk-6e084774bc067e4eeea622120de7ad2789347322b28c2c35876e81ab70a38377",
+							"document_id": "sqlalchemy-pool-manual",
+							"score": 0.7733661824458696,
+							"rank": 3,
+							"method": "exact-cosine-v1",
+							"embedding_set_id": "embedding-559c52a0-0af2-43d2-880b-95e0787a25d3",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-5e8607db97e750a012be06d5e51c3e62b6d2b9bb678cc34bd5346907cfea4903",
+							"content_hash": "97692c68caad1abaecea2a27c5b1cfe37971046bbcbcdddca84b78f157bb3ad5",
+							"retrieval_details": null
+						}
+					]
+				},
+				"hybrid": {
+					"precision_at_k": 0.3333333333333333,
+					"recall_at_k": 0.5,
+					"reciprocal_rank": 0.3333333333333333,
+					"required_hit": true,
+					"returned_count": 3,
+					"matches": [
+						{
+							"chunk_id": "chunk-9aef72af979aa24c1928a45d47783ababeea2d8029360d91cf83cb668207e5c4",
+							"document_id": "sqlalchemy-pool-manual",
+							"score": 0.03252247488101534,
+							"rank": 1,
+							"method": "hybrid-rrf-keyword-v1",
+							"embedding_set_id": "embedding-559c52a0-0af2-43d2-880b-95e0787a25d3",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-5e8607db97e750a012be06d5e51c3e62b6d2b9bb678cc34bd5346907cfea4903",
+							"content_hash": "3a928abb91d821acbc5b7a84db6ff77167801bfd02fb62815f3289701d699f20",
+							"retrieval_details": {
+								"score_kind": "rrf",
+								"rrf_constant": 60,
+								"branches": {
+									"vector": {
+										"rank": 1,
+										"score": 0.8878841981920947
+									},
+									"keyword": {
+										"rank": 2,
+										"score": 1.2
+									}
+								},
+								"vector_candidates": 10,
+								"keyword_candidates": 10
+							}
+						},
+						{
+							"chunk_id": "chunk-dc05d761fcc470fdf1742955aaaf9512034204f7af6e92221596cf74515aa5ee",
+							"document_id": "sqlalchemy-pool-manual",
+							"score": 0.03252247488101534,
+							"rank": 2,
+							"method": "hybrid-rrf-keyword-v1",
+							"embedding_set_id": "embedding-559c52a0-0af2-43d2-880b-95e0787a25d3",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-5e8607db97e750a012be06d5e51c3e62b6d2b9bb678cc34bd5346907cfea4903",
+							"content_hash": "9755fd0f36a97a0bd989eb26fad08908c54a16fdbc7d17fc80bd18527770a296",
+							"retrieval_details": {
+								"score_kind": "rrf",
+								"rrf_constant": 60,
+								"branches": {
+									"vector": {
+										"rank": 2,
+										"score": 0.8003447126771448
+									},
+									"keyword": {
+										"rank": 1,
+										"score": 1.5
+									}
+								},
+								"vector_candidates": 10,
+								"keyword_candidates": 10
+							}
+						},
+						{
+							"chunk_id": "chunk-6e084774bc067e4eeea622120de7ad2789347322b28c2c35876e81ab70a38377",
+							"document_id": "sqlalchemy-pool-manual",
+							"score": 0.031746031746031744,
+							"rank": 3,
+							"method": "hybrid-rrf-keyword-v1",
+							"embedding_set_id": "embedding-559c52a0-0af2-43d2-880b-95e0787a25d3",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-5e8607db97e750a012be06d5e51c3e62b6d2b9bb678cc34bd5346907cfea4903",
+							"content_hash": "97692c68caad1abaecea2a27c5b1cfe37971046bbcbcdddca84b78f157bb3ad5",
+							"retrieval_details": {
+								"score_kind": "rrf",
+								"rrf_constant": 60,
+								"branches": {
+									"vector": {
+										"rank": 3,
+										"score": 0.7733661824458696
+									},
+									"keyword": {
+										"rank": 3,
+										"score": 0.7
+									}
+								},
+								"vector_candidates": 10,
+								"keyword_candidates": 10
+							}
+						}
+					]
+				}
+			}
+		},
+		{
+			"case_id": "pool-agent",
+			"query": "Agent调用大模型期间长期持有Session导致连接池耗尽怎么排查",
+			"positive": true,
+			"shared_query_seconds": 0.5432,
+			"modes": {
+				"cosine": {
+					"precision_at_k": 0.6666666666666666,
+					"recall_at_k": 1,
+					"reciprocal_rank": 1,
+					"required_hit": true,
+					"returned_count": 3,
+					"matches": [
+						{
+							"chunk_id": "chunk-5ad705d5e3347c2f160792353e0664867bdb4d89ad7af05cf1db9e8177991d9e",
+							"document_id": "sqlalchemy-pool-manual",
+							"score": 0.6264175958210128,
+							"rank": 1,
+							"method": "exact-cosine-v1",
+							"embedding_set_id": "embedding-559c52a0-0af2-43d2-880b-95e0787a25d3",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-5e8607db97e750a012be06d5e51c3e62b6d2b9bb678cc34bd5346907cfea4903",
+							"content_hash": "bc18c8b9d23eb6103f0794aaa825aef7c64d3a177554dce50c1def431ab0ac88",
+							"retrieval_details": null
+						},
+						{
+							"chunk_id": "chunk-b06798d41f6f52a09149f90abd51876af5303725e6bc0c170d0fff9c06cab72f",
+							"document_id": "sqlalchemy-pool-manual",
+							"score": 0.6114482423687563,
+							"rank": 2,
+							"method": "exact-cosine-v1",
+							"embedding_set_id": "embedding-559c52a0-0af2-43d2-880b-95e0787a25d3",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-5e8607db97e750a012be06d5e51c3e62b6d2b9bb678cc34bd5346907cfea4903",
+							"content_hash": "2a877ab38cf9970edc996d411139ba902ba6a83571f30c1408f9974cd80de25e",
+							"retrieval_details": null
+						},
+						{
+							"chunk_id": "chunk-6e084774bc067e4eeea622120de7ad2789347322b28c2c35876e81ab70a38377",
+							"document_id": "sqlalchemy-pool-manual",
+							"score": 0.5930607549031774,
+							"rank": 3,
+							"method": "exact-cosine-v1",
+							"embedding_set_id": "embedding-559c52a0-0af2-43d2-880b-95e0787a25d3",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-5e8607db97e750a012be06d5e51c3e62b6d2b9bb678cc34bd5346907cfea4903",
+							"content_hash": "97692c68caad1abaecea2a27c5b1cfe37971046bbcbcdddca84b78f157bb3ad5",
+							"retrieval_details": null
+						}
+					]
+				},
+				"hybrid": {
+					"precision_at_k": 0.6666666666666666,
+					"recall_at_k": 1,
+					"reciprocal_rank": 1,
+					"required_hit": true,
+					"returned_count": 3,
+					"matches": [
+						{
+							"chunk_id": "chunk-b06798d41f6f52a09149f90abd51876af5303725e6bc0c170d0fff9c06cab72f",
+							"document_id": "sqlalchemy-pool-manual",
+							"score": 0.03252247488101534,
+							"rank": 1,
+							"method": "hybrid-rrf-keyword-v1",
+							"embedding_set_id": "embedding-559c52a0-0af2-43d2-880b-95e0787a25d3",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-5e8607db97e750a012be06d5e51c3e62b6d2b9bb678cc34bd5346907cfea4903",
+							"content_hash": "2a877ab38cf9970edc996d411139ba902ba6a83571f30c1408f9974cd80de25e",
+							"retrieval_details": {
+								"score_kind": "rrf",
+								"rrf_constant": 60,
+								"branches": {
+									"vector": {
+										"rank": 2,
+										"score": 0.6114482423687563
+									},
+									"keyword": {
+										"rank": 1,
+										"score": 1.2173913043478262
+									}
+								},
+								"vector_candidates": 10,
+								"keyword_candidates": 10
+							}
+						},
+						{
+							"chunk_id": "chunk-5ad705d5e3347c2f160792353e0664867bdb4d89ad7af05cf1db9e8177991d9e",
+							"document_id": "sqlalchemy-pool-manual",
+							"score": 0.032266458495966696,
+							"rank": 2,
+							"method": "hybrid-rrf-keyword-v1",
+							"embedding_set_id": "embedding-559c52a0-0af2-43d2-880b-95e0787a25d3",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-5e8607db97e750a012be06d5e51c3e62b6d2b9bb678cc34bd5346907cfea4903",
+							"content_hash": "bc18c8b9d23eb6103f0794aaa825aef7c64d3a177554dce50c1def431ab0ac88",
+							"retrieval_details": {
+								"score_kind": "rrf",
+								"rrf_constant": 60,
+								"branches": {
+									"vector": {
+										"rank": 1,
+										"score": 0.6264175958210128
+									},
+									"keyword": {
+										"rank": 3,
+										"score": 1.0869565217391304
+									}
+								},
+								"vector_candidates": 10,
+								"keyword_candidates": 10
+							}
+						},
+						{
+							"chunk_id": "chunk-8f841e5114c09af6b9ab8badce0007150e109599402c0097c68c80a6330dcbe8",
+							"document_id": "postgres-connection-manual",
+							"score": 0.031754032258064516,
+							"rank": 3,
+							"method": "hybrid-rrf-keyword-v1",
+							"embedding_set_id": "embedding-65accec8-0562-45d4-84ab-c4f8f5cabf12",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-53386b230b13881c73ecc142fec9a020009f81492cf9c3a6ca50cfe91c40718b",
+							"content_hash": "68ac21682097b03c6efee7c5a90a0f07c0241ca58d67eac8c1fce9e2be72e851",
+							"retrieval_details": {
+								"score_kind": "rrf",
+								"rrf_constant": 60,
+								"branches": {
+									"vector": {
+										"rank": 4,
+										"score": 0.5913658683182774
+									},
+									"keyword": {
+										"rank": 2,
+										"score": 1.173913043478261
+									}
+								},
+								"vector_candidates": 10,
+								"keyword_candidates": 10
+							}
+						}
+					]
+				}
+			}
+		},
+		{
+			"case_id": "java-heap",
+			"query": "java.lang.OutOfMemoryError Java heap space",
+			"positive": true,
+			"shared_query_seconds": 0.5737,
+			"modes": {
+				"cosine": {
+					"precision_at_k": 0.3333333333333333,
+					"recall_at_k": 0.3333333333333333,
+					"reciprocal_rank": 0.5,
+					"required_hit": true,
+					"returned_count": 3,
+					"matches": [
+						{
+							"chunk_id": "chunk-314ee95b9dc96cb6e2b38369894758d8015f0cc5bb3661d9db75919b96826fa0",
+							"document_id": "java-heap-manual",
+							"score": 0.7214178009030908,
+							"rank": 1,
+							"method": "exact-cosine-v1",
+							"embedding_set_id": "embedding-fbdc3d18-c7ff-46ce-a2de-b41588ab18b9",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-a321d7cc4c593a0895bff0b47d39cac00662232d25c90cd6ad298bc17d119b29",
+							"content_hash": "f5f8608331a0acc07ac3798db9ed14680bfdc4dbe4a24a4fb0a8237af259895e",
+							"retrieval_details": null
+						},
+						{
+							"chunk_id": "chunk-ca8464fe892dc2092f67422cdad9ba1d264e3a10f2d81615c2f2b1f58de3624d",
+							"document_id": "java-heap-manual",
+							"score": 0.6943656947907112,
+							"rank": 2,
+							"method": "exact-cosine-v1",
+							"embedding_set_id": "embedding-fbdc3d18-c7ff-46ce-a2de-b41588ab18b9",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-a321d7cc4c593a0895bff0b47d39cac00662232d25c90cd6ad298bc17d119b29",
+							"content_hash": "37690566497f2745090ec6c58a4cff15278313e1e9483be0721d7d126de8fd31",
+							"retrieval_details": null
+						},
+						{
+							"chunk_id": "chunk-6a17ea99fba4007cdb7f7fecda7523ac5966851dab5d481e614647295f535645",
+							"document_id": "java-heap-manual",
+							"score": 0.6386711063346371,
+							"rank": 3,
+							"method": "exact-cosine-v1",
+							"embedding_set_id": "embedding-fbdc3d18-c7ff-46ce-a2de-b41588ab18b9",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-a321d7cc4c593a0895bff0b47d39cac00662232d25c90cd6ad298bc17d119b29",
+							"content_hash": "82d873b9c066257a1dcee61679f71bb3fe340223224d2ac2a83165bb2c15d68f",
+							"retrieval_details": null
+						}
+					]
+				},
+				"hybrid": {
+					"precision_at_k": 0.3333333333333333,
+					"recall_at_k": 0.3333333333333333,
+					"reciprocal_rank": 0.3333333333333333,
+					"required_hit": true,
+					"returned_count": 3,
+					"matches": [
+						{
+							"chunk_id": "chunk-314ee95b9dc96cb6e2b38369894758d8015f0cc5bb3661d9db75919b96826fa0",
+							"document_id": "java-heap-manual",
+							"score": 0.03278688524590164,
+							"rank": 1,
+							"method": "hybrid-rrf-keyword-v1",
+							"embedding_set_id": "embedding-fbdc3d18-c7ff-46ce-a2de-b41588ab18b9",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-a321d7cc4c593a0895bff0b47d39cac00662232d25c90cd6ad298bc17d119b29",
+							"content_hash": "f5f8608331a0acc07ac3798db9ed14680bfdc4dbe4a24a4fb0a8237af259895e",
+							"retrieval_details": {
+								"score_kind": "rrf",
+								"rrf_constant": 60,
+								"branches": {
+									"vector": {
+										"rank": 1,
+										"score": 0.7214178009030908
+									},
+									"keyword": {
+										"rank": 1,
+										"score": 2.4
+									}
+								},
+								"vector_candidates": 10,
+								"keyword_candidates": 6
+							}
+						},
+						{
+							"chunk_id": "chunk-6a17ea99fba4007cdb7f7fecda7523ac5966851dab5d481e614647295f535645",
+							"document_id": "java-heap-manual",
+							"score": 0.03200204813108039,
+							"rank": 2,
+							"method": "hybrid-rrf-keyword-v1",
+							"embedding_set_id": "embedding-fbdc3d18-c7ff-46ce-a2de-b41588ab18b9",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-a321d7cc4c593a0895bff0b47d39cac00662232d25c90cd6ad298bc17d119b29",
+							"content_hash": "82d873b9c066257a1dcee61679f71bb3fe340223224d2ac2a83165bb2c15d68f",
+							"retrieval_details": {
+								"score_kind": "rrf",
+								"rrf_constant": 60,
+								"branches": {
+									"vector": {
+										"rank": 3,
+										"score": 0.6386711063346371
+									},
+									"keyword": {
+										"rank": 2,
+										"score": 1.4
+									}
+								},
+								"vector_candidates": 10,
+								"keyword_candidates": 6
+							}
+						},
+						{
+							"chunk_id": "chunk-ca8464fe892dc2092f67422cdad9ba1d264e3a10f2d81615c2f2b1f58de3624d",
+							"document_id": "java-heap-manual",
+							"score": 0.03200204813108039,
+							"rank": 3,
+							"method": "hybrid-rrf-keyword-v1",
+							"embedding_set_id": "embedding-fbdc3d18-c7ff-46ce-a2de-b41588ab18b9",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-a321d7cc4c593a0895bff0b47d39cac00662232d25c90cd6ad298bc17d119b29",
+							"content_hash": "37690566497f2745090ec6c58a4cff15278313e1e9483be0721d7d126de8fd31",
+							"retrieval_details": {
+								"score_kind": "rrf",
+								"rrf_constant": 60,
+								"branches": {
+									"vector": {
+										"rank": 2,
+										"score": 0.6943656947907112
+									},
+									"keyword": {
+										"rank": 3,
+										"score": 0.8
+									}
+								},
+								"vector_candidates": 10,
+								"keyword_candidates": 6
+							}
+						}
+					]
+				}
+			}
+		},
+		{
+			"case_id": "java-xmx",
+			"query": "Java heap space是否只要提高Xmx就能修复",
+			"positive": true,
+			"shared_query_seconds": 0.5553,
+			"modes": {
+				"cosine": {
+					"precision_at_k": 0.3333333333333333,
+					"recall_at_k": 0.5,
+					"reciprocal_rank": 1,
+					"required_hit": true,
+					"returned_count": 3,
+					"matches": [
+						{
+							"chunk_id": "chunk-7dfb3c08e6c8f3d00d6064999a2f9f449939bcec20fc5f2c049240b9a8999861",
+							"document_id": "java-heap-manual",
+							"score": 0.6694929178168036,
+							"rank": 1,
+							"method": "exact-cosine-v1",
+							"embedding_set_id": "embedding-fbdc3d18-c7ff-46ce-a2de-b41588ab18b9",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-a321d7cc4c593a0895bff0b47d39cac00662232d25c90cd6ad298bc17d119b29",
+							"content_hash": "36a91d34f34b0f41887352509ad9ce1d9e1e4476254cb63df8ad1202fa3da52e",
+							"retrieval_details": null
+						},
+						{
+							"chunk_id": "chunk-314ee95b9dc96cb6e2b38369894758d8015f0cc5bb3661d9db75919b96826fa0",
+							"document_id": "java-heap-manual",
+							"score": 0.5993925104349653,
+							"rank": 2,
+							"method": "exact-cosine-v1",
+							"embedding_set_id": "embedding-fbdc3d18-c7ff-46ce-a2de-b41588ab18b9",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-a321d7cc4c593a0895bff0b47d39cac00662232d25c90cd6ad298bc17d119b29",
+							"content_hash": "f5f8608331a0acc07ac3798db9ed14680bfdc4dbe4a24a4fb0a8237af259895e",
+							"retrieval_details": null
+						},
+						{
+							"chunk_id": "chunk-ca8464fe892dc2092f67422cdad9ba1d264e3a10f2d81615c2f2b1f58de3624d",
+							"document_id": "java-heap-manual",
+							"score": 0.5906460698719084,
+							"rank": 3,
+							"method": "exact-cosine-v1",
+							"embedding_set_id": "embedding-fbdc3d18-c7ff-46ce-a2de-b41588ab18b9",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-a321d7cc4c593a0895bff0b47d39cac00662232d25c90cd6ad298bc17d119b29",
+							"content_hash": "37690566497f2745090ec6c58a4cff15278313e1e9483be0721d7d126de8fd31",
+							"retrieval_details": null
+						}
+					]
+				},
+				"hybrid": {
+					"precision_at_k": 0.3333333333333333,
+					"recall_at_k": 0.5,
+					"reciprocal_rank": 0.5,
+					"required_hit": true,
+					"returned_count": 3,
+					"matches": [
+						{
+							"chunk_id": "chunk-314ee95b9dc96cb6e2b38369894758d8015f0cc5bb3661d9db75919b96826fa0",
+							"document_id": "java-heap-manual",
+							"score": 0.03252247488101534,
+							"rank": 1,
+							"method": "hybrid-rrf-keyword-v1",
+							"embedding_set_id": "embedding-fbdc3d18-c7ff-46ce-a2de-b41588ab18b9",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-a321d7cc4c593a0895bff0b47d39cac00662232d25c90cd6ad298bc17d119b29",
+							"content_hash": "f5f8608331a0acc07ac3798db9ed14680bfdc4dbe4a24a4fb0a8237af259895e",
+							"retrieval_details": {
+								"score_kind": "rrf",
+								"rrf_constant": 60,
+								"branches": {
+									"vector": {
+										"rank": 2,
+										"score": 0.5993925104349653
+									},
+									"keyword": {
+										"rank": 1,
+										"score": 1
+									}
+								},
+								"vector_candidates": 10,
+								"keyword_candidates": 10
+							}
+						},
+						{
+							"chunk_id": "chunk-7dfb3c08e6c8f3d00d6064999a2f9f449939bcec20fc5f2c049240b9a8999861",
+							"document_id": "java-heap-manual",
+							"score": 0.03252247488101534,
+							"rank": 2,
+							"method": "hybrid-rrf-keyword-v1",
+							"embedding_set_id": "embedding-fbdc3d18-c7ff-46ce-a2de-b41588ab18b9",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-a321d7cc4c593a0895bff0b47d39cac00662232d25c90cd6ad298bc17d119b29",
+							"content_hash": "36a91d34f34b0f41887352509ad9ce1d9e1e4476254cb63df8ad1202fa3da52e",
+							"retrieval_details": {
+								"score_kind": "rrf",
+								"rrf_constant": 60,
+								"branches": {
+									"vector": {
+										"rank": 1,
+										"score": 0.6694929178168036
+									},
+									"keyword": {
+										"rank": 2,
+										"score": 0.9285714285714286
+									}
+								},
+								"vector_candidates": 10,
+								"keyword_candidates": 10
+							}
+						},
+						{
+							"chunk_id": "chunk-6a17ea99fba4007cdb7f7fecda7523ac5966851dab5d481e614647295f535645",
+							"document_id": "java-heap-manual",
+							"score": 0.031009615384615385,
+							"rank": 3,
+							"method": "hybrid-rrf-keyword-v1",
+							"embedding_set_id": "embedding-fbdc3d18-c7ff-46ce-a2de-b41588ab18b9",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-a321d7cc4c593a0895bff0b47d39cac00662232d25c90cd6ad298bc17d119b29",
+							"content_hash": "82d873b9c066257a1dcee61679f71bb3fe340223224d2ac2a83165bb2c15d68f",
+							"retrieval_details": {
+								"score_kind": "rrf",
+								"rrf_constant": 60,
+								"branches": {
+									"vector": {
+										"rank": 4,
+										"score": 0.5896450679073123
+									},
+									"keyword": {
+										"rank": 5,
+										"score": 0.5
+									}
+								},
+								"vector_candidates": 10,
+								"keyword_candidates": 10
+							}
+						}
+					]
+				}
+			}
+		},
+		{
+			"case_id": "go-race",
+			"query": "Go WARNING DATA RACE goroutine读写冲突",
+			"positive": true,
+			"shared_query_seconds": 0.5728,
+			"modes": {
+				"cosine": {
+					"precision_at_k": 0.3333333333333333,
+					"recall_at_k": 0.5,
+					"reciprocal_rank": 1,
+					"required_hit": true,
+					"returned_count": 3,
+					"matches": [
+						{
+							"chunk_id": "chunk-5335ea3d97ea9b5c80c5e962da35b5c7ade928a901035dda93dbd337d5001cf9",
+							"document_id": "go-race-manual",
+							"score": 0.7349540108943107,
+							"rank": 1,
+							"method": "exact-cosine-v1",
+							"embedding_set_id": "embedding-ff6dbb43-aa85-47b7-a5e0-f7dd6a8db947",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-efde72dc20fecd85910084f722e475b12cfff2909da13c559f08e2fb0c240010",
+							"content_hash": "690205f2b8b0294848905bb99caa145dbbb1b2e983959e024d980663788286fc",
+							"retrieval_details": null
+						},
+						{
+							"chunk_id": "chunk-f17aaa80ae334dbeba6fb2fa1743a017f292bbc3a7f77f81529c948b31e77090",
+							"document_id": "go-race-manual",
+							"score": 0.6926922795038483,
+							"rank": 2,
+							"method": "exact-cosine-v1",
+							"embedding_set_id": "embedding-ff6dbb43-aa85-47b7-a5e0-f7dd6a8db947",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-efde72dc20fecd85910084f722e475b12cfff2909da13c559f08e2fb0c240010",
+							"content_hash": "eace503eb42701e6f9576ab6deaa57de979c2f1d5e952179793ea0975a7f5346",
+							"retrieval_details": null
+						},
+						{
+							"chunk_id": "chunk-5040745283ad37b744d676582a03147d4c6a0ca0e8d42fdcea3fc8fe535e3bc3",
+							"document_id": "go-race-manual",
+							"score": 0.5646756593826217,
+							"rank": 3,
+							"method": "exact-cosine-v1",
+							"embedding_set_id": "embedding-ff6dbb43-aa85-47b7-a5e0-f7dd6a8db947",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-efde72dc20fecd85910084f722e475b12cfff2909da13c559f08e2fb0c240010",
+							"content_hash": "db66750321b72ec864678c75c26c0ca538051e5c2e43a682678d1fe17366c5ec",
+							"retrieval_details": null
+						}
+					]
+				},
+				"hybrid": {
+					"precision_at_k": 0.3333333333333333,
+					"recall_at_k": 0.5,
+					"reciprocal_rank": 1,
+					"required_hit": true,
+					"returned_count": 3,
+					"matches": [
+						{
+							"chunk_id": "chunk-5335ea3d97ea9b5c80c5e962da35b5c7ade928a901035dda93dbd337d5001cf9",
+							"document_id": "go-race-manual",
+							"score": 0.03278688524590164,
+							"rank": 1,
+							"method": "hybrid-rrf-keyword-v1",
+							"embedding_set_id": "embedding-ff6dbb43-aa85-47b7-a5e0-f7dd6a8db947",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-efde72dc20fecd85910084f722e475b12cfff2909da13c559f08e2fb0c240010",
+							"content_hash": "690205f2b8b0294848905bb99caa145dbbb1b2e983959e024d980663788286fc",
+							"retrieval_details": {
+								"score_kind": "rrf",
+								"rrf_constant": 60,
+								"branches": {
+									"vector": {
+										"rank": 1,
+										"score": 0.7349540108943107
+									},
+									"keyword": {
+										"rank": 1,
+										"score": 1.2222222222222223
+									}
+								},
+								"vector_candidates": 10,
+								"keyword_candidates": 10
+							}
+						},
+						{
+							"chunk_id": "chunk-f17aaa80ae334dbeba6fb2fa1743a017f292bbc3a7f77f81529c948b31e77090",
+							"document_id": "go-race-manual",
+							"score": 0.03225806451612903,
+							"rank": 2,
+							"method": "hybrid-rrf-keyword-v1",
+							"embedding_set_id": "embedding-ff6dbb43-aa85-47b7-a5e0-f7dd6a8db947",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-efde72dc20fecd85910084f722e475b12cfff2909da13c559f08e2fb0c240010",
+							"content_hash": "eace503eb42701e6f9576ab6deaa57de979c2f1d5e952179793ea0975a7f5346",
+							"retrieval_details": {
+								"score_kind": "rrf",
+								"rrf_constant": 60,
+								"branches": {
+									"vector": {
+										"rank": 2,
+										"score": 0.6926922795038483
+									},
+									"keyword": {
+										"rank": 2,
+										"score": 1
+									}
+								},
+								"vector_candidates": 10,
+								"keyword_candidates": 10
+							}
+						},
+						{
+							"chunk_id": "chunk-03b9cc41ba25b24a5d3c1706484c5a021664af47f80efeb195cd69a157fad9c4",
+							"document_id": "go-race-manual",
+							"score": 0.03149801587301587,
+							"rank": 3,
+							"method": "hybrid-rrf-keyword-v1",
+							"embedding_set_id": "embedding-ff6dbb43-aa85-47b7-a5e0-f7dd6a8db947",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-efde72dc20fecd85910084f722e475b12cfff2909da13c559f08e2fb0c240010",
+							"content_hash": "6e3a9d75e50eec108bd2e9928979f4f19f719f2d804b19e34aa1a100f8229cd0",
+							"retrieval_details": {
+								"score_kind": "rrf",
+								"rrf_constant": 60,
+								"branches": {
+									"vector": {
+										"rank": 4,
+										"score": 0.4941028199612265
+									},
+									"keyword": {
+										"rank": 3,
+										"score": 0.6666666666666666
+									}
+								},
+								"vector_candidates": 10,
+								"keyword_candidates": 10
+							}
+						}
+					]
+				}
+			}
+		},
+		{
+			"case_id": "go-sleep",
+			"query": "Go goroutine共享变量竞争能否用sleep解决",
+			"positive": true,
+			"shared_query_seconds": 0.5482,
+			"modes": {
+				"cosine": {
+					"precision_at_k": 0.3333333333333333,
+					"recall_at_k": 1,
+					"reciprocal_rank": 1,
+					"required_hit": true,
+					"returned_count": 3,
+					"matches": [
+						{
+							"chunk_id": "chunk-5040745283ad37b744d676582a03147d4c6a0ca0e8d42fdcea3fc8fe535e3bc3",
+							"document_id": "go-race-manual",
+							"score": 0.596586747948607,
+							"rank": 1,
+							"method": "exact-cosine-v1",
+							"embedding_set_id": "embedding-ff6dbb43-aa85-47b7-a5e0-f7dd6a8db947",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-efde72dc20fecd85910084f722e475b12cfff2909da13c559f08e2fb0c240010",
+							"content_hash": "db66750321b72ec864678c75c26c0ca538051e5c2e43a682678d1fe17366c5ec",
+							"retrieval_details": null
+						},
+						{
+							"chunk_id": "chunk-5335ea3d97ea9b5c80c5e962da35b5c7ade928a901035dda93dbd337d5001cf9",
+							"document_id": "go-race-manual",
+							"score": 0.5467564178972096,
+							"rank": 2,
+							"method": "exact-cosine-v1",
+							"embedding_set_id": "embedding-ff6dbb43-aa85-47b7-a5e0-f7dd6a8db947",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-efde72dc20fecd85910084f722e475b12cfff2909da13c559f08e2fb0c240010",
+							"content_hash": "690205f2b8b0294848905bb99caa145dbbb1b2e983959e024d980663788286fc",
+							"retrieval_details": null
+						},
+						{
+							"chunk_id": "chunk-f17aaa80ae334dbeba6fb2fa1743a017f292bbc3a7f77f81529c948b31e77090",
+							"document_id": "go-race-manual",
+							"score": 0.5117837175244413,
+							"rank": 3,
+							"method": "exact-cosine-v1",
+							"embedding_set_id": "embedding-ff6dbb43-aa85-47b7-a5e0-f7dd6a8db947",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-efde72dc20fecd85910084f722e475b12cfff2909da13c559f08e2fb0c240010",
+							"content_hash": "eace503eb42701e6f9576ab6deaa57de979c2f1d5e952179793ea0975a7f5346",
+							"retrieval_details": null
+						}
+					]
+				},
+				"hybrid": {
+					"precision_at_k": 0.3333333333333333,
+					"recall_at_k": 1,
+					"reciprocal_rank": 1,
+					"required_hit": true,
+					"returned_count": 3,
+					"matches": [
+						{
+							"chunk_id": "chunk-5040745283ad37b744d676582a03147d4c6a0ca0e8d42fdcea3fc8fe535e3bc3",
+							"document_id": "go-race-manual",
+							"score": 0.032266458495966696,
+							"rank": 1,
+							"method": "hybrid-rrf-keyword-v1",
+							"embedding_set_id": "embedding-ff6dbb43-aa85-47b7-a5e0-f7dd6a8db947",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-efde72dc20fecd85910084f722e475b12cfff2909da13c559f08e2fb0c240010",
+							"content_hash": "db66750321b72ec864678c75c26c0ca538051e5c2e43a682678d1fe17366c5ec",
+							"retrieval_details": {
+								"score_kind": "rrf",
+								"rrf_constant": 60,
+								"branches": {
+									"vector": {
+										"rank": 1,
+										"score": 0.596586747948607
+									},
+									"keyword": {
+										"rank": 3,
+										"score": 0.9285714285714286
+									}
+								},
+								"vector_candidates": 10,
+								"keyword_candidates": 10
+							}
+						},
+						{
+							"chunk_id": "chunk-f17aaa80ae334dbeba6fb2fa1743a017f292bbc3a7f77f81529c948b31e77090",
+							"document_id": "go-race-manual",
+							"score": 0.032266458495966696,
+							"rank": 2,
+							"method": "hybrid-rrf-keyword-v1",
+							"embedding_set_id": "embedding-ff6dbb43-aa85-47b7-a5e0-f7dd6a8db947",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-efde72dc20fecd85910084f722e475b12cfff2909da13c559f08e2fb0c240010",
+							"content_hash": "eace503eb42701e6f9576ab6deaa57de979c2f1d5e952179793ea0975a7f5346",
+							"retrieval_details": {
+								"score_kind": "rrf",
+								"rrf_constant": 60,
+								"branches": {
+									"vector": {
+										"rank": 3,
+										"score": 0.5117837175244413
+									},
+									"keyword": {
+										"rank": 1,
+										"score": 1.1428571428571428
+									}
+								},
+								"vector_candidates": 10,
+								"keyword_candidates": 10
+							}
+						},
+						{
+							"chunk_id": "chunk-03b9cc41ba25b24a5d3c1706484c5a021664af47f80efeb195cd69a157fad9c4",
+							"document_id": "go-race-manual",
+							"score": 0.031754032258064516,
+							"rank": 3,
+							"method": "hybrid-rrf-keyword-v1",
+							"embedding_set_id": "embedding-ff6dbb43-aa85-47b7-a5e0-f7dd6a8db947",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-efde72dc20fecd85910084f722e475b12cfff2909da13c559f08e2fb0c240010",
+							"content_hash": "6e3a9d75e50eec108bd2e9928979f4f19f719f2d804b19e34aa1a100f8229cd0",
+							"retrieval_details": {
+								"score_kind": "rrf",
+								"rrf_constant": 60,
+								"branches": {
+									"vector": {
+										"rank": 4,
+										"score": 0.5081408922486572
+									},
+									"keyword": {
+										"rank": 2,
+										"score": 1.0714285714285714
+									}
+								},
+								"vector_candidates": 10,
+								"keyword_candidates": 10
+							}
+						}
+					]
+				}
+			}
+		},
+		{
+			"case_id": "rust-index",
+			"query": "Rust thread panicked index out of bounds",
+			"positive": true,
+			"shared_query_seconds": 0.5735,
+			"modes": {
+				"cosine": {
+					"precision_at_k": 0.6666666666666666,
+					"recall_at_k": 1,
+					"reciprocal_rank": 0.5,
+					"required_hit": true,
+					"returned_count": 3,
+					"matches": [
+						{
+							"chunk_id": "chunk-b399514e28f8df858513ac9e46604c78a6eca186fb52c20d249640ca6759ee8f",
+							"document_id": "rust-panic-manual",
+							"score": 0.7300813972483945,
+							"rank": 1,
+							"method": "exact-cosine-v1",
+							"embedding_set_id": "embedding-3141a2d5-e45a-4db9-8805-95ce0d58ebd4",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-492acd451fa9a27c26408f34730eb9c238bdffb79dbe7bdfe5f3caf26fba3012",
+							"content_hash": "ed5b8ebc20a6e77d8b37cff8bf1302af489ed8cb09032d6d122825385c0fc160",
+							"retrieval_details": null
+						},
+						{
+							"chunk_id": "chunk-3ee960d2fcebf0d244000ed8963582135a11a9f2cc9035dcad174dcf8d70dd20",
+							"document_id": "rust-panic-manual",
+							"score": 0.6183856209666297,
+							"rank": 2,
+							"method": "exact-cosine-v1",
+							"embedding_set_id": "embedding-3141a2d5-e45a-4db9-8805-95ce0d58ebd4",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-492acd451fa9a27c26408f34730eb9c238bdffb79dbe7bdfe5f3caf26fba3012",
+							"content_hash": "473f1619b4ac8d2a31bf59b189acceb2078ecdf4d0ec1a4d35ca77f22295affa",
+							"retrieval_details": null
+						},
+						{
+							"chunk_id": "chunk-e8129e35e5f232d8fb34c5c523231e4ac6caddd275fbeaf296eec1be01c576f6",
+							"document_id": "rust-panic-manual",
+							"score": 0.6089429731125365,
+							"rank": 3,
+							"method": "exact-cosine-v1",
+							"embedding_set_id": "embedding-3141a2d5-e45a-4db9-8805-95ce0d58ebd4",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-492acd451fa9a27c26408f34730eb9c238bdffb79dbe7bdfe5f3caf26fba3012",
+							"content_hash": "3a279c74f470f2f75ee36032ecf12edfdcb8ca040e9476e6337e8ae2c4375d9e",
+							"retrieval_details": null
+						}
+					]
+				},
+				"hybrid": {
+					"precision_at_k": 0.3333333333333333,
+					"recall_at_k": 0.5,
+					"reciprocal_rank": 0.5,
+					"required_hit": true,
+					"returned_count": 3,
+					"matches": [
+						{
+							"chunk_id": "chunk-b399514e28f8df858513ac9e46604c78a6eca186fb52c20d249640ca6759ee8f",
+							"document_id": "rust-panic-manual",
+							"score": 0.03278688524590164,
+							"rank": 1,
+							"method": "hybrid-rrf-keyword-v1",
+							"embedding_set_id": "embedding-3141a2d5-e45a-4db9-8805-95ce0d58ebd4",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-492acd451fa9a27c26408f34730eb9c238bdffb79dbe7bdfe5f3caf26fba3012",
+							"content_hash": "ed5b8ebc20a6e77d8b37cff8bf1302af489ed8cb09032d6d122825385c0fc160",
+							"retrieval_details": {
+								"score_kind": "rrf",
+								"rrf_constant": 60,
+								"branches": {
+									"vector": {
+										"rank": 1,
+										"score": 0.7300813972483945
+									},
+									"keyword": {
+										"rank": 1,
+										"score": 1.1428571428571428
+									}
+								},
+								"vector_candidates": 10,
+								"keyword_candidates": 10
+							}
+						},
+						{
+							"chunk_id": "chunk-3ee960d2fcebf0d244000ed8963582135a11a9f2cc9035dcad174dcf8d70dd20",
+							"document_id": "rust-panic-manual",
+							"score": 0.03225806451612903,
+							"rank": 2,
+							"method": "hybrid-rrf-keyword-v1",
+							"embedding_set_id": "embedding-3141a2d5-e45a-4db9-8805-95ce0d58ebd4",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-492acd451fa9a27c26408f34730eb9c238bdffb79dbe7bdfe5f3caf26fba3012",
+							"content_hash": "473f1619b4ac8d2a31bf59b189acceb2078ecdf4d0ec1a4d35ca77f22295affa",
+							"retrieval_details": {
+								"score_kind": "rrf",
+								"rrf_constant": 60,
+								"branches": {
+									"vector": {
+										"rank": 2,
+										"score": 0.6183856209666297
+									},
+									"keyword": {
+										"rank": 2,
+										"score": 0.8571428571428571
+									}
+								},
+								"vector_candidates": 10,
+								"keyword_candidates": 10
+							}
+						},
+						{
+							"chunk_id": "chunk-7fda108c2f8651275c13eea9ca364350fe360b7c382bb850052a47143bfc5a57",
+							"document_id": "rust-panic-manual",
+							"score": 0.03149801587301587,
+							"rank": 3,
+							"method": "hybrid-rrf-keyword-v1",
+							"embedding_set_id": "embedding-3141a2d5-e45a-4db9-8805-95ce0d58ebd4",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-492acd451fa9a27c26408f34730eb9c238bdffb79dbe7bdfe5f3caf26fba3012",
+							"content_hash": "fff566ef33f4f8cb0ecc940e4c4eb0e2d1d8ebc81c40d72984ddc57cca95762b",
+							"retrieval_details": {
+								"score_kind": "rrf",
+								"rrf_constant": 60,
+								"branches": {
+									"vector": {
+										"rank": 4,
+										"score": 0.4682451406654687
+									},
+									"keyword": {
+										"rank": 3,
+										"score": 0.5714285714285714
+									}
+								},
+								"vector_candidates": 10,
+								"keyword_candidates": 10
+							}
+						}
+					]
+				}
+			}
+		},
+		{
+			"case_id": "rust-unwrap",
+			"query": "Rust called Result unwrap on Err怎么获取回溯",
+			"positive": true,
+			"shared_query_seconds": 0.5383,
+			"modes": {
+				"cosine": {
+					"precision_at_k": 0.3333333333333333,
+					"recall_at_k": 0.5,
+					"reciprocal_rank": 1,
+					"required_hit": true,
+					"returned_count": 3,
+					"matches": [
+						{
+							"chunk_id": "chunk-553a7a3cef3d409160f8218c9f7ea4b224dc1543c8bae248d9da575cc7d158a3",
+							"document_id": "rust-panic-manual",
+							"score": 0.6111843247917664,
+							"rank": 1,
+							"method": "exact-cosine-v1",
+							"embedding_set_id": "embedding-3141a2d5-e45a-4db9-8805-95ce0d58ebd4",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-492acd451fa9a27c26408f34730eb9c238bdffb79dbe7bdfe5f3caf26fba3012",
+							"content_hash": "17fd76ee936f3e3248c2c2cb175f252bcbdca9e03eaabbcdf0478498a5bd085c",
+							"retrieval_details": null
+						},
+						{
+							"chunk_id": "chunk-7fda108c2f8651275c13eea9ca364350fe360b7c382bb850052a47143bfc5a57",
+							"document_id": "rust-panic-manual",
+							"score": 0.57833099089791,
+							"rank": 2,
+							"method": "exact-cosine-v1",
+							"embedding_set_id": "embedding-3141a2d5-e45a-4db9-8805-95ce0d58ebd4",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-492acd451fa9a27c26408f34730eb9c238bdffb79dbe7bdfe5f3caf26fba3012",
+							"content_hash": "fff566ef33f4f8cb0ecc940e4c4eb0e2d1d8ebc81c40d72984ddc57cca95762b",
+							"retrieval_details": null
+						},
+						{
+							"chunk_id": "chunk-e8129e35e5f232d8fb34c5c523231e4ac6caddd275fbeaf296eec1be01c576f6",
+							"document_id": "rust-panic-manual",
+							"score": 0.5509215741357623,
+							"rank": 3,
+							"method": "exact-cosine-v1",
+							"embedding_set_id": "embedding-3141a2d5-e45a-4db9-8805-95ce0d58ebd4",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-492acd451fa9a27c26408f34730eb9c238bdffb79dbe7bdfe5f3caf26fba3012",
+							"content_hash": "3a279c74f470f2f75ee36032ecf12edfdcb8ca040e9476e6337e8ae2c4375d9e",
+							"retrieval_details": null
+						}
+					]
+				},
+				"hybrid": {
+					"precision_at_k": 0.6666666666666666,
+					"recall_at_k": 1,
+					"reciprocal_rank": 1,
+					"required_hit": true,
+					"returned_count": 3,
+					"matches": [
+						{
+							"chunk_id": "chunk-553a7a3cef3d409160f8218c9f7ea4b224dc1543c8bae248d9da575cc7d158a3",
+							"document_id": "rust-panic-manual",
+							"score": 0.03278688524590164,
+							"rank": 1,
+							"method": "hybrid-rrf-keyword-v1",
+							"embedding_set_id": "embedding-3141a2d5-e45a-4db9-8805-95ce0d58ebd4",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-492acd451fa9a27c26408f34730eb9c238bdffb79dbe7bdfe5f3caf26fba3012",
+							"content_hash": "17fd76ee936f3e3248c2c2cb175f252bcbdca9e03eaabbcdf0478498a5bd085c",
+							"retrieval_details": {
+								"score_kind": "rrf",
+								"rrf_constant": 60,
+								"branches": {
+									"vector": {
+										"rank": 1,
+										"score": 0.6111843247917664
+									},
+									"keyword": {
+										"rank": 1,
+										"score": 0.6666666666666666
+									}
+								},
+								"vector_candidates": 10,
+								"keyword_candidates": 10
+							}
+						},
+						{
+							"chunk_id": "chunk-7fda108c2f8651275c13eea9ca364350fe360b7c382bb850052a47143bfc5a57",
+							"document_id": "rust-panic-manual",
+							"score": 0.03225806451612903,
+							"rank": 2,
+							"method": "hybrid-rrf-keyword-v1",
+							"embedding_set_id": "embedding-3141a2d5-e45a-4db9-8805-95ce0d58ebd4",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-492acd451fa9a27c26408f34730eb9c238bdffb79dbe7bdfe5f3caf26fba3012",
+							"content_hash": "fff566ef33f4f8cb0ecc940e4c4eb0e2d1d8ebc81c40d72984ddc57cca95762b",
+							"retrieval_details": {
+								"score_kind": "rrf",
+								"rrf_constant": 60,
+								"branches": {
+									"vector": {
+										"rank": 2,
+										"score": 0.57833099089791
+									},
+									"keyword": {
+										"rank": 2,
+										"score": 0.6666666666666666
+									}
+								},
+								"vector_candidates": 10,
+								"keyword_candidates": 10
+							}
+						},
+						{
+							"chunk_id": "chunk-3ee960d2fcebf0d244000ed8963582135a11a9f2cc9035dcad174dcf8d70dd20",
+							"document_id": "rust-panic-manual",
+							"score": 0.03149801587301587,
+							"rank": 3,
+							"method": "hybrid-rrf-keyword-v1",
+							"embedding_set_id": "embedding-3141a2d5-e45a-4db9-8805-95ce0d58ebd4",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-492acd451fa9a27c26408f34730eb9c238bdffb79dbe7bdfe5f3caf26fba3012",
+							"content_hash": "473f1619b4ac8d2a31bf59b189acceb2078ecdf4d0ec1a4d35ca77f22295affa",
+							"retrieval_details": {
+								"score_kind": "rrf",
+								"rrf_constant": 60,
+								"branches": {
+									"vector": {
+										"rank": 4,
+										"score": 0.5381686273170461
+									},
+									"keyword": {
+										"rank": 3,
+										"score": 0.5833333333333334
+									}
+								},
+								"vector_candidates": 10,
+								"keyword_candidates": 10
+							}
+						}
+					]
+				}
+			}
+		},
+		{
+			"case_id": "outside-react",
+			"query": "React hydration failed服务端与客户端DOM不一致",
+			"positive": false,
+			"shared_query_seconds": 0.5703,
+			"modes": {
+				"cosine": {
+					"precision_at_k": null,
+					"recall_at_k": null,
+					"reciprocal_rank": null,
+					"required_hit": null,
+					"returned_count": 3,
+					"matches": [
+						{
+							"chunk_id": "chunk-94822a6bedd245d9714351dfdf7d444fe92bbee1d7b8f5b11b146701101cafab",
+							"document_id": "rpc-manual",
+							"score": 0.4133353074475315,
+							"rank": 1,
+							"method": "exact-cosine-v1",
+							"embedding_set_id": "embedding-540b6135-6dbc-41f8-a649-dbbea41ea788",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-3ed4fa36ce5d100b7df09b610fd7720eb564b9e6e37e478bef990925a0475683",
+							"content_hash": "d6c4717cbc82faaeb90441f9aff6e4436218e68456ffd2b89f6753f84bd9344c",
+							"retrieval_details": null
+						},
+						{
+							"chunk_id": "chunk-3a10ede4287fac86b25c9ebdd39e38d60035f7b07b40bb47e0098f690edc9def",
+							"document_id": "postgres-connection-manual",
+							"score": 0.40883886143928355,
+							"rank": 2,
+							"method": "exact-cosine-v1",
+							"embedding_set_id": "embedding-65accec8-0562-45d4-84ab-c4f8f5cabf12",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-53386b230b13881c73ecc142fec9a020009f81492cf9c3a6ca50cfe91c40718b",
+							"content_hash": "e7b821beb3345a5fcd1e3d16ec825af19fac5b4a78041b5ecf8c9fe989f01e16",
+							"retrieval_details": null
+						},
+						{
+							"chunk_id": "chunk-7dfb3c08e6c8f3d00d6064999a2f9f449939bcec20fc5f2c049240b9a8999861",
+							"document_id": "java-heap-manual",
+							"score": 0.39107449534586053,
+							"rank": 3,
+							"method": "exact-cosine-v1",
+							"embedding_set_id": "embedding-fbdc3d18-c7ff-46ce-a2de-b41588ab18b9",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-a321d7cc4c593a0895bff0b47d39cac00662232d25c90cd6ad298bc17d119b29",
+							"content_hash": "36a91d34f34b0f41887352509ad9ce1d9e1e4476254cb63df8ad1202fa3da52e",
+							"retrieval_details": null
+						}
+					]
+				},
+				"hybrid": {
+					"precision_at_k": null,
+					"recall_at_k": null,
+					"reciprocal_rank": null,
+					"required_hit": null,
+					"returned_count": 3,
+					"matches": [
+						{
+							"chunk_id": "chunk-8f841e5114c09af6b9ab8badce0007150e109599402c0097c68c80a6330dcbe8",
+							"document_id": "postgres-connection-manual",
+							"score": 0.032018442622950824,
+							"rank": 1,
+							"method": "hybrid-rrf-keyword-v1",
+							"embedding_set_id": "embedding-65accec8-0562-45d4-84ab-c4f8f5cabf12",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-53386b230b13881c73ecc142fec9a020009f81492cf9c3a6ca50cfe91c40718b",
+							"content_hash": "68ac21682097b03c6efee7c5a90a0f07c0241ca58d67eac8c1fce9e2be72e851",
+							"retrieval_details": {
+								"score_kind": "rrf",
+								"rrf_constant": 60,
+								"branches": {
+									"vector": {
+										"rank": 4,
+										"score": 0.37500131125472064
+									},
+									"keyword": {
+										"rank": 1,
+										"score": 0.7692307692307693
+									}
+								},
+								"vector_candidates": 10,
+								"keyword_candidates": 10
+							}
+						},
+						{
+							"chunk_id": "chunk-3a10ede4287fac86b25c9ebdd39e38d60035f7b07b40bb47e0098f690edc9def",
+							"document_id": "postgres-connection-manual",
+							"score": 0.03200204813108039,
+							"rank": 2,
+							"method": "hybrid-rrf-keyword-v1",
+							"embedding_set_id": "embedding-65accec8-0562-45d4-84ab-c4f8f5cabf12",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-53386b230b13881c73ecc142fec9a020009f81492cf9c3a6ca50cfe91c40718b",
+							"content_hash": "e7b821beb3345a5fcd1e3d16ec825af19fac5b4a78041b5ecf8c9fe989f01e16",
+							"retrieval_details": {
+								"score_kind": "rrf",
+								"rrf_constant": 60,
+								"branches": {
+									"vector": {
+										"rank": 2,
+										"score": 0.40883886143928355
+									},
+									"keyword": {
+										"rank": 3,
+										"score": 0.6153846153846154
+									}
+								},
+								"vector_candidates": 10,
+								"keyword_candidates": 10
+							}
+						},
+						{
+							"chunk_id": "chunk-94822a6bedd245d9714351dfdf7d444fe92bbee1d7b8f5b11b146701101cafab",
+							"document_id": "rpc-manual",
+							"score": 0.031544957774465976,
+							"rank": 3,
+							"method": "hybrid-rrf-keyword-v1",
+							"embedding_set_id": "embedding-540b6135-6dbc-41f8-a649-dbbea41ea788",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-3ed4fa36ce5d100b7df09b610fd7720eb564b9e6e37e478bef990925a0475683",
+							"content_hash": "d6c4717cbc82faaeb90441f9aff6e4436218e68456ffd2b89f6753f84bd9344c",
+							"retrieval_details": {
+								"score_kind": "rrf",
+								"rrf_constant": 60,
+								"branches": {
+									"vector": {
+										"rank": 1,
+										"score": 0.4133353074475315
+									},
+									"keyword": {
+										"rank": 6,
+										"score": 0.38461538461538464
+									}
+								},
+								"vector_candidates": 10,
+								"keyword_candidates": 10
+							}
+						}
+					]
+				}
+			}
+		},
+		{
+			"case_id": "outside-certificate",
+			"query": "TLS证书链unknown authority如何排查企业代理根证书",
+			"positive": false,
+			"shared_query_seconds": 0.5663,
+			"modes": {
+				"cosine": {
+					"precision_at_k": null,
+					"recall_at_k": null,
+					"reciprocal_rank": null,
+					"required_hit": null,
+					"returned_count": 3,
+					"matches": [
+						{
+							"chunk_id": "chunk-94822a6bedd245d9714351dfdf7d444fe92bbee1d7b8f5b11b146701101cafab",
+							"document_id": "rpc-manual",
+							"score": 0.47022674043118007,
+							"rank": 1,
+							"method": "exact-cosine-v1",
+							"embedding_set_id": "embedding-540b6135-6dbc-41f8-a649-dbbea41ea788",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-3ed4fa36ce5d100b7df09b610fd7720eb564b9e6e37e478bef990925a0475683",
+							"content_hash": "d6c4717cbc82faaeb90441f9aff6e4436218e68456ffd2b89f6753f84bd9344c",
+							"retrieval_details": null
+						},
+						{
+							"chunk_id": "chunk-c410d681c6da22c436f5cc513f3afc85a892fe63c333d6a82f633b22b74e6a2d",
+							"document_id": "rpc-manual",
+							"score": 0.40884940243910495,
+							"rank": 2,
+							"method": "exact-cosine-v1",
+							"embedding_set_id": "embedding-540b6135-6dbc-41f8-a649-dbbea41ea788",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-3ed4fa36ce5d100b7df09b610fd7720eb564b9e6e37e478bef990925a0475683",
+							"content_hash": "847734fe6248d03fe9444382b64979c1e5259c2a949966874fd7ed1e14533c7b",
+							"retrieval_details": null
+						},
+						{
+							"chunk_id": "chunk-3a10ede4287fac86b25c9ebdd39e38d60035f7b07b40bb47e0098f690edc9def",
+							"document_id": "postgres-connection-manual",
+							"score": 0.40799590277170156,
+							"rank": 3,
+							"method": "exact-cosine-v1",
+							"embedding_set_id": "embedding-65accec8-0562-45d4-84ab-c4f8f5cabf12",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-53386b230b13881c73ecc142fec9a020009f81492cf9c3a6ca50cfe91c40718b",
+							"content_hash": "e7b821beb3345a5fcd1e3d16ec825af19fac5b4a78041b5ecf8c9fe989f01e16",
+							"retrieval_details": null
+						}
+					]
+				},
+				"hybrid": {
+					"precision_at_k": null,
+					"recall_at_k": null,
+					"reciprocal_rank": null,
+					"required_hit": null,
+					"returned_count": 3,
+					"matches": [
+						{
+							"chunk_id": "chunk-c410d681c6da22c436f5cc513f3afc85a892fe63c333d6a82f633b22b74e6a2d",
+							"document_id": "rpc-manual",
+							"score": 0.031054405392392875,
+							"rank": 1,
+							"method": "hybrid-rrf-keyword-v1",
+							"embedding_set_id": "embedding-540b6135-6dbc-41f8-a649-dbbea41ea788",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-3ed4fa36ce5d100b7df09b610fd7720eb564b9e6e37e478bef990925a0475683",
+							"content_hash": "847734fe6248d03fe9444382b64979c1e5259c2a949966874fd7ed1e14533c7b",
+							"retrieval_details": {
+								"score_kind": "rrf",
+								"rrf_constant": 60,
+								"branches": {
+									"vector": {
+										"rank": 2,
+										"score": 0.40884940243910495
+									},
+									"keyword": {
+										"rank": 7,
+										"score": 0.3333333333333333
+									}
+								},
+								"vector_candidates": 10,
+								"keyword_candidates": 10
+							}
+						},
+						{
+							"chunk_id": "chunk-df44762bcdb738b74666210d97b4abb306c42f19222cfa1577a5920b6005800c",
+							"document_id": "postgres-connection-manual",
+							"score": 0.03036576949620428,
+							"rank": 2,
+							"method": "hybrid-rrf-keyword-v1",
+							"embedding_set_id": "embedding-65accec8-0562-45d4-84ab-c4f8f5cabf12",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-53386b230b13881c73ecc142fec9a020009f81492cf9c3a6ca50cfe91c40718b",
+							"content_hash": "b74fcc176c186bc62da910f95cd16d4ed08450a4be386f7ccab4d428da0843f6",
+							"retrieval_details": {
+								"score_kind": "rrf",
+								"rrf_constant": 60,
+								"branches": {
+									"vector": {
+										"rank": 9,
+										"score": 0.38005136610216966
+									},
+									"keyword": {
+										"rank": 3,
+										"score": 0.4
+									}
+								},
+								"vector_candidates": 10,
+								"keyword_candidates": 10
+							}
+						},
+						{
+							"chunk_id": "chunk-3ee960d2fcebf0d244000ed8963582135a11a9f2cc9035dcad174dcf8d70dd20",
+							"document_id": "rust-panic-manual",
+							"score": 0.01639344262295082,
+							"rank": 3,
+							"method": "hybrid-rrf-keyword-v1",
+							"embedding_set_id": "embedding-3141a2d5-e45a-4db9-8805-95ce0d58ebd4",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-492acd451fa9a27c26408f34730eb9c238bdffb79dbe7bdfe5f3caf26fba3012",
+							"content_hash": "473f1619b4ac8d2a31bf59b189acceb2078ecdf4d0ec1a4d35ca77f22295affa",
+							"retrieval_details": {
+								"score_kind": "rrf",
+								"rrf_constant": 60,
+								"branches": {
+									"keyword": {
+										"rank": 1,
+										"score": 0.4666666666666667
+									}
+								},
+								"vector_candidates": 10,
+								"keyword_candidates": 10
+							}
+						}
+					]
+				}
+			}
+		},
+		{
+			"case_id": "python-real-regression",
+			"query": "Python pandas ModuleNotFoundError 已安装但服务无法导入，解释器与虚拟环境排查",
+			"positive": true,
+			"shared_query_seconds": 0.5531,
+			"modes": {
+				"cosine": {
+					"precision_at_k": 0.6666666666666666,
+					"recall_at_k": 0.6666666666666666,
+					"reciprocal_rank": 0.5,
+					"required_hit": false,
+					"returned_count": 3,
+					"matches": [
+						{
+							"chunk_id": "chunk-7554c4af84a35c951b29faa89d31624e39bf275a0b66455d2027a2b7f15a9d25",
+							"document_id": "python-import-manual",
+							"score": 0.7107120293330754,
+							"rank": 1,
+							"method": "exact-cosine-v1",
+							"embedding_set_id": "embedding-7c47026b-ff1f-4b0c-8ab5-f82ba8ca1de7",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-eb17ac14f7e03fa091a3059d8424f749d4fe6f46a694e416f42be5fb5afbe0f4",
+							"content_hash": "1f96e4eb297cba7b852f1e3c14fa469e1baaf0abcabf3a97da80adb451db33c7",
+							"retrieval_details": null
+						},
+						{
+							"chunk_id": "chunk-375570a9e825e12363e501411ad53cfaf207bfec46a179f572fa4fbc2ba9bbf7",
+							"document_id": "python-import-manual",
+							"score": 0.6932432552808621,
+							"rank": 2,
+							"method": "exact-cosine-v1",
+							"embedding_set_id": "embedding-7c47026b-ff1f-4b0c-8ab5-f82ba8ca1de7",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-eb17ac14f7e03fa091a3059d8424f749d4fe6f46a694e416f42be5fb5afbe0f4",
+							"content_hash": "e9dbcec387998991ecb3a615fa8ac4dfc9e32e6dfa4cea7ba22fd0172549329a",
+							"retrieval_details": null
+						},
+						{
+							"chunk_id": "chunk-71932a62ad052249ddaab4b2d598793a902e1c0cb88bb6c2bba73f8fbf4abd14",
+							"document_id": "python-import-manual",
+							"score": 0.6889074245402844,
+							"rank": 3,
+							"method": "exact-cosine-v1",
+							"embedding_set_id": "embedding-7c47026b-ff1f-4b0c-8ab5-f82ba8ca1de7",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-eb17ac14f7e03fa091a3059d8424f749d4fe6f46a694e416f42be5fb5afbe0f4",
+							"content_hash": "eeca440b1c1ddbe0db46dac766259164c1abfbd4e671a7bb352708d67ae253fd",
+							"retrieval_details": null
+						}
+					]
+				},
+				"hybrid": {
+					"precision_at_k": 1,
+					"recall_at_k": 1,
+					"reciprocal_rank": 1,
+					"required_hit": true,
+					"returned_count": 3,
+					"matches": [
+						{
+							"chunk_id": "chunk-375570a9e825e12363e501411ad53cfaf207bfec46a179f572fa4fbc2ba9bbf7",
+							"document_id": "python-import-manual",
+							"score": 0.03225806451612903,
+							"rank": 1,
+							"method": "hybrid-rrf-keyword-v1",
+							"embedding_set_id": "embedding-7c47026b-ff1f-4b0c-8ab5-f82ba8ca1de7",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-eb17ac14f7e03fa091a3059d8424f749d4fe6f46a694e416f42be5fb5afbe0f4",
+							"content_hash": "e9dbcec387998991ecb3a615fa8ac4dfc9e32e6dfa4cea7ba22fd0172549329a",
+							"retrieval_details": {
+								"score_kind": "rrf",
+								"rrf_constant": 60,
+								"branches": {
+									"vector": {
+										"rank": 2,
+										"score": 0.6932432552808621
+									},
+									"keyword": {
+										"rank": 2,
+										"score": 1.173913043478261
+									}
+								},
+								"vector_candidates": 10,
+								"keyword_candidates": 10
+							}
+						},
+						{
+							"chunk_id": "chunk-903deb07956bf0237614d3ee1a17897549e8b819cb30621df29ca72019e8672d",
+							"document_id": "python-import-manual",
+							"score": 0.032018442622950824,
+							"rank": 2,
+							"method": "hybrid-rrf-keyword-v1",
+							"embedding_set_id": "embedding-7c47026b-ff1f-4b0c-8ab5-f82ba8ca1de7",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-eb17ac14f7e03fa091a3059d8424f749d4fe6f46a694e416f42be5fb5afbe0f4",
+							"content_hash": "f26f69a4f0fe0d4aca1fdd510447040d352dbdf926d3922cce2e718c93990915",
+							"retrieval_details": {
+								"score_kind": "rrf",
+								"rrf_constant": 60,
+								"branches": {
+									"vector": {
+										"rank": 4,
+										"score": 0.6852659549976909
+									},
+									"keyword": {
+										"rank": 1,
+										"score": 1.7391304347826086
+									}
+								},
+								"vector_candidates": 10,
+								"keyword_candidates": 10
+							}
+						},
+						{
+							"chunk_id": "chunk-71932a62ad052249ddaab4b2d598793a902e1c0cb88bb6c2bba73f8fbf4abd14",
+							"document_id": "python-import-manual",
+							"score": 0.031746031746031744,
+							"rank": 3,
+							"method": "hybrid-rrf-keyword-v1",
+							"embedding_set_id": "embedding-7c47026b-ff1f-4b0c-8ab5-f82ba8ca1de7",
+							"config_fingerprint": "a007952310afd54623c9aad23a8153ecffe4e04708ca261bc50eac20f2934429",
+							"chunk_set_id": "chunks-eb17ac14f7e03fa091a3059d8424f749d4fe6f46a694e416f42be5fb5afbe0f4",
+							"content_hash": "eeca440b1c1ddbe0db46dac766259164c1abfbd4e671a7bb352708d67ae253fd",
+							"retrieval_details": {
+								"score_kind": "rrf",
+								"rrf_constant": 60,
+								"branches": {
+									"vector": {
+										"rank": 3,
+										"score": 0.6889074245402844
+									},
+									"keyword": {
+										"rank": 3,
+										"score": 0.9565217391304348
+									}
+								},
+								"vector_candidates": 10,
+								"keyword_candidates": 10
+							}
+						}
+					]
+				}
+			}
+		}
+	],
+	"limitations": "开发题集、人工片段标注；同快照同查询向量，不评估生成/拒答；耗时为共用请求而非两种算法独立延迟"
+}
