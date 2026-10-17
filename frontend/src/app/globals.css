@@ -1,5 +1,57 @@
 /* 负责 EvidenceOps 页面布局、视觉样式、响应式适配和交互状态。 */
 @import "tailwindcss";
+/* 日志核对区：输入行号承担定位，颜色仅表达级别与扫描限制。 */
+.log-sources {margin: 16px 0;border: 1px solid var(--line);border-radius: 6px;padding: 15px 18px;background: var(--paper);min-width: 0;}
+.log-sources-heading,.log-source-heading {display: flex;align-items: center;justify-content: space-between;gap: 12px;}
+.log-sources-heading h2 {font-size: 13px;font-weight: 600;}
+.log-sources-heading>span,.log-sources p {font-size: 12px;color: var(--muted);}
+.log-sources p {margin-top: 10px;line-height: 1.7;}
+.log-source-actions {display: flex;flex-wrap: wrap;gap: 8px;margin-top: 12px;}
+.log-source-actions button {display: inline-flex;align-items: center;gap: 8px;border: 1px solid var(--line);border-radius: 4px;padding: 8px 10px;max-width: 100%;color: var(--ink);}
+.log-source-actions code {overflow-wrap: anywhere;text-align: left;}
+.log-source-actions button:hover {border-color: var(--blue);background: #eff5ff;}
+.log-source-actions button[aria-pressed="true"] {border-color: var(--blue);background: #eff5ff;color: var(--blue);}
+.evidence-drawer.log-evidence-drawer {width: min(800px,100vw);}
+.log-evidence {margin-top: 24px;min-width: 0;font-size: 13px;}
+.log-source-heading h3 {font-size: 17px;font-weight: 600;overflow-wrap: anywhere;}
+.log-source-heading>div {min-width: 0;}
+.log-source-heading>div>span {color: var(--muted);font-size: 12px;}
+.log-scan {font-size: 12px;white-space: nowrap;border: 1px solid var(--line);border-radius: 4px;padding: 4px 8px;color: var(--muted);}
+.log-scan.partial {color: #85510c;background: #fff7e6;border-color: #e7cd99;}
+.log-counts {display: flex;flex-wrap: wrap;gap: 20px;padding: 15px 0;border-bottom: 1px solid var(--line);color: var(--muted);}
+.log-counts strong {color: var(--ink);font-variant-numeric: tabular-nums;margin-left: 6px;}
+.log-notice {margin: 12px 0;padding: 10px 12px;border-left: 3px solid #bf8a32;background: #fff8eb;color: #754e17;line-height: 1.7;overflow-wrap: anywhere;}
+.log-boundary,.log-match-count {color: var(--muted);font-size: 12px;line-height: 1.7;margin: 12px 0;}
+.log-selection {display: flex;flex-wrap: wrap;gap: 8px 16px;font-size: 12px;margin: 15px 0;color: var(--muted);}
+.log-selection code {overflow-wrap: anywhere;color: var(--ink);}
+.log-filter {display: grid;gap: 7px;font-size: 12px;font-weight: 500;}
+.log-filter input {width: 100%;min-width: 0;border: 1px solid var(--line);border-radius: 5px;padding: 10px 12px;background: var(--paper);font-size: 13px;}
+.log-events {list-style: none;margin: 0;padding: 0;}
+.log-event {border: 1px solid var(--line);border-radius: 5px;margin: 12px 0;background: var(--paper);overflow: hidden;}
+.log-event>header {display: flex;flex-wrap: wrap;align-items: center;gap: 10px;background: #f2f4f6;padding: 9px 12px;font-size: 11px;color: #5a6572;}
+.log-line-label {font-family: var(--font-mono,monospace);margin-right: auto;color: #364452;}
+.log-level {font-weight: 600;}
+.log-level.error,.log-level.fatal {color: #ae3434;}
+.log-level.warning {color: #8a5a0c;}
+.log-event-time {padding: 10px 12px 0;font-size: 11px;color: var(--muted);overflow-wrap: anywhere;}
+.log-original,.log-raw-fallback {white-space: pre-wrap;overflow-wrap: anywhere;word-break: break-word;font: 12px/1.85 Consolas,"Cascadia Code",monospace;tab-size: 4;max-height: 360px;overflow-y: auto;}
+.log-original {padding: 12px;color: #233340;}
+.log-raw-fallback {padding: 14px;background: #f2f4f6;border: 1px solid var(--line);border-radius: 4px;}
+.log-event-details {border-top: 1px solid var(--line);padding: 9px 12px;font-size: 12px;}
+.log-event-details summary,.log-provenance summary {cursor: pointer;color: #4d5d6e;}
+.log-event-details dl {display: grid;grid-template-columns: 120px minmax(0,1fr);gap: 8px;margin-top: 12px;}
+.log-event-details dd,.log-event-details li {overflow-wrap: anywhere;white-space: pre-wrap;}
+.log-event-details dt {color: var(--muted);}
+.log-attribute {display: contents;}
+.log-event-details ul {margin: 10px 0;padding-left: 16px;}
+.log-provenance {border-top: 1px solid var(--line);padding-top: 15px;margin-top: 20px;}
+.log-empty {padding: 25px 15px;background: #f2f4f6;color: var(--muted);line-height: 1.8;}
+@media(max-width: 600px){
+	.evidence-drawer.log-evidence-drawer {padding: 20px;}
+	.log-sources-heading {align-items: flex-start;}
+	.log-event-details dl {grid-template-columns: 1fr;}
+	.log-counts {gap: 10px 16px;}
+}
 .storage-page {
 	padding: 28px 32px;
 	max-width: 1380px;
@@ -1582,9 +1634,9 @@ summary::-webkit-details-marker {
 }
 .missing-information {
 	text-align: left;
-	width: fit-content;
+	width: 100%;
 	max-width: 100%;
-	margin: 20px auto;
+	margin: 20px 0;
 	font-size: 13px;
 	color: var(--ink);
 	overflow-wrap: anywhere;
@@ -1597,9 +1649,9 @@ summary::-webkit-details-marker {
 	margin-block: 8px;
 }
 .no-report {
-	padding: 65px 24px;
-	text-align: center;
-	color: #70839e;
+	padding: 28px 24px;
+	text-align: left;
+	color: var(--muted);
 }
 .working-symbol {
 	width: 65px;
@@ -1626,9 +1678,11 @@ summary::-webkit-details-marker {
 	margin: 0 auto;
 }
 .no-report > svg {
-	margin: auto;
+	margin: 0;
 	color: #8b9cb5;
 }
+.no-report p {max-width: 72ch;margin: 8px 0;overflow-wrap: anywhere;}
+.no-report .citations {margin-top: 16px;flex-wrap: wrap;}
 .muted {
 	color: var(--muted);
 }

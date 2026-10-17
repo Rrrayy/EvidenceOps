@@ -6,6 +6,7 @@ export async function* read_sse(stream: ReadableStream<Uint8Array>,signal?: Abor
 	let buffer=""; // 保存尚未组成一整行的字节文本。
 	let event_name="message"; // SSE 默认事件名。
 	let event_id: string|null=null; // 每帧重新记录业务身份。
+	let frame_size=0;
 	let data_lines: string[]=[]; // 合并合法的多行 data 字段。
 	try {
 		// 任何解析错误也必须释放读取器。
@@ -22,6 +23,7 @@ export async function* read_sse(stream: ReadableStream<Uint8Array>,signal?: Abor
 			let match: RegExpExecArray|null; // 记录一条完整行的结束位置。
 			while((match=/\r\n|\n|\r(?!$)/.exec(buffer))!==null) {
 				// 接受 LF、CRLF 与 CR，末尾 CR 等下一包。
+				if(match.index>4_000_000){throw new Error("事件数据超过读取上限");}
 				const line=buffer.slice(0,match.index); // 截取一整行。
 				buffer=buffer.slice(match.index+match[0].length); // 移除已消费部分。
 				if(line==="") {
@@ -31,8 +33,11 @@ export async function* read_sse(stream: ReadableStream<Uint8Array>,signal?: Abor
 					} // 心跳注释不产生业务事件。
 					event_name="message";
 					event_id=null;
-					data_lines=[]; // 重置本帧字段。
-				} else if(!line.startsWith(":")) {
+					data_lines=[];frame_size=0; // 重置本帧字段。
+				} else {
+					frame_size+=line.length+match[0].length;
+					if(frame_size>4_000_000){throw new Error("事件数据超过读取上限");}
+					if(line.startsWith(":")){continue;}
 					// 忽略连接与心跳注释。
 					const separator=line.indexOf(":"); // 仅首个冒号分隔字段。
 					const field=separator<0? line:line.slice(0,separator); // 支持没有冒号的字段。
@@ -51,7 +56,7 @@ export async function* read_sse(stream: ReadableStream<Uint8Array>,signal?: Abor
 					} // 保留多行数据。
 				} // 结束字段处理。
 			} // 结束完整行处理。
-			if(buffer.length>4_000_000) {
+			if(buffer.length>4_000_000||frame_size+buffer.length>4_000_000) {
 				throw new Error("事件数据超过读取上限");
 			} // 防止损坏流无限增长。
 			if(chunk.done) {

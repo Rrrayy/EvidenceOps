@@ -54,6 +54,7 @@ export function Report({ result,on_evidence }: { result: RunResult; on_evidence:
 				</section>}
 				{result.evidences.some(item=>item.source==="knowledge")&&<p className="muted">已保留的知识参考不代表已确认本次故障根因。</p>}
 				<p className="muted">{result.evidences.length} 条证据已保留</p>
+				{result.evidences.length>0&&citations(result.evidences.map(item=>item.evidence_id))}
 			</div>
 		);
 	}

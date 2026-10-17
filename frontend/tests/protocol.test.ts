@@ -21,6 +21,24 @@ test("CR 单独换行在流末尾正确提交",async()=>{ // 覆盖 SSE 的第�
 	assert.equal(frames[0].data,"complete"); // 合法事件不能丢失。
 }); // 结束 CR 测试。
 const started={event:"run_started",run_id:"run-1",sequence:1,occurred_at:"2026-10-12T00:00:00Z",data:{status:"running"}}; // 与真实业务信封一致。
+test("SSE 累计帧、已完成长行和未完成行均受预算限制，超限取消且不推进游标",async()=>{
+	for(const payload of ["data: "+"x".repeat(4_000_001)+"\n\n",("data: "+"x".repeat(1_000_000)+"\n").repeat(5)+"\n","data: "+"x".repeat(4_000_001),("data: "+"x".repeat(1_000_000)+"\n").repeat(3)+"data: "+"x".repeat(1_000_000)]){
+		let cancelled=false;
+		let state=apply_event(empty_run,started);
+		let sent=false;
+		const stream=new ReadableStream<Uint8Array>({pull(controller){if(!sent){sent=true;controller.enqueue(new TextEncoder().encode(payload));}},cancel(){cancelled=true;}});
+		await assert.rejects(async()=>{for await(const frame of read_sse(stream)){state=apply_event(state,JSON.parse(frame.data));}},/超过读取上限/);
+		assert.equal(cancelled,true);assert.equal(stream.locked,false);assert.equal(state.cursor,1);
+	}
+});
+test("SSE 多帧单包分别计预算，跨包累计也不能绕过上限",async()=>{
+	const payload="data: "+"x".repeat(2_100_000)+"\n\n";
+	const stream=new ReadableStream<Uint8Array>({start(controller){controller.enqueue(new TextEncoder().encode(payload.repeat(2)));controller.close();}});
+	let count=0;for await(const frame of read_sse(stream)){assert.equal(frame.data.length,2_100_000);count++;}assert.equal(count,2);
+	const multiline="data: "+"x".repeat(900_000)+"\n";
+	const fragmented=new ReadableStream<Uint8Array>({start(controller){for(let index=0;index<5;index++){controller.enqueue(new TextEncoder().encode(multiline));}controller.close();}});
+	await assert.rejects(async()=>{for await(const frame of read_sse(fragmented)){assert.fail("超限帧不应交付");}},/超过读取上限/);
+});
 test("重放去重、跨 Run 拒绝与缺口检测",()=>{ // 保护历史链完整性。
 	const state=apply_event(empty_run,started);assert.equal(apply_event(state,started),state); // 重复事件不重复显示。
 	assert.throws(()=>apply_event(state,{...started,run_id:"run-2",sequence:2}),/其他诊断/); // 其他 Run 不得合并。

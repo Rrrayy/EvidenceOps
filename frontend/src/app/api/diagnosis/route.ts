@@ -51,7 +51,7 @@ export async function POST(request: Request) {
 					} // 业务终态或传输失败及时结束观察。
 				} // 完成流转发。
 			},
-			onError: () => "诊断连接中断，请按运行 ID 恢复观察"
+			onError: reason=>reason instanceof Error&&reason.message==="事件数据超过读取上限"?"事件数据超过读取上限，已停止观察；请按运行 ID 回查档案。":"诊断连接中断，请按运行 ID 恢复观察"
 		}); // 不向浏览器泄露服务端异常。
 		return createUIMessageStreamResponse({
 			stream,

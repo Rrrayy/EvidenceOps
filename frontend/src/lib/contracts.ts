@@ -1,4 +1,9 @@
 import { z } from "zod"; // 在网络边界验证实际后端数据。
+export const capability_schema=z.object({
+	persistence:z.boolean(),provider_mode:z.string(),storage_management:z.boolean().optional(),
+	source_mode:z.string().optional(),knowledge_search:z.boolean().optional(),
+	parsed_logs:z.boolean().optional(),parsed_log_sources:z.array(z.string().min(1).max(100)).max(16).optional()
+});
 export const status_schema=z.enum(["pending","running","succeeded","failed","cancelled"]); // 与 Run 状态机一致。
 const claim_schema=z.object({ text: z.string(),evidence_ids: z.array(z.string()) }); // 每个判断保留其真实引用。
 export const evidence_schema=z.object({
@@ -22,7 +27,10 @@ export const evidence_schema=z.object({
 		end_offset: z.number().int().nullable().optional(),
 		score: z.number().nullable().optional(),
 		rank: z.number().int().nullable().optional(),
-		retrieval_method: z.string().nullable().optional()
+		retrieval_method: z.string().nullable().optional(),
+		source_id:z.string().optional(),source_role:z.string().optional(),observed_at_basis:z.string().optional(),
+		input_sha256:z.string().optional(),hash_basis:z.string().optional(),parser_status:z.string().optional(),
+		selection:z.record(z.string(),z.unknown()).optional(),line_ranges:z.array(z.array(z.number())).optional()
 	}).nullable().optional()
 }); // 只展示 API 实际提供的证据字段。
 export const record_schema=z.object({
@@ -99,7 +107,8 @@ export const tool_labels: Record<string,string>={
 	query_service_logs: "查询服务日志",
 	query_service_metrics: "查询运行指标",
 	query_service_config: "查询历史配置",
-	search_knowledge: "检索知识资料"
+	search_knowledge: "检索知识资料",
+	query_parsed_logs: "解析受控日志"
 }; // 已知工具使用业务名称，未知工具保留原名。
 export const example_description=
 	"请使用query_service_logs和query_service_metrics查询order-service在production环境2026-10-05T10:00:00+08:00至2026-10-05T10:10:00+08:00的rpc_timeout日志与线程池指标，各limit=50，并使用query_service_config查询2026-10-05T10:02:00+08:00生效配置。结合证据分析，区分已确认事实与原因假设，不要把配置允许重试当作已经发生重试。"; // 使用仓库中真实可复现的示例。

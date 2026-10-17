@@ -1,0 +1,100 @@
+{
+  "source_id": "rpc-test",
+  "source_role": "client",
+  "schema_version": "log-evidence-v1",
+  "parser_status": "complete",
+  "statistics": {
+    "input_bytes": 111,
+    "event_count": 3,
+    "unrecognized_count": 2,
+    "warning_count": 5,
+    "skipped_blank_lines": 0,
+    "stopped_early": false,
+    "stop_reason": null
+  },
+  "events": [
+    {
+      "event_index": 1,
+      "format": "plain",
+      "raw_time": "",
+      "timestamp": null,
+      "time_basis": "unknown",
+      "level": null,
+      "raw_level": null,
+      "message": "async rpc completed, errcode=0",
+      "event_kind": "async_result",
+      "process_id": null,
+      "thread_id": null,
+      "code_file": null,
+      "code_function": null,
+      "code_line": null,
+      "line_start": 1,
+      "line_end": 1,
+      "raw_text": "async rpc completed, errcode=0",
+      "attributes": {
+        "errcode": 0
+      },
+      "warnings": [
+        "event time is unknown; timestamp was not generated"
+      ]
+    },
+    {
+      "event_index": 2,
+      "format": "unknown",
+      "raw_time": "",
+      "timestamp": null,
+      "time_basis": "unknown",
+      "level": null,
+      "raw_level": null,
+      "message": "this line has no recognized header",
+      "event_kind": null,
+      "process_id": null,
+      "thread_id": null,
+      "code_file": null,
+      "code_function": null,
+      "code_line": null,
+      "line_start": 2,
+      "line_end": 2,
+      "raw_text": "this line has no recognized header",
+      "attributes": {},
+      "warnings": [
+        "event time is unknown; timestamp was not generated",
+        "unrecognized log format"
+      ]
+    },
+    {
+      "event_index": 3,
+      "format": "unknown",
+      "raw_time": "",
+      "timestamp": null,
+      "time_basis": "unknown",
+      "level": null,
+      "raw_level": null,
+      "message": "<script>window.log_injected=true</script>",
+      "event_kind": null,
+      "process_id": null,
+      "thread_id": null,
+      "code_file": null,
+      "code_function": null,
+      "code_line": null,
+      "line_start": 3,
+      "line_end": 3,
+      "raw_text": "<script>window.log_injected=true</script>",
+      "attributes": {},
+      "warnings": [
+        "event time is unknown; timestamp was not generated",
+        "unrecognized log format"
+      ]
+    }
+  ],
+  "input_sha256": "5a3f63388a179950b217768cae22ca41a3797d88c5ff164af0fe336c724ef59a",
+  "hash_basis": "full_adapter_input_snapshot_bytes",
+  "imported_at": "2026-10-17T13:04:46.648807+00:00",
+  "selection": {
+    "rule": "input_order_keyword_then_prefix_within_10000_characters",
+    "keyword": null,
+    "limit": 10,
+    "selected_count": 3,
+    "omitted_count": 0
+  }
+}

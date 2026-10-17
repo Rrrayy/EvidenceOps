@@ -15,6 +15,7 @@ async(page)=>{
 		if(path.endsWith("/setup/status")){return route.fulfill({json:{supported:false}});}
 		if(path.endsWith("/runs")){return route.fulfill({json:mode==="invalid-list"?{items:null,has_more:true}:{items:[],has_more:false}});}
 		if(path.endsWith("/events/stream")){
+			if(mode==="oversized-sse"){return route.fulfill({contentType:"text/event-stream",body:("data: "+"x".repeat(1_000_000)+"\n").repeat(5)+"\n"});}
 			const conflict={event:"run_completed",sequence:1,run_id:result.run_id,occurred_at:time,data:{result}};
 			return route.fulfill({contentType:"text/event-stream",body:mode==="terminal-conflict"?`data: ${JSON.stringify(conflict)}\n\n`:""});
 		}
@@ -28,11 +29,11 @@ async(page)=>{
 		return route.fulfill({status:503,json:{message:"隔离未提供的能力"}});
 	});
 	const checks=[];
-	for(const scenario of ["invalid-model","wrong-identity","bad-json","network","terminal-conflict","wrong-final"]){
+	for(const scenario of ["invalid-model","wrong-identity","bad-json","network","terminal-conflict","wrong-final","oversized-sse"]){
 		mode=scenario;
 		detail_reads=0;
 		await page.goto(`http://127.0.0.1:3011/?run=${result.run_id}`);
-		const expected=scenario==="invalid-model"?"格式不兼容":scenario==="bad-json"?"无法读取":scenario==="network"?"无法连接":scenario==="terminal-conflict"?"状态不一致":"不属于当前诊断";
+		const expected=scenario==="invalid-model"?"格式不兼容":scenario==="bad-json"?"无法读取":scenario==="network"?"无法连接":scenario==="terminal-conflict"?"状态不一致":scenario==="oversized-sse"?"超过读取上限":"不属于当前诊断";
 		await page.getByRole("alert").filter({hasText:expected}).waitFor();
 		check(await page.getByRole("button",{name:"取消诊断",exact:true}).count()===0,`${scenario} 不得出现未经确认的取消按钮`);
 		check(await page.locator(".status-badge.running").count()===0,`${scenario} 不得显示诊断中`);

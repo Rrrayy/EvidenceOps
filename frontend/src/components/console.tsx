@@ -30,10 +30,13 @@ import {
 	X
 } from "lucide-react";
 import { use_diagnosis } from "@/lib/use-diagnosis";
-import { example_description,source_labels,status_labels,result_schema,type Evidence } from "@/lib/contracts";
+import { example_description,source_labels,status_labels,result_schema,capability_schema,type Evidence } from "@/lib/contracts";
 import { EvidenceIcon,Report } from "./report";
 import { Trace } from "./trace";
 import { KnowledgeEvidence } from "./knowledge-evidence";
+import { ParsedLogEvidence } from "./parsed-log-evidence";
+import { LogSources } from "./log-sources";
+import { is_parsed_log } from "@/lib/parsed-logs";
 import { History } from "./history";
 import { Evaluations } from "./evaluation";
 import { ModelConnections,ModelSelector } from "./model-connections";
@@ -52,8 +55,9 @@ export function Console() {
 	const [tab,set_tab]=useState("report");
 	const [input_text,set_input_text]=useState("");
 	const [draft_error,set_draft_error]=useState("");
+	const [log_sources,set_log_sources]=useState<string[]>([]);
 	const [selected,set_selected]=useState<Evidence|null>(null);
-	const [capability,set_capability]=useState<{ persistence: boolean; provider_mode: string; storage_management?: boolean; source_mode?: string; knowledge_search?: boolean }|null>(null);
+	const [capability,set_capability]=useState<{ persistence: boolean; provider_mode: string; storage_management?: boolean; source_mode?: string; knowledge_search?: boolean; parsed_logs?:boolean; parsed_log_sources?:string[] }|null>(null);
 	const [service_revision,set_service_revision]=useState(0);
 	const [service_error,set_service_error]=useState("");
 	const [lookup,set_lookup]=useState("");
@@ -73,7 +77,12 @@ export function Console() {
 				.map((part) => (part.type==="text"? part.text:""))
 				.join("\n");
 			set_input_text(text);
-			await run.start(text,model_selection);
+			const input_error=diagnosis_input_error(text);
+			set_draft_error(input_error);
+			if(input_error){return;}
+			const sources=capability?.parsed_logs?log_sources.filter(identity=>capability.parsed_log_sources?.includes(identity)):[];
+			const description=sources.length?`${text}\n\n本次请求检查的已注册日志来源 ID：${sources.map(identity=>JSON.stringify(identity)).join("、")}。是否查询由模型根据分析需要决定。`:text;
+			await run.start(description,model_selection);
 		}
 	});
 	const status=run.state.result?.status??(run.state.events.some(event=>event.event==="run_started")?"running":null);
@@ -90,11 +99,12 @@ export function Console() {
 				if(!response.ok) {
 					throw new Error("诊断服务暂不可用");
 				}
-				set_capability(await response.json());
+				set_capability(capability_schema.parse(await response.json()));
 				set_service_error("");
 			})
 			.catch(() => {
 				if(!controller.signal.aborted) {
+					set_capability(null);
 					set_service_error("诊断服务未连接");
 				}
 			});
@@ -157,13 +167,18 @@ export function Console() {
 				:`/?view=${next}`
 		);
 	}
+	function fill_draft(text:string){
+		assistant_runtime.thread.composer.setText(text);
+		set_input_text(text);
+		set_draft_error(text?diagnosis_input_error(text):"");
+	}
 	function new_run() {
 		if(run.active) {
 			return;
 		}
 		run.reset();
-		set_input_text("");
-		assistant_runtime.thread.composer.setText("");
+		fill_draft("");
+		set_log_sources([]);
 		set_tab("report");
 		navigate("workspace");
 		window.history.replaceState(null,"","/");
@@ -194,8 +209,7 @@ export function Console() {
 			if(text.includes("\0")||text.length>100_000) {
 				throw new Error("文件包含非文本内容或超过 100000 字符");
 			}
-			assistant_runtime.thread.composer.setText(text);
-			set_input_text(text);
+			fill_draft(text);
 			run.set_error("");
 		} catch(reason) {
 			run.set_error(reason instanceof Error? reason.message:"文件无法读取");
@@ -329,6 +343,7 @@ export function Console() {
 												on_select={set_model_selection}
 												on_manage={() => navigate("connections")}
 											/>
+											<LogSources capability={capability} error={service_error} selected={log_sources} on_retry={()=>set_service_revision(value=>value+1)} on_source={identity=>set_log_sources(current=>current.includes(identity)?current.filter(item=>item!==identity):[...current,identity])}/>
 											<ComposerPrimitive.Root className="composer">
 												<div className="composer-label">
 													<span>
@@ -389,7 +404,7 @@ export function Console() {
 												<span>先了解诊断过程</span>
 												<button
 													onClick={() =>
-														assistant_runtime.thread.composer.setText(example_description)
+														fill_draft(example_description)
 													}
 												>
 													<span className="example-dot" />
@@ -402,7 +417,7 @@ export function Console() {
 												<p>
 													{model_selection?.connection_id&&
 														model_selection.connection_id!=="system"
-														? capability?.source_mode==="samples"?"本次使用所选模型分析仓库样例数据，尚未连接客户日志、指标或配置。":"本次使用所选模型连接，未就绪的模型将由后端拒绝执行；证据范围仍限于已接入的数据源。"
+														? capability?.source_mode==="samples"?"本次使用所选模型分析仓库样例数据；受控日志是否可查询以上方来源声明为准。":"本次使用所选模型连接，未就绪的模型将由后端拒绝执行；证据范围仍限于已接入的数据源。"
 														:capability?.provider_mode==="mock"
 															? "当前为 Mock 演示模式，返回固定样本诊断；请使用 RPC 超时示例。"
 															:"当前查询接入的日志、指标和配置。示例使用仓库本地样本；输入文本不会自动成为已验证证据。"}
@@ -525,7 +540,7 @@ export function Console() {
 																	</span>
 																	<p>{item.summary}</p>
 																	<span>
-																		{new Date(item.observed_at).toLocaleString(
+																		{is_parsed_log(item)?"导入 ":""}{new Date(item.observed_at).toLocaleString(
 																			"zh-CN"
 																		)}
 																		<ArrowUpRight size={16} />
@@ -664,7 +679,7 @@ export function Console() {
 				>
 					<Dialog.Portal>
 						<Dialog.Overlay className="dialog-overlay" />
-						<Dialog.Content className="evidence-drawer" onCloseAutoFocus={event=>{event.preventDefault();evidence_trigger.current?.focus();}}>
+						<Dialog.Content className={`evidence-drawer ${selected&&is_parsed_log(selected)?"log-evidence-drawer":""}`} onCloseAutoFocus={event=>{event.preventDefault();evidence_trigger.current?.focus();}}>
 							<div className="drawer-heading">
 								<span className="section-label">引用证据</span>
 								<Dialog.Close className="icon-button" aria-label="关闭证据">
@@ -688,12 +703,13 @@ export function Console() {
 							{selected&&(
 								<>
 									{selected.source==="knowledge"&&<KnowledgeEvidence evidence={selected} />}
+									{is_parsed_log(selected)&&<ParsedLogEvidence key={selected.evidence_id} evidence={selected}/>}
 									<div className="evidence-summary">
 										<h3>{selected.source==="knowledge"?"参考摘要":"观测摘要"}</h3>
 										<p>{selected.summary}</p>
 									</div>
 									<dl className="evidence-metadata">
-										<dt>{selected.source==="knowledge"?"检索时间":"观测时间"}</dt>
+										<dt>{selected.source==="knowledge"?"检索时间":is_parsed_log(selected)||selected.source_metadata?.observed_at_basis==="import_time"?"导入观测时间（非事件时间）":"观测时间"}</dt>
 										<dd>{new Date(selected.observed_at).toLocaleString("zh-CN")}</dd>
 										<dt>来源定位</dt>
 										<dd>
@@ -718,7 +734,7 @@ export function Console() {
 										{copied? "已复制":"复制证据信息"}
 									</button>
 									<p className="drawer-note">
-										{selected.source==="knowledge"?"片段与来源以本次运行归档为准，不受后续知识资料更新影响。":"来源定位用于核对样本。当前接口提供摘要，不提供完整原始日志正文。"}
+										{selected.source==="knowledge"?"片段与来源以本次运行归档为准，不受后续知识资料更新影响。":is_parsed_log(selected)?"此处展示本次运行的归档快照，不会重新读取来源文件。证据编号代表整组日志，并非单条事件序号。":"来源定位用于核对样本。当前接口提供摘要，不提供完整原始日志正文。"}
 									</p>
 								</>
 							)}
