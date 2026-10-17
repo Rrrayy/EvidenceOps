@@ -99,6 +99,8 @@ class ToolRuntime:
 		query_arguments=None
 		if tool_name=="search_knowledge" and isinstance(arguments,dict):
 			query_arguments={name:value for name,value in arguments.items() if name in ("query","top_k") and type(value) in (str,int)}
+		if tool_name=="query_parsed_logs" and isinstance(arguments,dict):
+			query_arguments={name:value for name,value in arguments.items() if name in ("source_id","limit") and type(value) in (str,int)}
 		if tool_name in ("query_service_logs","query_service_metrics","query_service_config") and isinstance(arguments,dict):
 			fields=("service_name","environment","start_time","end_time","at_time","error_type","limit")
 			query_arguments={

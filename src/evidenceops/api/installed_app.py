@@ -291,7 +291,9 @@ def create_installed_app(root=None,factory=None):
 		ready=installation.state=="ready" and not installation.maintenance
 		assembly=installation.child.state.assembly if installation.child else None
 		knowledge=bool(ready and assembly and any(getattr(tool,"name",None)=="search_knowledge" for tool in assembly.tools))
+		parsed_tool=next((tool for tool in assembly.tools if getattr(tool,"name",None)=="query_parsed_logs"),None) if ready and assembly else None
 		return {"persistence":ready,"storage_management":True,"storage_state":"maintenance" if installation.maintenance else installation.state,
+			"parsed_logs":parsed_tool is not None,"parsed_log_sources":parsed_tool.parameters_schema["properties"]["source_id"]["enum"] if parsed_tool else [],
 			"source_mode":"samples","input":"description","knowledge_search":knowledge,
 			"sources":["log","metric","config"]+(["knowledge"] if knowledge else []),"model_connections":installation.child is not None,
 			"provider_mode":"mock" if assembly is None or assembly.provider_name=="mock" else "configured"}

@@ -7,6 +7,7 @@ from evidenceops.api.agent_diagnosis import create_app
 from evidenceops.connectors.local_config import build_local_config_tool
 from evidenceops.connectors.local_log import build_local_log_tool
 from evidenceops.connectors.local_metric import build_local_metric_tool
+from evidenceops.connectors.parsed_log import configured_parsed_log_tools
 from evidenceops.infrastructure.database.diagnosis_persistence import SqlAlchemyDiagnosisPersistence
 from evidenceops.infrastructure.database.session import DatabaseSettings,create_database_engine,create_session_factory
 from evidenceops.infrastructure.providers.mock_provider import MockProvider
@@ -91,7 +92,7 @@ def build_agent_app(diagnosis_persistence=_UNSET,connection_store=None)->object:
 		build_final_answer,
 	))
 
-	tools=(build_local_log_tool(),build_local_metric_tool(),build_local_config_tool(),)
+	tools=(build_local_log_tool(),build_local_metric_tool(),build_local_config_tool(),)+configured_parsed_log_tools()
 
 	if diagnosis_persistence is _UNSET: diagnosis_persistence=build_database_persistence()
 	tools+=configured_knowledge_tools(diagnosis_persistence)
@@ -115,7 +116,7 @@ def build_openai_agent_app(base_url:str,api_key:str,model:str,diagnosis_persiste
 
 	provider=OpenAICompatibleProvider(base_url=base_url,api_key=api_key)
 
-	tools=(build_local_log_tool(),build_local_metric_tool(),build_local_config_tool(),)
+	tools=(build_local_log_tool(),build_local_metric_tool(),build_local_config_tool(),)+configured_parsed_log_tools()
 
 	if diagnosis_persistence is _UNSET: diagnosis_persistence=build_database_persistence()
 	tools+=configured_knowledge_tools(diagnosis_persistence)

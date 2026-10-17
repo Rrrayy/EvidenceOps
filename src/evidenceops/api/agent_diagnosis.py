@@ -69,7 +69,9 @@ def create_app(assembly:AgentDiagnosisAssembly,connection_manager=None)->FastAPI
 	@app.get("/api/v1/agent/capabilities")
 	def get_capabilities():
 		knowledge_enabled=any(getattr(tool,"name",None)=="search_knowledge" for tool in assembly.tools)
+		parsed_tool=next((tool for tool in assembly.tools if getattr(tool,"name",None)=="query_parsed_logs"),None)
 		return {"persistence":assembly.diagnosis_persistence is not None,"input":"description",
+			"parsed_logs":parsed_tool is not None,"parsed_log_sources":parsed_tool.parameters_schema["properties"]["source_id"]["enum"] if parsed_tool else [],
 			"knowledge_search":knowledge_enabled,"sources":["log","metric","config"]+(["knowledge"] if knowledge_enabled else []),
 			"model_connections":connection_manager is not None,"provider_mode":"mock" if isinstance(assembly.provider,MockProvider) else "configured"}
 

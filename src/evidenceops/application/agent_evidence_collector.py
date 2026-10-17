@@ -38,7 +38,7 @@ class AgentEvidenceCollector:
 							tool_result.error_message or "工具执行失败")
 					continue
 				try:
-					if tool_result.tool_name=="search_knowledge":
+					if tool_result.tool_name in ("search_knowledge","query_parsed_logs"):
 						if tool_result.bound_evidences is None:
 							raise ToolCollectionError("EVIDENCE_COLLECTION_FAILED","知识结果没有绑定证据")
 						evidences.extend(tool_result.bound_evidences)
