@@ -1,35 +1,37 @@
 # EvidenceOps
 
-<p align="center"><strong>以证据为依据的软件故障诊断 Agent</strong></p>
+<p align="center"><strong>面向软件运行故障的证据驱动诊断工作台</strong></p>
 <p align="center">
-<a href="README.md">English</a> · <a href="#快速启动">本机运行</a> · <a href="#核心能力">核心能力</a> · <a href="#系统架构">系统架构</a> · <a href="#http-api">API 参考</a> · <a href="#测试">测试</a>
+<a href="README.md">English</a> · <a href="#快速启动">本机运行</a> · <a href="#核心能力">核心能力</a> · <a href="#系统架构">系统架构</a> · <a href="#当前检索对照结论">检索评测</a> · <a href="#测试">测试</a>
 </p>
 
-EvidenceOps 是一套本机软件故障诊断工作台。Agent 通过受限的只读工具调查故障，并生成引用本次 Run 证据的报告。网页控制台可查看工具执行、核对证据并回查已持久化的 Run。
+EvidenceOps 是面向软件运行故障的本机诊断工作台。Agent 通过受限的只读工具查询日志、指标、配置和排障资料，将一次运行中的观测证据与诊断建议关联起来。网页控制台提供运行跟踪、证据检查、模型连接管理和历史回查。
 
-**立即体验：**仓库内置确定性的 Mock 模型和 order-service 样例数据。Mock 返回固定演示结论，不会理解故障描述；报告会明确标记为演示。网页可以配置真实的 OpenAI-compatible 模型，但当前仍使用仓库内置样例数据源。
+**演示模式：**仓库提供确定性的 Mock 模型和 `order-service` 样例数据。Mock 返回固定演示结论，不会理解用户输入；报告会明确标记为演示。网页也可以配置真实的 OpenAI-compatible 诊断模型。
 
-**当前范围：**导入文本只会填入浏览器输入框，不会上传文件或配置客户数据源。可选知识工具对已发布文档进行精确 cosine 检索，为 Agent 提供带独立引用的片段正文快照。客户日志接入和语言专属解析尚未实现。证据引用校验只确认归属和存在，不代表来源在语义上证明了结论。
+**数据边界：**诊断输入中的粘贴或导入文本只作为问题描述，不会自动上传为日志证据。部署者可以在服务端登记本机日志文件，由 C++20 解析 CLI 和 Python Adapter 将受控查询转成结构化 Evidence；这不是任意路径访问或通用语言运行时解析。引用校验能验证证据身份和归属，但不能单独证明来源在语义上支持诊断结论。
 
-**安装状态：**目前可用方式是下方的源码安装。仓库中有 Inno Setup 打包配置，但尚未发布经过验证、可下载的 `EvidenceOps-Setup.exe`。
+**运行范围：**当前面向本机、单租户和单 API worker。远程身份认证、多用户授权、分布式协调及通用客户数据源管理尚未实现。项目通过源码方式启动；仓库中的 Inno Setup 配置尚未构建并验收为可发布安装包。
 
 ## 核心能力
 
 | 能力 | 行为 |
 | --- | --- |
 | 诊断编排 | 独立于供应商的 Agent Loop、OpenAI-compatible 适配器、确定性 Mock |
-| 受控工具 | 只读注册、参数校验、有界并发与调用关联 |
-| 证据报告 | 来源、观测时间、位置、版本、内容哈希与引用校验 |
+| 受控工具 | 白名单注册、参数校验、有界执行、工具调用关联与协作取消 |
+| 日志解析 | C++20 CLI 解析受支持格式，Python Adapter 校验版本化 JSON 并生成可追溯日志 Evidence |
+| 证据报告 | 来源、观测时间、位置、版本、内容哈希、运行内引用校验与历史快照 |
 | 网页控制台 | 诊断工作台、可检索历史、证据抽屉、执行时间线与离线评测查看 |
 | 模型连接 | 加密凭据、模型目录、显式能力验证、默认配置与本次诊断选择 |
 | 历史归档 | 安装版默认 SQLite，可切换至受管理的 PostgreSQL |
 | 安装与存储 | 首次设置、连接检查、存储切换、逻辑备份导入导出与恢复 |
 | 流式与重连 | SSE 生命周期事件，按游标补发，不重新执行诊断 |
-| 执行控制 | 共享预算、单次超时与协作取消 |
+| 上下文治理 | 每轮请求估算输入 Token、预留输出和安全余量、限制 Run 累计 Token，并记录供应商用量 |
+| 执行控制 | 共享时间预算、单次超时与协作取消 |
 | 启动收尾 | 单实例锁保护；遗留 Run 原子失败并追加终止事件 |
-| 质量评测 | 20 案例离线题库、自动规则、可恢复的 CLI 人工审核 |
-| 知识组件 | 有界 UTF-8 加载、稳定文档/版本/片段身份、SQLAlchemy 持久化及确定性关键词检索 |
-| 检索评测 | Precision、Recall 和倒数排名计算；Embedding 接口及确定性测试供应商 |
+| 诊断评测 | 20 案例离线题库、自动规则及可恢复的 CLI 人工审核 |
+| 知识检索 | 文档版本、ChunkSet、EmbeddingSet、向量持久化、精确 cosine、关键词、BM25 与 RRF 对照 |
+| 检索评测 | 片段级 Precision、Recall、MRR 与必需片段命中对照 |
 
 ## 快速启动
 
@@ -138,11 +140,18 @@ flowchart TD
     Client["HTTP / SSE 客户端"] --> API
     API --> Service["Diagnosis Service"]
     Service --> Loop["Agent Loop"]
-    Loop --> Gateway["LLM Gateway"]
+    Loop --> Context["Context Assembler / Token Ledger"]
+    Context --> Gateway["LLM Gateway"]
     Gateway --> Provider["Mock / OpenAI-compatible 模型"]
     Loop --> Runtime["Tool Runtime"]
-    Runtime --> Sources["日志 / 指标 / 配置只读 Connector"]
-    Sources --> Evidence["Evidence Collector"]
+    Runtime --> Samples["样例日志 / 指标 / 配置 Connector"]
+    Runtime --> Parsed["白名单日志工具"]
+    Parsed --> Adapter["Python Adapter：资源限制与 JSON 校验"]
+    Adapter --> CLI["C++20 日志解析 CLI"]
+    CLI --> Files["服务端登记的本机日志文件"]
+    Runtime --> Knowledge["知识检索工具"]
+    Knowledge --> Corpus["关系数据库：已发布知识与向量"]
+    Samples --> Evidence["Evidence Collector"]
     Evidence --> Loop
     Loop --> Report["结构化草稿 / 引用校验 / 报告"]
     Report --> Service
@@ -154,7 +163,30 @@ flowchart TD
     Eval["离线评测 / CLI 审核"] --> Service
 ```
 
-模型提出工具调用，Tool Runtime 校验和执行。应用层管理状态、预算、取消与报告构建；基础设施提供数据库及模型适配器。
+模型提出工具调用，Tool Runtime 只执行服务端已注册且通过参数校验的能力。日志文件经过 C++ CLI 解析及 Python 边界校验后才成为 Evidence；知识片段作为排障参考单独标识。应用层负责 Run 生命周期、上下文预算、取消和报告构建，基础设施层提供数据库及模型适配器。
+
+### 日志证据链路
+
+`query_parsed_logs` 只接受服务端清单中登记的 `source_id`，不会让模型传入文件路径。当前 C++20 解析器覆盖项目 RPC 样本中出现的 glog、ZooKeeper、muduo 和普通文本规则；不匹配或损坏的行会保留为 `unknown` 并附带警告。只有带 UTC 标记的 muduo 时间会生成确定时间，其他未包含时区的格式不会猜测时区。格式识别范围有限，不代表已支持任意语言、框架或日志平台。
+
+Python Adapter 对输入大小、进程时间、stdout/stderr、事件数量和结果 JSON 做边界检查，并验证来源、行范围、统计字段和事件格式。每次查询重新读取登记文件；单次返回最多 20 条事件，选择结果有字符预算，过大事件会跳过而不会截断。Adapter 为完整输入快照计算 SHA-256，日志 Evidence 保存该哈希、版本化解析快照、行范围、解析状态、选择游标和导入观测时间；单独运行 C++ CLI 时哈希字段为未计算。续读发生在后续调用；调用方应比较输入哈希，避免把文件变化前后的结果误认为同一快照。
+
+启用日志工具需要同时设置 `EVIDENCEOPS_LOG_SOURCES_FILE` 和 `EVIDENCEOPS_LOG_PARSER_BINARY`。清单为服务端维护的 JSON 文件，例如：
+
+```json
+[
+  {"source_id":"rpc-server","path":"C:/logs/server.log","role":"server"},
+  {"source_id":"rpc-client","path":"C:/logs/client.log","role":"client"}
+]
+```
+
+清单路径由部署者控制，来源角色为 `server`、`client` 或 `unknown`。导入到诊断输入框的文本不会注册来源；当前没有面向客户的日志上传、路径配置界面、日志保留平台或通用解析器市场。
+
+### 上下文窗口与 Token 预算
+
+每次模型请求前，Agent Loop 都会对当前完整消息历史、工具定义和响应格式进行估算，并为输出上限和安全余量预留空间。默认配置为上下文窗口 `32768`、单次输出 `2048`、安全余量 `256`、单次 Run 累计预算 `16384` Token。模型连接可以按模型单独保存这些限制；每次运行会保存配置快照。
+
+当前 `heuristic-json-v1` 是按序列化文本长度估算的启发式方法，不是供应商 tokenizer，也不构成精确容量保证。供应商返回用量时，系统记录输入、输出和总 Token；缺失或无效时会保留对应计量状态。超出单请求上下文或 Run 累计预算时，请求在发往模型前失败，不会静默截断或丢弃历史。**自动摘要、按证据优先级裁剪、分块压缩和供应商 tokenizer 适配尚未实现。**前端时间线展示每轮估算值、输出预留值及可用的供应商用量；SSE 传输执行事件，不流式输出模型 Token。
 
 ### 知识组件
 
@@ -173,11 +205,26 @@ python -m evidenceops.application.knowledge_corpus_cli prepare samples/knowledge
 python -m evidenceops.application.knowledge_corpus_cli evaluate samples/knowledge/manifest.json
 ```
 
-发布以单份文档为原子单位，不是整库原子切换；重复构建未变化且已发布的资料会复用编码集合。除文档级基线外，提供片段标注题集和 cosine/RRF 同题对照命令。设置 `EVIDENCEOPS_KNOWLEDGE_RETRIEVAL=hybrid` 可选用词频关键词与向量排名融合，默认仍为 cosine；两路共享发布候选与编码配置。RRF 分数不是余弦相似度，两路分数和排名随检索元数据归档。关键词分支不是 BM25。未设相似度阈值时，无关查询也可能返回 Top-K 片段。
+发布以单份文档为原子单位，不是整库原子切换；重复构建未变化且已发布的资料会复用编码集合。检索支持精确 cosine、旧关键词、BM25、关键词-RRF 和 BM25-RRF。通过 `EVIDENCEOPS_KNOWLEDGE_RETRIEVAL=bm25` 或 `hybrid_bm25` 可选择 BM25 实验模式，默认仍为 cosine；BM25 使用固定英文词/中文单字分词及 `k1=1.2,b=0.75`，旧 `hybrid` 模式继续保留。各路共享发布候选与编码配置；BM25 与 RRF 分数不是余弦相似度，分路排名和参数随检索元数据归档。
+
+#### 当前检索对照结论
+
+内部检索对照快照使用 7 份手册、37 个片段；开发题 17 道（15 道正例），另有 8 道内部留出题（7 道正例）。指标只衡量标注相关片段的 Top-3 检索，不衡量真实报告正确率。留出题由项目开发者编写，不是第三方盲测；留出题集和结果报告当前不都在 Git 跟踪中，因此这些数字是项目进度证据，不是克隆仓库即可完整复现的公开基准。
+
+| 题集 | 方法 | Recall@3 | 必需片段命中 |
+| --- | --- | ---: | ---: |
+| 开发 | cosine | 72.22% | 13/15 |
+| 开发 | BM25 | 71.11% | 14/15 |
+| 开发 | BM25-RRF | 74.44% | 14/15 |
+| 留出 | cosine | 85.71% | 7/7 |
+| 留出 | BM25 | 78.57% | 6/7 |
+| 留出 | BM25-RRF | 78.57% | 6/7 |
+
+结论是保留 cosine 默认，将 BM25 与 RRF 作为可显式选择的对照方法；小样本下没有一种方案稳定全面胜出。三道无适用资料题在五种方法下均返回候选，因此非空结果不代表可回答，也不具备自动无答案识别能力。检索引用和报告语义支持仍须分层验收。
 
 资料不足以支持诊断时，模型可返回独立的 `insufficient_evidence` 结果。系统将其保存为 `failed / EVIDENCE_INSUFFICIENT`，`report=null`，保留已有观测，并通过 `error_detail` 返回不足原因及 `missing_information`。诊断响应、终止 SSE 和历史查询均可读取说明。格式错误仍为 `MODEL_PROTOCOL_ERROR`；正常报告仍须引用有效证据，引用存在不等于语义支持成立。
 
-每次检索最多五个片段、总正文最多 16,000 字符。默认不设相似度阈值，无关问题仍可能返回 Top-K；空结果处理不等于自动识别无答案。资料属于不可信数据，不能证明本次故障因果；引用存在性检查和提示约束不保证语义正确，也不能完全防止提示注入。pgvector/近似索引及重排尚未实现。取消会停止等待并拒绝晚到结果，已经运行的同步 Embedding HTTP 请求不会被强制终止。
+每次检索最多五个片段、总正文最多 16,000 字符。默认不设相似度阈值，无关问题仍可能返回 Top-K；空结果处理不等于自动识别无答案。资料属于不可信数据，不能证明本次故障因果；引用存在性检查和提示约束不保证语义正确，也不能完全防止提示注入。pgvector/近似索引、重排、父子片段检索及 MMR 尚未实现。取消会停止等待并拒绝晚到结果，已经运行的同步 Embedding HTTP 请求不会被强制终止。
 
 | 目录 | 职责 |
 | --- | --- |
@@ -266,6 +313,14 @@ Run、报告、证据摘要、执行记录、事件和模型快照保存到所�
 | `EVIDENCEOPS_MODEL_NAME` | — | 模型名称 |
 | `EVIDENCEOPS_MODEL_TIMEOUT_SECONDS` | `60` | 真实模型单次超时 |
 | `EVIDENCEOPS_RUN_TIMEOUT_SECONDS` | `180` | API 诊断预算 |
+| `EVIDENCEOPS_CONTEXT_WINDOW_TOKENS` | `32768` | 系统连接使用的上下文窗口预算；用户模型连接可单独配置 |
+| `EVIDENCEOPS_MAX_OUTPUT_TOKENS` | `2048` | 单次模型调用输出预留 |
+| `EVIDENCEOPS_CONTEXT_SAFETY_MARGIN_TOKENS` | `256` | 输入估算与输出预留之外的安全余量 |
+| `EVIDENCEOPS_MAX_RUN_TOKENS` | `16384` | 单次诊断的累计 Token 预算 |
+| `EVIDENCEOPS_TOKEN_ESTIMATOR_ID` | `heuristic-json-v1` | Token 估算方法标识 |
+| `EVIDENCEOPS_CONTEXT_LIMITS_SOURCE` | `local_conservative` | 窗口限制的来源标识，不代表供应商已验证 |
+| `EVIDENCEOPS_LOG_SOURCES_FILE` | 未设置 | 服务端登记日志来源清单；设置后还需配置解析器程序 |
+| `EVIDENCEOPS_LOG_PARSER_BINARY` | 未设置 | C++20 `log_evidence_cli` 可执行文件路径 |
 | `POSTGRES_HOST` / `POSTGRES_PORT` | `127.0.0.1` / `5433` | 宿主机数据库地址 |
 | `POSTGRES_DB` / `POSTGRES_USER` | `evidenceops` / `evidenceops` | 数据库及角色 |
 | `POSTGRES_PASSWORD` | — | PostgreSQL 模式必填 |
@@ -365,6 +420,15 @@ cd frontend
 npm test
 npm run typecheck
 npm run build
+```
+
+日志解析器在 `cpp/log_evidence_engine/` 下独立构建，要求 C++20 编译器、CMake 3.20 或更高版本，以及 CLI 契约测试所需的 Python 3：
+
+```powershell
+cd cpp/log_evidence_engine
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build
+ctest --test-dir build --output-on-failure
 ```
 
 Playwright CLI 场景覆盖诊断、取消、重连、历史、证据、模型管理、安装、备份恢复、故障、文件竞态、键盘交互及 320～1440 像素布局。测试需隔离的 3011/8011 和 3015/8015 服务、确定性模型，以及首次设置用的全新安装目录。写入与恢复场景不能指向客户数据。[测试报告](frontend/FRONTEND_TEST_REPORT.md)保留具体日期的验证证据及边界。

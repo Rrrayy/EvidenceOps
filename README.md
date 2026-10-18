@@ -1,35 +1,37 @@
 # EvidenceOps
 
-<p align="center"><strong>Evidence-backed diagnosis for software incidents</strong></p>
+<p align="center"><strong>Evidence-driven workbench for software incident diagnosis</strong></p>
 <p align="center">
-<a href="README.zh-CN.md">简体中文</a> · <a href="#quick-start">Run locally</a> · <a href="#capabilities">Capabilities</a> · <a href="#architecture">Architecture</a> · <a href="#http-api">API reference</a> · <a href="#testing">Tests</a>
+<a href="README.zh-CN.md">简体中文</a> · <a href="#quick-start">Run locally</a> · <a href="#capabilities">Capabilities</a> · <a href="#architecture">Architecture</a> · <a href="#retrieval-evaluation">Retrieval evaluation</a> · <a href="#http-api">HTTP API</a> · <a href="#testing">Tests</a>
 </p>
 
-EvidenceOps is a local incident diagnosis workbench. Its Agent investigates a software incident through bounded, read-only tools and returns a report linked to evidence from the same Run. The web console lets operators follow tool activity, inspect evidence, and revisit persisted Runs.
+EvidenceOps is a local workbench for diagnosing software incidents. Its Agent queries logs, metrics, configuration, and troubleshooting references through bounded, read-only tools, then links diagnosis claims to evidence collected during the same Run. The web console provides execution traces, evidence inspection, model connection management, and persisted Run history.
 
-**Try the included scenario:** the repository ships a deterministic Mock provider and sample order-service data. Mock returns fixed demonstration findings; it does not interpret the incident text. Reports label Mock output as a demonstration. A real OpenAI-compatible connection can be configured in the web console, but it still uses the repository's sample data connectors.
+**Demo mode:** the repository includes a deterministic Mock provider and sample `order-service` data. Mock returns fixed demonstration findings and does not interpret user input; reports label its output as a demonstration. The web console can also configure a real OpenAI-compatible diagnosis model.
 
-**Current scope:** imported text stays in the browser input; it does not upload or configure a customer data source. The optional knowledge tool retrieves published document fragments with exact cosine search and supplies individually cited text snapshots to the Agent. Customer log integration and language-specific parsing are not implemented. Evidence reference checks establish ownership and existence, not that a source semantically proves a claim.
+**Data boundary:** pasted or imported text in the diagnosis input is treated as a problem description; it is not automatically uploaded as log evidence. An operator can register local log files on the server. A C++20 parsing CLI and Python adapter turn bounded queries over those registered files into structured Evidence. This does not grant arbitrary path access or provide general runtime-specific parsing. Citation checks verify Evidence identity and ownership, but do not establish that a source semantically supports a diagnosis claim.
 
-**Installation status:** the supported path today is source installation below. The repository contains an Inno Setup recipe, but a tested, downloadable `EvidenceOps-Setup.exe` has not been released.
+**Operating scope:** the application currently targets a local, single-tenant deployment with one API worker. Remote identity, multi-user authorization, distributed coordination, and general customer data-source management are not implemented. The project runs from source; the Inno Setup recipe has not been built and accepted as a release installer.
 
 ## Capabilities
 
 | Capability | Behavior |
 | --- | --- |
 | Orchestration | Provider-independent Agent Loop, OpenAI-compatible adapter, deterministic Mock |
-| Controlled tools | Read-only registration, argument validation, bounded concurrency, call correlation |
-| Evidence-backed reports | Source, observation time, location, version, content hash, reference validation |
+| Controlled tools | Allowlisted registration, argument validation, bounded execution, call correlation, cooperative cancellation |
+| Log parsing | C++20 CLI parses supported formats; Python adapter validates versioned JSON and builds traceable log Evidence |
+| Evidence-backed reports | Source, observation time, location, version, content hash, Run-scoped reference checks, archived snapshots |
 | Web console | Diagnosis workspace, searchable history, evidence drawer, execution timeline, offline evaluation viewer |
 | Model connections | Encrypted credentials, model catalogs, explicit capability validation, defaults and per-Run selection |
 | Durable history | Installed mode uses SQLite by default; PostgreSQL is available for managed storage |
 | Installation and storage | First-run setup, connection checks, storage switching, logical backup import/export and restore |
 | Streaming and replay | SSE lifecycle events and cursor replay without re-executing the diagnosis |
-| Execution control | Shared budget, individual timeouts, and cooperative cancellation |
+| Context governance | Per-request input-token estimates, output and safety reservations, per-Run token budget, provider usage records |
+| Execution control | Shared time budget, individual timeouts, and cooperative cancellation |
 | Startup reconciliation | Single-instance lock; orphaned Runs atomically fail with a terminal event |
-| Evaluation | 20-case offline suite, automated rules, resumable CLI human review |
-| Knowledge components | Bounded UTF-8 loading, stable document/version/chunk identities, SQLAlchemy persistence and deterministic keyword retrieval |
-| Retrieval evaluation | Precision, recall and reciprocal rank primitives; Embedding interface with a deterministic test provider |
+| Diagnosis evaluation | 20-case offline suite, automated rules, resumable CLI human review |
+| Knowledge retrieval | Document versions, ChunkSets, EmbeddingSets, persisted vectors, exact cosine, keyword/BM25 and RRF comparisons |
+| Retrieval evaluation | Fragment-level Precision, Recall, MRR and required-fragment hit comparisons |
 
 ## Quick start
 
@@ -138,11 +140,20 @@ flowchart TD
     Client["HTTP / SSE client"] --> API
     API --> Service["Diagnosis Service"]
     Service --> Loop["Agent Loop"]
-    Loop --> Gateway["LLM Gateway"]
+    Loop --> Context["Context Assembler / Token Ledger"]
+    Context --> Gateway["LLM Gateway"]
     Gateway --> Provider["Mock / OpenAI-compatible provider"]
     Loop --> Runtime["Tool Runtime"]
-    Runtime --> Sources["Read-only log / metric / config connectors"]
-    Sources --> Evidence["Evidence Collector"]
+    Runtime --> Samples["Sample log / metric / config connectors"]
+    Runtime --> Parsed["Allowlisted log tool"]
+    Parsed --> Adapter["Python adapter: resource bounds and JSON validation"]
+    Adapter --> CLI["C++20 log parser CLI"]
+    CLI --> Files["Server-registered local log files"]
+    Runtime --> Knowledge["Knowledge retrieval tool"]
+    Knowledge --> Corpus["Relational database: published knowledge and vectors"]
+    Samples --> Evidence["Evidence Collector"]
+    Adapter --> Evidence
+    Knowledge --> Evidence
     Evidence --> Loop
     Loop --> Report["Structured draft / reference validation / report"]
     Report --> Service
@@ -154,7 +165,30 @@ flowchart TD
     Eval["Offline evaluation / CLI review"] --> Service
 ```
 
-The model proposes tool calls; Tool Runtime validates and executes them. The application layer owns lifecycle, budgets, cancellation, and report construction. Infrastructure supplies database and model adapters.
+The model proposes tool calls; Tool Runtime only executes registered capabilities after argument validation. Log files pass through the C++ CLI and Python boundary checks before becoming Evidence; knowledge fragments remain separately identified as troubleshooting references. The application layer owns Run lifecycle, context budgets, cancellation, and report construction. Infrastructure supplies database and model adapters.
+
+### Log evidence pipeline
+
+`query_parsed_logs` accepts only a `source_id` from a server-side manifest; the model cannot supply a file path. The C++20 parser covers glog, ZooKeeper, muduo, and plain-text patterns found in the project's RPC samples. Unmatched or malformed lines are retained as `unknown` events with warnings. Muduo UTC timestamps are parsed; formats without an explicit timezone remain unknown rather than receiving a guessed timezone. Format recognition is deliberately bounded and does not imply support for arbitrary languages, frameworks, or log platforms.
+
+The Python adapter bounds input size, process time, stdout/stderr, event count, and result JSON. It validates the source identity, line ranges, counters, and event formats. Each query rereads a registered file; one call returns at most 20 events under a character budget, and oversized events are skipped rather than truncated. The adapter computes SHA-256 for the complete input snapshot. Log Evidence archives that hash, a versioned parser snapshot, line ranges, parser status, selection cursor, and import observation time; the standalone C++ CLI reports its hash as not computed. Continuation occurs in a later call; compare the input hash before combining results so file changes are not mistaken for one snapshot.
+
+Enable the log tool by setting both `EVIDENCEOPS_LOG_SOURCES_FILE` and `EVIDENCEOPS_LOG_PARSER_BINARY`. The manifest is a server-managed JSON file, for example:
+
+```json
+[
+  {"source_id":"rpc-server","path":"C:/logs/server.log","role":"server"},
+  {"source_id":"rpc-client","path":"C:/logs/client.log","role":"client"}
+]
+```
+
+Manifest paths are controlled by the operator; roles are `server`, `client`, or `unknown`. Text imported into the diagnosis input does not register a source. There is no customer-facing log upload, path-management UI, log-retention platform, or general parser marketplace.
+
+### Context window and token budgets
+
+Before each model request, the Agent Loop estimates the full current message history, tool definitions, and response format, then reserves output capacity and a safety margin. Defaults are a `32768`-token context window, `2048` output tokens per call, a `256`-token safety margin, and a `16384`-token cumulative budget per Run. Model connections can store limits per model, and each Run retains the configuration snapshot.
+
+`heuristic-json-v1` estimates from serialized text length. It is not a provider tokenizer and does not guarantee exact capacity. When the provider reports usage, input, output, and total token counts are recorded; missing or invalid usage remains explicitly marked. If a request exceeds its context budget or the Run budget, it fails before being sent to the model; history is not silently truncated or discarded. **Automatic summarization, priority-based evidence pruning, chunk compression, and provider tokenizer adapters are not implemented.** The frontend timeline displays per-call estimates, output reservations, and provider usage when available. SSE streams execution events, not generated model tokens.
 
 ### Knowledge components
 
@@ -173,11 +207,26 @@ python -m evidenceops.application.knowledge_corpus_cli prepare samples/knowledge
 python -m evidenceops.application.knowledge_corpus_cli evaluate samples/knowledge/manifest.json
 ```
 
-Publication is atomic per document, not across the corpus. Repeating an unchanged published build reuses its encoding set. The document-level baseline is complemented by a fragment-labeled cosine/RRF comparison. Set `EVIDENCEOPS_KNOWLEDGE_RETRIEVAL=hybrid` to opt into keyword-frequency + vector rank fusion; cosine remains the default. Both branches share published candidates and encoding configuration. RRF scores are not cosine similarities; branch scores and ranks are archived as retrieval metadata. The keyword branch is not BM25. Without a similarity threshold, unrelated queries can still return Top-K fragments.
+Publication is atomic per document, not across the corpus. Repeating an unchanged published build reuses its encoding set. The document-level baseline is complemented by fragment-labeled cosine, BM25 and Reciprocal Rank Fusion (RRF) comparisons. `EVIDENCEOPS_KNOWLEDGE_RETRIEVAL` can opt into `bm25` or `hybrid_bm25`; cosine remains the default. The BM25 implementation uses the repository's tokenizer and `k1=1.2`, `b=0.75`. Hybrid BM25-RRF fuses ranks rather than adding incomparable raw scores. RRF scores are not cosine similarities; branch scores and ranks are archived as retrieval metadata. Without a similarity threshold, unrelated queries can still return Top-K fragments.
+
+### Retrieval evaluation
+
+The internal snapshot covers seven manuals and 37 fragments: 17 development cases (15 positive) and eight developer-authored holdout cases (seven positive). Metrics measure Top-3 retrieval against fragment labels, not report correctness. The holdout set is not a third-party blind test, and its complete cases/results are not all tracked in Git; these numbers are project progress evidence, not a fully reproducible public benchmark.
+
+| Set | Method | Recall@3 | Required-fragment hits |
+| --- | --- | ---: | ---: |
+| Development | cosine | 72.22% | 13/15 |
+| Development | BM25 | 71.11% | 14/15 |
+| Development | BM25-RRF | 74.44% | 14/15 |
+| Holdout | cosine | 85.71% | 7/7 |
+| Holdout | BM25 | 78.57% | 6/7 |
+| Holdout | BM25-RRF | 78.57% | 6/7 |
+
+Keep cosine as the default and expose BM25/RRF as explicit comparison methods. No method wins consistently on this small corpus. All three no-applicable-material cases returned candidates under the tested methods, so non-empty retrieval does not establish answerability. Retrieval ranking and semantic support in generated reports require separate evaluation.
 
 When available material does not support a diagnosis, the model may return the explicit `insufficient_evidence` outcome. This is stored as `failed / EVIDENCE_INSUFFICIENT`, with `report=null`, retained observations and `error_detail` containing the reason and `missing_information`. Diagnosis, terminal SSE and history responses expose that explanation. A malformed outcome remains `MODEL_PROTOCOL_ERROR`; normal reports still require valid evidence references. Reference validity does not establish semantic support.
 
-Search is bounded to five fragments and 16,000 characters per call. Without a similarity threshold, unrelated queries can still return Top-K; empty-result handling is not an automatic no-answer classifier. Reference text is untrusted data and cannot establish incident causality. Citation existence checks and prompt boundaries do not guarantee semantic correctness or prevent all prompt injection. pgvector/ANN indexes and reranking are not implemented. Runtime cancellation stops waiting and rejects late results; a running synchronous Embedding HTTP request is not forcibly terminated.
+Search is bounded to five fragments and 16,000 characters per call. Without a similarity threshold, unrelated queries can still return Top-K; empty-result handling is not an automatic no-answer classifier. Reference text is untrusted data and cannot establish incident causality. Citation existence checks and prompt boundaries do not guarantee semantic correctness or prevent all prompt injection. pgvector/ANN indexes, reranking, MMR, and parent-child retrieval are not implemented. Runtime cancellation stops waiting and rejects late results; a running synchronous Embedding HTTP request is not forcibly terminated.
 
 | Directory | Responsibility |
 | --- | --- |
@@ -266,6 +315,17 @@ The installation entry point resolves the current schema from the migration chai
 | `EVIDENCEOPS_MODEL_NAME` | — | Provider model |
 | `EVIDENCEOPS_MODEL_TIMEOUT_SECONDS` | `60` | Individual real-model timeout |
 | `EVIDENCEOPS_RUN_TIMEOUT_SECONDS` | `180` | API diagnosis budget |
+| `EVIDENCEOPS_KNOWLEDGE_ENABLED` | Disabled | Explicitly enable knowledge search |
+| `EVIDENCEOPS_KNOWLEDGE_DOCUMENT_IDS` | — | Comma-separated document allowlist |
+| `EVIDENCEOPS_KNOWLEDGE_RETRIEVAL` | `cosine` | `cosine`, `keyword`, `bm25`, `hybrid`, or `hybrid_bm25` |
+| `EVIDENCEOPS_CONTEXT_WINDOW_TOKENS` | `32768` | Context window snapshot/default |
+| `EVIDENCEOPS_MAX_OUTPUT_TOKENS` | `2048` | Per-request output reservation |
+| `EVIDENCEOPS_CONTEXT_SAFETY_MARGIN_TOKENS` | `256` | Input estimate safety margin |
+| `EVIDENCEOPS_MAX_RUN_TOKENS` | `16384` | Cumulative Run token budget |
+| `EVIDENCEOPS_TOKEN_ESTIMATOR_ID` | `heuristic-json-v1` | Token estimate implementation identifier |
+| `EVIDENCEOPS_CONTEXT_LIMITS_SOURCE` | `local_conservative` | Source label for resolved context limits; not provider verification |
+| `EVIDENCEOPS_LOG_SOURCES_FILE` | — | Server-managed allowlist of local log sources |
+| `EVIDENCEOPS_LOG_PARSER_BINARY` | — | Path to the C++20 log parser executable |
 | `POSTGRES_HOST` / `POSTGRES_PORT` | `127.0.0.1` / `5433` | Host database endpoint |
 | `POSTGRES_DB` / `POSTGRES_USER` | `evidenceops` / `evidenceops` | Database and role |
 | `POSTGRES_PASSWORD` | — | Required for PostgreSQL mode |
@@ -357,6 +417,15 @@ $env:PYTHONPATH=(Join-Path $PWD.Path 'src')
 ```
 
 Coverage includes domain rules, tools, providers, persistence, evaluation, streaming, budgets, cancellation, replay, and startup reconciliation. PostgreSQL tests are opt-in: configure database variables and set `EVIDENCEOPS_TEST_POSTGRES='1'` before pytest, then remove it afterward. They use isolated schemas and test lock keys. Real-provider acceptance is separate from deterministic regression.
+
+The parser requires a C++20 compiler, CMake 3.20 or later, and Python 3 for the CLI contract tests. Build and test it independently:
+
+```powershell
+cd cpp/log_evidence_engine
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build
+ctest --test-dir build --output-on-failure
+```
 
 Frontend checks:
 
