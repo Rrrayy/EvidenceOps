@@ -3,7 +3,7 @@
 import { useEffect,useRef,useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { ArrowRight,ChevronDown,Eye,EyeOff,KeyRound,Plus,RefreshCw,Settings2,X } from "lucide-react";
-import { connection_labels,safe_endpoint } from "@/lib/model-connections";
+import { connection_labels,safe_endpoint,token_limits_error } from "@/lib/model-connections";
 type Selection={ connection_id: string; model_id: string; expected_version?: number };
 type Validation={
 	status: "ready"|"partial"|"failed";
@@ -28,6 +28,12 @@ type Connection={
 	key_configured?: boolean;
 	validations: Record<string,Validation>;
 	catalog: Catalog|null;
+	context_window_tokens?: number|null;
+	max_output_tokens?: number|null;
+	safety_margin_tokens?: number|null;
+	max_run_tokens?: number|null;
+	limits_source?: string|null;
+	limits_verified_at?: string|null;
 };
 type Listing={ items: Connection[]; system: Connection; default: Selection|null };
 type Service={ id: string; name: string; endpoint: string; recommended_models: string[] };
@@ -64,6 +70,10 @@ export function ModelConnections() {
 	const [replace_key,set_replace_key]=useState(false);
 	const [visible,set_visible]=useState(false);
 	const [timeout,set_timeout]=useState("60");
+	const [context_window,set_context_window]=useState("");
+	const [max_output,set_max_output]=useState("");
+	const [safety_margin,set_safety_margin]=useState("");
+	const [max_run,set_max_run]=useState("");
 	const [dirty,set_dirty]=useState(false);
 	const [discard,set_discard]=useState(false);
 	const [busy,set_busy]=useState("");
@@ -142,6 +152,10 @@ export function ModelConnections() {
 		set_endpoint("");
 		set_model(item?.default_model??"");
 		set_timeout(String(item?.timeout_seconds??60));
+		set_context_window(item?.context_window_tokens==null?"":String(item.context_window_tokens));
+		set_max_output(item?.max_output_tokens==null?"":String(item.max_output_tokens));
+		set_safety_margin(item?.safety_margin_tokens==null?"":String(item.safety_margin_tokens));
+		set_max_run(item?.max_run_tokens==null?"":String(item.max_run_tokens));
 		set_key("");
 		set_replace_key(item?.key_configured===false);
 		set_visible(false);
@@ -176,7 +190,7 @@ export function ModelConnections() {
 			finish_close();
 		}
 	}
-	async function persist() {
+	async function persist(token:number) {
 
 		if(!name.trim()) {
 			throw new Error("请填写连接名称");
@@ -193,6 +207,9 @@ export function ModelConnections() {
 		if(!Number.isFinite(Number(timeout))||Number(timeout)<1||Number(timeout)>300) {
 			throw new Error("超时时间需为 1 到 300 秒");
 		}
+		const token_fields={context_window_tokens:context_window,max_output_tokens:max_output,safety_margin_tokens:safety_margin,max_run_tokens:max_run};
+		const token_error=token_limits_error({context_window,max_output,safety_margin,max_run});
+		if(token_error) throw new Error(token_error);
 		if(editing&&!dirty) {
 			return editing;
 		}
@@ -207,16 +224,22 @@ export function ModelConnections() {
 				timeout_seconds: Number(timeout),
 				endpoint: endpoint.trim()||undefined,
 				api_key: !editing||replace_key? key:undefined,
+				context_window_tokens: context_window? Number(context_window):undefined,
+				max_output_tokens: max_output? Number(max_output):undefined,
+				safety_margin_tokens: safety_margin? Number(safety_margin):undefined,
+				max_run_tokens: max_run? Number(max_run):undefined,
 				expected_version: editing?.config_version
 			},
 			controller.current?.signal
 		);
-		set_editing(result);
-		set_dirty(false);
-		set_key("");
-		set_replace_key(false);
-		set_endpoint("");
-		refresh();
+		if(token===generation.current&&alive.current) {
+			set_editing(result);
+			set_dirty(false);
+			set_key("");
+			set_replace_key(false);
+			set_endpoint("");
+			refresh();
+		}
 		return result as Connection;
 	}
 	async function operation(action: "save"|"validation"|"catalog") {
@@ -230,7 +253,7 @@ export function ModelConnections() {
 		set_error("");
 		set_notice("");
 		try {
-			const saved=await persist();
+			const saved=await persist(token);
 			if(token!==generation.current||!alive.current) {
 				return;
 			}
@@ -352,6 +375,7 @@ export function ModelConnections() {
 						<div className="connection-table-head">
 							<span>连接 / 供应商</span>
 							<span>默认模型</span>
+							<span>容量限制</span>
 							<span>验证状态</span>
 							<span>操作</span>
 						</div>
@@ -370,6 +394,10 @@ export function ModelConnections() {
 									<div className="connection-model-value">
 										{item.default_model}
 										<small>Chat Completions</small>
+									</div>
+									<div className="connection-limits">
+													{item.context_window_tokens? `${item.context_window_tokens.toLocaleString("zh-CN")} 上下文` : "上下文未记录"}
+													<small>{item.limits_source==="legacy_compatibility"? "兼容默认值":item.limits_source||"来源未记录"}</small>
 									</div>
 									<div>
 										<span className={`connection-state ${item.status}`}>{connection_labels[item.status]}</span>
@@ -601,18 +629,26 @@ export function ModelConnections() {
 													aria-describedby="connection-error"
 												/>
 												<label htmlFor="connection-timeout">超时时间（秒）</label>
-												<input
-													id="connection-timeout"
-													type="number"
-													min={1}
-													max={300}
-													value={timeout}
-													disabled={Boolean(busy)}
-													onChange={(event) => {
-														set_timeout(event.target.value);
-														changed();
-													}}
-												/>
+												<input id="connection-timeout" type="number" min={1} max={300} value={timeout} disabled={Boolean(busy)} onChange={(event) => {set_timeout(event.target.value);changed();}} />
+												<div className="token-settings" aria-label="Token 容量限制">
+													<div className="token-setting-field">
+														<label htmlFor="context-window">上下文窗口 Token</label>
+														<input id="context-window" type="number" min={1} max={10000000} step={1} value={context_window} disabled={Boolean(busy)} onChange={(event) => {set_context_window(event.target.value);changed();}} aria-describedby="connection-error token-settings-note" />
+													</div>
+													<div className="token-setting-field">
+														<label htmlFor="max-output">单次输出上限 Token</label>
+														<input id="max-output" type="number" min={1} max={1000000} step={1} value={max_output} disabled={Boolean(busy)} onChange={(event) => {set_max_output(event.target.value);changed();}} aria-describedby="connection-error token-settings-note" />
+													</div>
+													<div className="token-setting-field">
+														<label htmlFor="safety-margin">上下文安全余量 Token</label>
+														<input id="safety-margin" type="number" min={0} max={1000000} step={1} value={safety_margin} disabled={Boolean(busy)} onChange={(event) => {set_safety_margin(event.target.value);changed();}} aria-describedby="connection-error token-settings-note" />
+													</div>
+													<div className="token-setting-field">
+														<label htmlFor="max-run">单次诊断预算 Token</label>
+														<input id="max-run" type="number" min={1} max={10000000} step={1} value={max_run} disabled={Boolean(busy)} onChange={(event) => {set_max_run(event.target.value);changed();}} aria-describedby="connection-error token-settings-note" />
+													</div>
+												</div>
+												<p id="token-settings-note" className="field-note">{editing? "留空表示保留已有值。":"留空时由后端应用保守默认值。"} 容量以 Token 计，实际供应商限制请以服务配置为准。</p>
 											</details>
 										</>
 									)}

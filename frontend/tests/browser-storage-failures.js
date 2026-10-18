@@ -1,10 +1,11 @@
 // 验证存储维护失败、表单保留、历史回滚和错误重试。
 async(page)=>{
+	const web=Number(process.env.EVIDENCEOPS_STORAGE_FRONTEND_PORT||3015);
 	const check=(value,message)=>{if(!value){throw new Error(message);}};
 	await page.setViewportSize({width:1440,height:1000});
-	await page.goto("http://127.0.0.1:3015/?view=storage");
+	await page.goto(`http://127.0.0.1:${web}/?view=storage`);
 	await page.getByRole("button",{name:"更改存储方式",exact:true}).waitFor();
-	const before=await (await page.request.get("http://127.0.0.1:3015/api/backend/runs")).json();
+	const before=await (await page.request.get(`http://127.0.0.1:${web}/api/backend/runs`)).json();
 	await page.getByRole("button",{name:"更改存储方式",exact:true}).click();
 	await page.getByLabel("存储方式",{exact:true}).selectOption("postgres");
 	await page.getByLabel("端口",{exact:true}).fill("1");
@@ -13,7 +14,7 @@ async(page)=>{
 	await page.getByRole("dialog").getByRole("alert").waitFor({timeout:20000});
 	check(await page.getByLabel("端口",{exact:true}).inputValue()==="1","失败必须保留输入");
 	check(!(await page.getByRole("dialog").innerText()).includes("test-only-invalid-password"),"错误不得回显密码");
-	const after=await (await page.request.get("http://127.0.0.1:3015/api/backend/runs")).json();
+	const after=await (await page.request.get(`http://127.0.0.1:${web}/api/backend/runs`)).json();
 	check(JSON.stringify(before.items.map(item=>item.run_id))===JSON.stringify(after.items.map(item=>item.run_id)),"维护失败不能丢失历史");
 	await page.evaluate(()=>{window.confirm=()=>true;});
 	await page.getByRole("button",{name:"关闭存储表单",exact:true}).click();

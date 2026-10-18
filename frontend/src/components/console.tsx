@@ -468,6 +468,12 @@ export function Console() {
 													配置版本：
 													{run_model?.config_version??"未记录"}
 												</p>
+								<p>
+									上下文窗口：{run_model?.context_window_tokens==null?"未记录":run_model.context_window_tokens.toLocaleString("zh-CN")} ·
+									单次输出上限：{run_model?.max_output_tokens==null?"未记录":run_model.max_output_tokens.toLocaleString("zh-CN")} ·
+									累计预算：{run_model?.max_run_tokens==null?"未记录":run_model.max_run_tokens.toLocaleString("zh-CN")}
+								</p>
+								{run_model?.limits_source&&<p className="field-note">窗口来源：{run_model.limits_source}{run_model.limits_source==="legacy_compatibility"?"（本地兼容策略，不代表官方上限）":""}</p>}
 												<p className="drawer-note">
 													历史以本次运行启动时的配置为准；旧档案缺失的信息显示未记录。
 												</p>

@@ -57,3 +57,25 @@ export function draft_error(name: string,endpoint: string,model: string): string
 	} // 目录失败不阻断手填。
 	return ""; // 这里只通过格式校验。
 } // 结束草稿校验。
+export function token_limits_error(values: { context_window: string; max_output: string; safety_margin: string; max_run: string }): string {
+	const fields=[
+		["context_window","上下文窗口",10_000_000,true],
+		["max_output","单次输出上限",1_000_000,true],
+		["safety_margin","安全余量",1_000_000,false],
+		["max_run","单次诊断预算",10_000_000,true]
+	] as const;
+	for(const [key,label,maximum,positive] of fields) {
+		const value=values[key];
+		if(value==="") continue;
+		const number=Number(value);
+		if(!Number.isInteger(number)||number<(positive?1:0)) return `${label}必须是${positive?"正整数":"非负整数"}`;
+		if(number>maximum) return `${label}不能超过 ${maximum.toLocaleString("zh-CN")} Token`;
+	}
+	const context=Number(values.context_window);
+	const output=Number(values.max_output);
+	const margin=Number(values.safety_margin);
+	if(values.context_window!==""&&values.max_output!==""&&values.safety_margin!==""&&output+margin>=context) {
+		return "输出上限与安全余量必须小于上下文窗口";
+	}
+	return "";
+} // 保存前校验前端输入与后端容量约束一致。

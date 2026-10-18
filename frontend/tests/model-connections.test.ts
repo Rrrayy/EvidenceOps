@@ -1,6 +1,6 @@
 import {strict as assert} from "node:assert"; // 测试安全边界，不依赖真实供应商。
 import {test} from "node:test"; // 沿用已有测试运行器。
-import {safe_endpoint,draft_error,connection_labels} from "../src/lib/model-connections"; // 检查实际界面使用的纯函数。
+import {safe_endpoint,draft_error,connection_labels,token_limits_error} from "../src/lib/model-connections"; // 检查实际界面使用的纯函数。
 test("接口展示去掉用户信息、路径凭据、查询和片段",()=>{ // 防止地址成为密钥展示通道。
 	assert.equal(safe_endpoint("https://account:secret@models.example:8443/private-key?api_key=secret#token"),"https://models.example:8443"); // 只保留 origin。
 }); // 结束地址测试。
@@ -17,3 +17,13 @@ test("所有验证状态有明确文字",()=>{ // 能力状态不依赖颜色。
 	assert.equal(Object.keys(connection_labels).length,6); // 六个规定状态。
 	assert.match(connection_labels.stale,/重新验证/); // 修改后不得显示 ready。
 }); // 结束状态测试。
+test("Token 容量保存校验与后端范围一致",()=>{
+	assert.equal(token_limits_error({context_window:"10000000",max_output:"1000000",safety_margin:"1000000",max_run:"10000000"}),"");
+	assert.match(token_limits_error({context_window:"10000001",max_output:"",safety_margin:"",max_run:""}),/不能超过 10,000,000 Token/);
+	assert.match(token_limits_error({context_window:"",max_output:"1000001",safety_margin:"",max_run:""}),/不能超过 1,000,000 Token/);
+	assert.match(token_limits_error({context_window:"",max_output:"",safety_margin:"1000001",max_run:""}),/不能超过 1,000,000 Token/);
+	assert.match(token_limits_error({context_window:"",max_output:"",safety_margin:"",max_run:"10000001"}),/不能超过 10,000,000 Token/);
+	assert.match(token_limits_error({context_window:"1000",max_output:"800",safety_margin:"200",max_run:""}),/必须小于上下文窗口/);
+	assert.match(token_limits_error({context_window:"0",max_output:"",safety_margin:"",max_run:""}),/必须是正整数/);
+	assert.match(token_limits_error({context_window:"",max_output:"",safety_margin:"-1",max_run:""}),/必须是非负整数/);
+});

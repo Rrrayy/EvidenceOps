@@ -1,10 +1,11 @@
 // 负责输入边界、重复提交、历史筛选、键盘操作和多尺寸布局验收。
 async(page)=>{
+	const web=Number(process.env.EVIDENCEOPS_FRONTEND_PORT||3011);const storage_web=Number(process.env.EVIDENCEOPS_STORAGE_FRONTEND_PORT||3015);
 	const checks=[];
 	const check=(condition,name)=>{if(!condition){throw new Error(name);}checks.push(name);};
 	const errors=[];page.on("pageerror",error=>errors.push(error.message));
 	await page.setViewportSize({width:1440,height:1000});
-	await page.goto("http://127.0.0.1:3011/");
+	await page.goto(`http://127.0.0.1:${web}/`);
 	await page.getByRole("textbox",{name:"故障描述"}).fill("  \n  ");
 	check(await page.getByRole("button",{name:"开始诊断",exact:true}).isDisabled(),"whitespace-disabled");
 	await page.getByLabel("选择文本文件").setInputFiles({name:"bad.exe",mimeType:"application/octet-stream",buffer:Buffer.from("content")});
@@ -57,7 +58,7 @@ async(page)=>{
 	for(const width of [320,390,768,1024,1440]){
 		await page.setViewportSize({width,height:900});
 		for(const view of ["workspace","history","evaluation","connections","storage"]){
-			const base=view==="storage"?3015:3011;
+		const base=view==="storage"?storage_web:web;
 			await page.goto(view==="workspace"?report_url:`http://127.0.0.1:${base}/?view=${view}`);
 			await page.locator("main h1").waitFor();
 			await page.waitForTimeout(100);

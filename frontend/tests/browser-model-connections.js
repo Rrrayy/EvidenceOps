@@ -1,8 +1,12 @@
 async(page)=>{ // 验收真实前端与隔离模型管理 API，不调用真实供应商。
 	const check=(value,message)=>{if(!value){throw new Error(message);}}; // 条件失败即停止。
 	const errors=[];page.on("pageerror",error=>errors.push(error.message)); // 收集 JS 异常。
+	page.on("dialog",dialog=>dialog.type==="beforeunload"?dialog.accept():dialog.dismiss()); // 隔离页面可按用例继续导航。
 	await page.setViewportSize({width:1440,height:1000}); // 桌面布局。
 	await page.goto("http://127.0.0.1:3011/?view=connections"); // 真连接设置页。
+	const initial=await (await page.request.get("http://127.0.0.1:3011/api/backend/model-connections")).json();
+	await page.request.put("http://127.0.0.1:3011/api/backend/model-connections/default",{data:{connection_id:"system",model_id:initial.system.default_model}});
+	for(const stale of initial.items.filter(value=>value.name.startsWith("浏览器验收连接-"))){await page.request.delete(`http://127.0.0.1:3011/api/backend/model-connections/${stale.id}`,{data:{expected_version:stale.config_version,replacement_id:null}});}
 	await page.getByRole("heading",{name:"模型连接",exact:true}).waitFor(); // 等待水合。
 	await page.getByRole("button",{name:"添加模型连接",exact:true}).first().waitFor(); // 服务列表加载。
 	await page.getByRole("button",{name:"添加模型连接",exact:true}).first().click(); // 分步添加。
@@ -26,27 +30,70 @@ async(page)=>{ // 验收真实前端与隔离模型管理 API，不调用真实�
 	await page.getByRole("dialog").waitFor({state:"hidden"}); // 正常保存生命周期。
 	let row=page.locator(".connection-row").filter({hasText:name}); // 精确定位新连接。
 	await row.getByText("验证通过",{exact:true}).waitFor(); // 真列表状态。
+	const configured=await page.request.get("http://127.0.0.1:3011/api/backend/model-connections");const entries=await configured.json(); // 读取安全公开响应。
+	const item=entries.items.find(value=>value.name===name); // 稳定 ID。
+	check(Boolean(item),"已验证连接应出现在管理 API");
 	await row.getByRole("button",{name:"编辑 / 验证",exact:true}).click(); // 编辑不能回读密钥。
 	await page.getByText("密钥已配置",{exact:true}).waitFor(); // 不把掩码作为值。
 	check(await page.locator('input[type="password"]').count()===0,"编辑不能回填密钥"); // 密钥读取边界。
 	await page.getByRole("button",{name:"保存配置并刷新模型列表",exact:true}).click(); // 显式目录读取。
 	await page.getByText(/接口目录 ·/).waitFor(); // 来源及时间。
+	await page.getByText("高级设置",{exact:true}).click(); // 打开容量和超时配置。
 	await page.getByRole("combobox",{name:"模型 ID",exact:true}).fill("long"); // 输入仅过滤目录。
 	await page.keyboard.press("ArrowDown");await page.keyboard.press("Enter"); // 键盘选择长模型。
 	check((await page.getByRole("combobox",{name:"模型 ID",exact:true}).inputValue()).includes("long-agent-model"),"加载目录需支持键盘选择"); // 目录不随输入丢失。
+	await page.getByRole("combobox",{name:"模型 ID",exact:true}).fill(item.default_model); // 容量保存不改变已验证模型。
+	let oversized_patches=0;await page.route(`**/api/backend/model-connections/${item.id}`,async route=>{if(route.request().method()==="PATCH") oversized_patches++;await route.continue();});
+	await page.getByLabel("上下文窗口 Token",{exact:true}).fill("10000001");
+	await page.getByRole("dialog").getByRole("button",{name:"保存连接",exact:true}).click();
+	await page.getByText("上下文窗口不能超过 10,000,000 Token",{exact:true}).waitFor();
+	check(oversized_patches===0,"超出后端 Token 上限不能提交");
+	await page.getByLabel("上下文窗口 Token",{exact:true}).fill("");
+	await page.unroute(`**/api/backend/model-connections/${item.id}`);
+	await page.getByLabel("上下文窗口 Token",{exact:true}).fill("65536"); // 编辑时可设置上下文预算。
+	await page.getByLabel("单次输出上限 Token",{exact:true}).fill("4096"); // 输出受上下文约束。
+	await page.getByLabel("上下文安全余量 Token",{exact:true}).fill("512"); // 保留安全余量。
+	await page.getByLabel("单次诊断预算 Token",{exact:true}).fill("24000"); // Run 累计上限。
+	let release_catalog;const hold_catalog=new Promise(resolve=>{release_catalog=resolve;});
+	await page.route(`**/api/backend/model-connections/${item.id}/catalog`,async route=>{await hold_catalog;await route.continue();});
+	const save_response=page.waitForResponse(response=>response.url().endsWith(`/api/backend/model-connections/${item.id}`)&&response.request().method()==="PATCH");
+	const catalog_request=page.waitForRequest(request=>request.url().endsWith(`/api/backend/model-connections/${item.id}/catalog`));
+	await page.getByRole("button",{name:"保存配置并刷新模型列表",exact:true}).click();
+	await catalog_request;
+	await page.waitForFunction(()=>document.getElementById("context-window")?.disabled===true);
+	check(await page.getByLabel("上下文窗口 Token",{exact:true}).isDisabled(),"token-inputs-locked-during-request");
+	const saved=await save_response;check(saved.ok(),"token-limits-save");
+	const saved_body=saved.request().postDataJSON();
+	check(saved_body.context_window_tokens===65536&&saved_body.max_output_tokens===4096&&saved_body.safety_margin_tokens===512&&saved_body.max_run_tokens===24000,"token-limits-persisted");
+	release_catalog();
+	await page.waitForResponse(response=>response.url().endsWith(`/api/backend/model-connections/${item.id}/catalog`));
+	await page.unroute(`**/api/backend/model-connections/${item.id}/catalog`);
+	await page.getByRole("button",{name:"保存连接",exact:true}).click();
+	await page.getByRole("dialog").waitFor({state:"hidden"});
+	row=page.locator(".connection-row").filter({hasText:name});await row.getByRole("button",{name:"编辑 / 验证",exact:true}).click();
+	await page.getByText("高级设置",{exact:true}).click();
+	check(await page.getByLabel("上下文窗口 Token",{exact:true}).inputValue()==="65536","token-limits-reloaded");
+	await page.getByLabel("上下文窗口 Token",{exact:true}).fill("");
+	const preserve_response=page.waitForResponse(response=>response.url().endsWith(`/api/backend/model-connections/${item.id}`)&&response.request().method()==="PATCH");
+	await page.getByRole("button",{name:"保存连接",exact:true}).click();
+	const preserved=await preserve_response;check(preserved.ok(),"blank-token-setting-preserves-existing");
+	check(preserved.request().postDataJSON().context_window_tokens===undefined,"blank-token-field-omitted");
+	await page.getByRole("dialog").waitFor({state:"hidden"});
+	row=page.locator(".connection-row").filter({hasText:name});await row.getByRole("button",{name:"编辑 / 验证",exact:true}).click();
+	await page.getByText("高级设置",{exact:true}).click();
+	check(await page.getByLabel("上下文窗口 Token",{exact:true}).inputValue()==="65536","blank-token-setting-keeps-value");
+	await page.getByLabel("超时时间（秒）",{exact:true}).fill("62");
 	await page.getByRole("button",{name:"关闭连接表单",exact:true}).click(); // 未保存保护。
 	await page.getByText("放弃未保存的连接信息？",{exact:true}).waitFor(); // 不自动丢草稿。
 	await page.getByRole("button",{name:"放弃并关闭",exact:true}).click(); // 确认丢弃。
 	row=page.locator(".connection-row").filter({hasText:name}); // 列表不受草稿修改影响。
 	await row.getByRole("button",{name:"设为默认",exact:true}).click(); // 独立默认操作。
 	await row.getByText("默认",{exact:true}).waitFor(); // 真默认返回。
-	const configured=await page.request.get("http://127.0.0.1:3011/api/backend/model-connections");const entries=await configured.json(); // 读取安全公开响应。
-	const item=entries.items.find(value=>value.name===name); // 稳定 ID。
 	check(!JSON.stringify(entries).includes("test-only-secret"),"读取响应不得返回密钥"); // 没有凭据。
 	await page.request.put("http://127.0.0.1:3011/api/backend/model-connections/default",{data:{connection_id:"system",model_id:entries.system.default_model}}); // 恢复系统全局默认供临时选择验证。
 	await page.getByRole("button",{name:"诊断工作台",exact:true}).click(); // 工作台选择本次模型。
 	await page.locator(".model-selector").click(); // 轻量选择器。
-	await page.getByRole("button").filter({hasText:name}).filter({hasText:"Agent 能力已验证"}).click(); // 选择已验证模型。
+	await page.locator(".selector-option").filter({hasText:name}).filter({hasText:"Agent 能力已验证"}).click(); // 选择已验证模型。
 	await page.getByRole("textbox",{name:"故障描述",exact:true}).fill("检查订单服务的超时证据"); // 一次诊断。
 	await page.getByRole("button",{name:"开始诊断",exact:true}).click(); // 提交明确连接与版本。
 	await page.locator(".report").waitFor({timeout:20000}); // 真实后端运行与归档。
@@ -76,5 +123,5 @@ async(page)=>{ // 验收真实前端与隔离模型管理 API，不调用真实�
 	await page.unroute("**/api/backend/model-connections");await page.getByRole("button",{name:"重试",exact:true}).click(); // 用户明确重试。
 	await page.getByText("系统连接（Mock 演示）",{exact:true}).waitFor(); // 恢复真实列表。
 	check(errors.length===0,`浏览器异常：${errors.join(",")}`); // 不忽略 JS 错误。
-	return {passed:true,checks:["key-input","encrypted-save","four-capabilities","model-catalog","keyboard-search","unsaved-guard","default-isolation","selected-diagnosis","run-snapshot","history-after-delete","no-browser-secret-storage","mobile","load-failure-retry"]}; // 可核对验收结果。
+	return {passed:true,checks:["key-input","encrypted-save","four-capabilities","model-catalog","keyboard-search","token-limits-ui-rejects-overflow","token-limits-save-reload","token-inputs-locked-during-request","blank-token-setting-preserves-existing","unsaved-guard","default-isolation","selected-diagnosis","run-snapshot","history-after-delete","no-browser-secret-storage","mobile","load-failure-retry"]}; // 可核对验收结果。
 } // 结束浏览器验收。

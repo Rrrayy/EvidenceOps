@@ -4,6 +4,7 @@ import { useEffect,useState } from "react";
 import { ArrowUpRight,Search,ChevronLeft,ChevronRight,RefreshCw,Archive } from "lucide-react";
 import { history_schema,status_labels,type RunStatus,type RunResult } from "@/lib/contracts";
 import { run_error_message } from "@/lib/run-errors";
+import { run_error_code_message } from "@/lib/run-errors";
 type HistoryItem={
 	run_id: string;
 	description?: string;
@@ -183,7 +184,7 @@ export function History({ on_open,disabled,on_storage }: { on_open: (id: string)
 										<span className={`status-badge ${item.status}`}>
 											{item.status==="failed"&&item.error_code==="EVIDENCE_INSUFFICIENT"?"证据不足":status_labels[item.status]}
 										</span>
-										{item.error_detail?.message&&<p className="history-error-detail">{item.error_detail.message}</p>}
+										{(run_error_code_message(item.error_code)??item.error_detail?.message)&&<p className="history-error-detail">{run_error_code_message(item.error_code)??item.error_detail?.message}</p>}
 									</td>
 									<td className="nowrap">
 										{new Date(item.started_at??item.created_at).toLocaleString("zh-CN",{

@@ -1,5 +1,6 @@
 """负责顺序执行 Playwright CLI 验收并保存可核查的结果和日志。"""
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -13,12 +14,20 @@ if not command: raise SystemExit("需要 Node.js 和 npx")
 suites=("smoke","failures","reconnect","model-connections","storage","storage-failures","audit-regressions","audit-boundaries","audit-operations","knowledge","input-safety","run-resilience","parsed-logs")
 selected=tuple(sys.argv[1:]) or suites
 if any(name not in suites for name in selected): raise SystemExit("未知验收组")
+os.environ.setdefault("EVIDENCEOPS_TEST_PORT","8011")
+os.environ.setdefault("EVIDENCEOPS_STORAGE_TEST_PORT","8015")
+os.environ.setdefault("EVIDENCEOPS_FRONTEND_PORT","3011")
+os.environ.setdefault("EVIDENCEOPS_STORAGE_FRONTEND_PORT","3015")
 results=json.loads((output/"results.json").read_text(encoding="utf-8")) if sys.argv[1:] and (output/"results.json").exists() else []
 for name in selected:
 	source=(workspace/"frontend"/"tests"/f"browser-{name}.js").read_text(encoding="utf-8")
 	wrapper=output/f"{name}-isolated.js"
 	wrapper.write_text('async(page)=>{await page.unrouteAll({behavior:"ignoreErrors"});return await ('+source+')(page,'+json.dumps(output.as_posix())+');}',encoding="utf-8")
-	process=subprocess.run([command,"--yes","--package","@playwright/cli","playwright-cli","-s=evidenceops","run-code",f"--filename={wrapper}"],cwd=workspace,capture_output=True,text=True,encoding="utf-8",errors="replace",timeout=120)
+	env=os.environ.copy()
+	env.setdefault("PLAYWRIGHT_MCP_EXECUTABLE_PATH",r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe")
+	if name in ("storage","storage-failures"):
+		env["PLAYWRIGHT_MCP_EXECUTABLE_PATH"]=r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
+	process=subprocess.run([command,"--yes","--package","@playwright/cli","playwright-cli","-s=evidenceops","run-code",f"--filename={wrapper}"],cwd=workspace,capture_output=True,text=True,encoding="utf-8",errors="replace",timeout=120,env=env)
 	log=process.stdout+process.stderr
 	(output/f"{name}.log").write_text(log,encoding="utf-8")
 	try:

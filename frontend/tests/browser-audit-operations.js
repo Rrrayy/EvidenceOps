@@ -1,5 +1,6 @@
 // 负责模型保存/验证失败、未知创建结果、代理边界及存储草稿保护。
 async(page)=>{
+	const storage_web=Number(process.env.EVIDENCEOPS_STORAGE_FRONTEND_PORT||3015);
 	const checks=[];
 	const check=(condition,name)=>{if(!condition){throw new Error(name);}checks.push(name);};
 	await page.setViewportSize({width:1440,height:1000});
@@ -42,7 +43,7 @@ async(page)=>{
 	await page.unroute("**/api/diagnosis");
 	const arbitrary=await page.request.get("http://127.0.0.1:3011/api/backend/https://models.example/private");check(arbitrary.status()===404,"proxy-route-allowlist");
 	const cross_origin=await page.request.post("http://127.0.0.1:3011/api/backend/model-connections",{headers:{Origin:"https://other.example"},data:{}});check(cross_origin.status()===403,"cross-origin-management-rejected");
-	await page.goto("http://127.0.0.1:3015/?view=storage");await page.getByRole("button",{name:"更改存储方式",exact:true}).click();
+	await page.goto(`http://127.0.0.1:${storage_web}/?view=storage`);await page.getByRole("button",{name:"更改存储方式",exact:true}).click();
 	await page.getByLabel("存储方式",{exact:true}).selectOption("postgres");await page.getByLabel("端口",{exact:true}).fill("1");await page.getByLabel("数据库密码",{exact:true}).fill("audit-invalid-password");
 	await page.getByRole("button",{name:"备份并切换",exact:true}).click();await page.getByRole("dialog").getByRole("alert").waitFor({timeout:20000});
 	await page.evaluate(()=>{window.audit_confirmations=0;window.confirm=()=>{window.audit_confirmations++;return false;};});

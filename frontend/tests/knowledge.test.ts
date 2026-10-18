@@ -43,6 +43,15 @@ test("知识原文按纯文本转义，零分数不丢失，缺失标题和原�
 	assert.ok(missing.includes("本次运行未记录片段原文"));
 });
 
+test("混合检索审计保留分路信息且不把分数包装成置信度",()=>{
+	const parsed=result_schema.parse({...payload,evidences:[{...evidence,source_metadata:{...evidence.source_metadata,retrieval_method:"hybrid-rrf-bm25-v1",retrieval_details:{score_kind:"rrf",vector_candidates:10,bm25_candidates:8,branches:{vector:{rank:2,score:0.7},bm25:{rank:1,score:3.2}}}}}]});
+	const markup=renderToStaticMarkup(createElement(KnowledgeEvidence,{evidence:parsed.evidences[0]}));
+	assert.ok(markup.includes("检索审计"));
+	assert.ok(markup.includes("BM25 候选"));
+	assert.ok(markup.includes("vector"));
+	assert.ok(markup.includes("不是准确率或置信度"));
+});
+
 test("证据不足显示补充清单，普通协议错误和取消不会冒充证据不足或成功报告",()=>{
 	const render=(input:unknown)=>renderToStaticMarkup(createElement(Report,{result:result_schema.parse(input),on_evidence:()=>{}}));
 	const markup=render(payload);

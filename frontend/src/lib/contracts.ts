@@ -28,6 +28,7 @@ export const evidence_schema=z.object({
 		score: z.number().nullable().optional(),
 		rank: z.number().int().nullable().optional(),
 		retrieval_method: z.string().nullable().optional(),
+		retrieval_details: z.record(z.string(),z.unknown()).nullable().optional(),
 		source_id:z.string().optional(),source_role:z.string().optional(),observed_at_basis:z.string().optional(),
 		input_sha256:z.string().optional(),hash_basis:z.string().optional(),parser_status:z.string().optional(),
 		selection:z.record(z.string(),z.unknown()).optional(),line_ranges:z.array(z.array(z.number())).optional()
@@ -45,6 +46,14 @@ export const record_schema=z.object({
 	duration_ms: z.number(),
 	status: z.string(),
 	error_code: z.string().nullable()
+	,handler_started_at: z.string().nullable().optional(),handler_finished_at: z.string().nullable().optional()
+	,estimated_input_tokens: z.number().int().nonnegative().nullable().optional()
+	,reserved_output_tokens: z.number().int().nonnegative().nullable().optional()
+	,reported_input_tokens: z.number().int().nonnegative().nullable().optional()
+	,reported_output_tokens: z.number().int().nonnegative().nullable().optional()
+	,reported_total_tokens: z.number().int().nonnegative().nullable().optional()
+	,usage_status: z.enum(["complete","partial","missing","invalid","unknown"]).nullable().optional()
+	,payload_hash: z.string().nullable().optional()
 }); // 定义收尾归档中的完整执行记录。
 export const result_schema=z.object({
 	model_config: z
@@ -55,7 +64,14 @@ export const result_schema=z.object({
 			provider: z.string().nullable().optional(),
 			model_id: z.string().nullable().optional(),
 			requested_model_id: z.string().nullable().optional(),
-			config_version: z.number().nullable().optional()
+			config_version: z.number().nullable().optional(),
+			context_window_tokens: z.number().int().positive().nullable().optional(),
+			max_output_tokens: z.number().int().positive().nullable().optional(),
+			safety_margin_tokens: z.number().int().nonnegative().nullable().optional(),
+			max_run_tokens: z.number().int().positive().nullable().optional(),
+			limits_source: z.string().nullable().optional(),
+			limits_verified_at: z.string().nullable().optional(),
+			estimator_id: z.string().nullable().optional()
 		})
 		.nullable()
 		.optional(), // 实际 Run 快照，不取当前默认值。

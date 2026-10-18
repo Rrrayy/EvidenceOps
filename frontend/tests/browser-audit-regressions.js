@@ -1,5 +1,6 @@
 // 负责评测竞态、统计真实性和跨页面存储维护的浏览器回归。
 async(page)=>{
+	const storage_web=Number(process.env.EVIDENCEOPS_STORAGE_FRONTEND_PORT||3015);
 	const findings=[];
 	await page.goto("http://127.0.0.1:3011/?view=evaluation");
 	const valid=await (await page.request.get("http://127.0.0.1:3011/api/backend/runs")).json();
@@ -25,9 +26,9 @@ async(page)=>{
 	await page.getByLabel("选择评测 JSON").setInputFiles({name:"forged.json",mimeType:"application/json",buffer:Buffer.from(JSON.stringify({...sample,batch_id:"forged-errors",summary:{...sample.summary,execution_error_count:99}}))});
 	await page.getByRole("alert").filter({hasText:"执行错误数量与案例不一致"}).waitFor();
 	findings.push({case:"evaluation-error-total-consistent",passed:!(await page.locator(".eval-batch").innerText()).includes("forged-errors")});
-	await page.goto("http://127.0.0.1:3015/?view=storage");
+	await page.goto(`http://127.0.0.1:${storage_web}/?view=storage`);
 	await page.getByRole("button",{name:"创建备份",exact:true}).waitFor();
-	const response=await page.request.get("http://127.0.0.1:3015/api/backend/storage/status");const status=await response.json();
+	const response=await page.request.get(`http://127.0.0.1:${storage_web}/api/backend/storage/status`);const status=await response.json();
 	const operation={id:"audit-other-tab",action:"backup",status:"running",stage:"backup",message:"另一个页面正在备份",created_at:new Date().toISOString()};
 	let polls=0;
 	await page.route("**/api/backend/storage/status",route=>route.fulfill({json:{...status,state:"maintenance",operations:[operation]}}));

@@ -2,6 +2,29 @@
 "use client";
 import { BrainCircuit,Check,Clock3,Database,LoaderCircle,X,ChevronDown } from "lucide-react";
 import { tool_labels,type RunEvent,type RunResult } from "@/lib/contracts";
+import { run_error_code_message } from "@/lib/run-errors";
+
+function token_value(value:number|undefined|null){
+	return value==null?"未记录":value.toLocaleString("zh-CN");
+}
+
+const usage_labels:Record<string,string>={complete:"完整",partial:"部分",missing:"缺失",invalid:"无效",unknown:"未知"};
+
+function TokenUsage({record}:{record:NonNullable<RunResult>["execution_records"][number]}){
+	const has_usage=[record.estimated_input_tokens,record.reserved_output_tokens,record.reported_input_tokens,record.reported_output_tokens,record.reported_total_tokens].some((value)=>value!=null)||record.usage_status!=null;
+	if(!has_usage){return null;}
+	return <div className="token-usage" aria-label="Token 使用信息">
+		<strong>Token 记录</strong>
+		<dl>
+			<div><dt>估算输入</dt><dd>{token_value(record.estimated_input_tokens)}</dd></div>
+			<div><dt>单次输出上限</dt><dd>{token_value(record.reserved_output_tokens)}</dd></div>
+			<div><dt>供应商输入</dt><dd>{token_value(record.reported_input_tokens)}</dd></div>
+			<div><dt>供应商输出</dt><dd>{token_value(record.reported_output_tokens)}</dd></div>
+			<div><dt>供应商总量</dt><dd>{token_value(record.reported_total_tokens)}</dd></div>
+		</dl>
+		<p className="field-note">状态：{record.usage_status?usage_labels[record.usage_status]??"未知":"未记录"}。估算值是启发式结果，不是供应商账单。</p>
+	</div>;
+}
 export function Trace({ events,result }: { events: RunEvent[]; result: RunResult|null }) {
 
 	const starts=events.filter((item) => item.event==="model_started"||item.event==="tool_started");
@@ -65,6 +88,7 @@ export function Trace({ events,result }: { events: RunEvent[]; result: RunResult
 						<div className="trace-detail">
 							<p>开始于 {new Date(item.occurred_at).toLocaleTimeString("zh-CN")}</p>
 							{finish?.data.error_code? <p className="trace-failure"><span>失败位置：{name}</span><code>{String(finish.data.error_code)}</code></p>:null}
+							{Boolean(finish?.data.error_code)&&<p className="trace-note">{run_error_code_message(String(finish?.data.error_code))??"服务返回了失败原因，请查看归档详情。"}</p>}
 							{record?.query_arguments? (
 								<pre>{JSON.stringify(record.query_arguments,null,2)}</pre>
 							):(
@@ -74,6 +98,7 @@ export function Trace({ events,result }: { events: RunEvent[]; result: RunResult
 										:"查询参数在完整执行记录归档后提供。"}
 								</p>
 							)}
+							{record&&<TokenUsage record={record}/>}
 						</div>
 					</details>
 				);

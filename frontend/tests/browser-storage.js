@@ -1,9 +1,11 @@
 // 验证独立安装环境的首次设置、诊断、备份导入与恢复流程。
 async(page)=>{
+	const web=Number(process.env.EVIDENCEOPS_STORAGE_FRONTEND_PORT||3015);
+	const api=Number(process.env.EVIDENCEOPS_STORAGE_TEST_PORT||8015);
 	const check=(value,message)=>{if(!value){throw new Error(message);}};
 	const errors=[];page.on("pageerror",error=>errors.push(error.message));
 	await page.setViewportSize({width:1440,height:1000});
-	await page.goto("http://127.0.0.1:3015/");
+	await page.goto(`http://127.0.0.1:${web}/`);
 	await page.getByRole("heading",{name:"首次安装设置"}).waitFor();
 	await page.screenshot({path:"output/playwright/setup-desktop.png",fullPage:true});
 	await page.getByRole("button",{name:"继续配置模型",exact:true}).click();

@@ -4,6 +4,7 @@ import { BookOpen,FileText,Gauge,SlidersHorizontal,ArrowUpRight,ShieldCheck,Aler
 import type { Evidence,RunResult } from "@/lib/contracts";
 import { source_labels } from "@/lib/contracts";
 import { evidence_number } from "@/lib/evidence";
+import { run_error_code_message } from "@/lib/run-errors";
 export function EvidenceIcon({ source }: { source: string }) {
 
 	const Icon=source==="knowledge"? BookOpen:source==="log"? FileText:source==="metric"? Gauge:SlidersHorizontal;
@@ -47,7 +48,8 @@ export function Report({ result,on_evidence }: { result: RunResult; on_evidence:
 							? "诊断仍在执行"
 							:result.error_code==="EVIDENCE_INSUFFICIENT"?"证据不足，需补充信息":"本次未生成报告"}
 				</h2>
-				<p>{result.error_detail?.message??result.error_code??"已归档的证据和过程仍可查看。"}</p>
+				<p>{run_error_code_message(result.error_code)??result.error_detail?.message??result.error_code??"已归档的证据和过程仍可查看。"}</p>
+				{result.error_code&&["CONTEXT_BUDGET_EXCEEDED","RUN_TOKEN_BUDGET_EXCEEDED"].includes(result.error_code)&&<p className="muted">容量限制阻止了当前模型请求；若此前轮次已有成功调用，其记录仍保留在执行轨迹中。</p>}
 				{Boolean(result.error_detail?.missing_information?.length)&&<section className="missing-information" aria-label="需补充的信息">
 					<h3>请补充以下信息</h3>
 					<ul>{result.error_detail!.missing_information!.map((item,index)=><li key={index}>{item}</li>)}</ul>
