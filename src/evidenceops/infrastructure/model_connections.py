@@ -84,7 +84,7 @@ class ConnectionStore:
 		return json.loads(row["payload"]),row["secret"]
 
 	def public(self,item,default=None):
-		fields=("id","name","provider_id","protocol","default_model","timeout_seconds","config_version","status","verified_at","updated_at","validations","catalog")
+		fields=("id","name","provider_id","protocol","default_model","timeout_seconds","context_window_tokens","max_output_tokens","safety_margin_tokens","max_run_tokens","limits_source","limits_verified_at","config_version","status","verified_at","updated_at","validations","catalog")
 		result={field:item.get(field) for field in fields}
 		parsed=urlsplit(item["endpoint"]);result["endpoint_display"]=f"{parsed.scheme}://{parsed.netloc}"
 		result["editable"]=True;result["key_configured"]=item.get("key_configured",True);result["is_default"]=bool(default and default["connection_id"]==item["id"]) # 无凭据备份恢复后要求重新填钥。
@@ -104,8 +104,13 @@ class ConnectionStore:
 				if database.execute("SELECT count(*) FROM connections").fetchone()[0]>=100: raise ConnectionError("模型连接最多保存100个")
 				item={"id":f"conn-{uuid4()}","config_version":0,"validations":{},"catalog":None,"verified_at":None,"status":"unverified"};secret=None
 			before={field:item.get(field) for field in ("provider_id","protocol","endpoint","default_model","timeout_seconds")}
-			for field in ("name","provider_id","protocol","default_model","timeout_seconds"):
+			for field in ("name","provider_id","protocol","default_model","timeout_seconds","context_window_tokens","max_output_tokens","safety_margin_tokens","max_run_tokens","limits_source","limits_verified_at"):
 				if field in data: item[field]=data[field]
+			from evidenceops.application.token_budget import ContextConfig
+			try:
+				context=ContextConfig(context_window_tokens=item.get("context_window_tokens",32768),max_output_tokens=item.get("max_output_tokens",2048),safety_margin_tokens=item.get("safety_margin_tokens",256),max_run_tokens=item.get("max_run_tokens",16384),limits_source=item.get("limits_source","legacy_compatibility"),limits_verified_at=item.get("limits_verified_at"))
+			except (TypeError,ValueError) as error: raise ConnectionError(str(error)) from error
+			item.update(context.to_dict())
 			if not identity or data.get("endpoint"): item["endpoint"]=validate_endpoint(data.get("endpoint",""))
 			if item.get("protocol")!="chat_completions" or item.get("provider_id") not in ("qianwen","custom"): raise ConnectionError("供应商或协议暂不支持")
 			api_key=data.get("api_key")

@@ -69,6 +69,9 @@ class ModelRequest:
 	response_format:str="text"
 	control:RunControl|None=None
 	budget:RunBudget|None=None
+	max_output_tokens:int|None=None
+	context_window_tokens:int|None=None
+	estimated_input_tokens:int|None=None
 
 	def __post_init__(self)->None:
 		if not isinstance(self.messages,tuple):
@@ -91,17 +94,21 @@ class ModelRequest:
 
 		if self.response_format not in ("text","json_object"):
 			raise ValueError("response_format必须是text或json_object")
+		for value in (self.max_output_tokens,self.context_window_tokens,self.estimated_input_tokens):
+			if value is not None and (type(value) is not int or value<=0): raise ValueError("模型Token参数必须是正整数")
 
 @dataclass(frozen=True,slots=True)
 class ModelUsage:
 	prompt_tokens:int|None
 	completion_tokens:int|None
 	total_tokens:int|None
+	status:str="complete"
 
 	def __post_init__(self)->None:
 		for token_value in (self.prompt_tokens,self.completion_tokens,self.total_tokens):
-			if token_value is not None and token_value<0:
+			if token_value is not None and (type(token_value) is not int or token_value<0):
 				raise ValueError("Token数量不能为负数")
+		if self.status not in ("complete","partial","missing","invalid","unknown"): raise ValueError("usage状态无效")
 
 
 @dataclass(frozen=True,slots=True)

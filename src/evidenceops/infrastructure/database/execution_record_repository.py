@@ -31,6 +31,13 @@ class SqlAlchemyExecutionRecordRepository:
 				handler_started_at=record.handler_started_at,
 				handler_finished_at=record.handler_finished_at,
 				query_arguments=json.dumps(record.query_arguments) if record.query_arguments is not None else None,
+				estimated_input_tokens=record.estimated_input_tokens,
+				reserved_output_tokens=record.reserved_output_tokens,
+				reported_input_tokens=record.reported_input_tokens,
+				reported_output_tokens=record.reported_output_tokens,
+				reported_total_tokens=record.reported_total_tokens,
+				usage_status=record.usage_status,
+				payload_hash=record.payload_hash,
 			)
 			self._session.add(row)
 		self._session.flush()
@@ -61,6 +68,13 @@ class SqlAlchemyExecutionRecordRepository:
 			handler_started_at=row.handler_started_at,
 			handler_finished_at=row.handler_finished_at,
 			query_arguments=json.loads(row.query_arguments) if row.query_arguments is not None else None,
+			estimated_input_tokens=row.estimated_input_tokens,
+			reserved_output_tokens=row.reserved_output_tokens,
+			reported_input_tokens=row.reported_input_tokens,
+			reported_output_tokens=row.reported_output_tokens,
+			reported_total_tokens=row.reported_total_tokens,
+			usage_status=row.usage_status,
+			payload_hash=row.payload_hash,
 		)
 
 

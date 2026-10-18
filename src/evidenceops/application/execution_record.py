@@ -19,3 +19,10 @@ class ExecutionRecord:
 	handler_started_at:datetime|None=None
 	handler_finished_at:datetime|None=None
 	query_arguments:dict[str,Any]|None=None
+	estimated_input_tokens:int|None=None
+	reserved_output_tokens:int|None=None
+	reported_input_tokens:int|None=None
+	reported_output_tokens:int|None=None
+	reported_total_tokens:int|None=None
+	usage_status:str|None=None
+	payload_hash:str|None=None

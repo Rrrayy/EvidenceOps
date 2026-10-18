@@ -12,9 +12,21 @@ from evidenceops.infrastructure.database.diagnosis_persistence import SqlAlchemy
 from evidenceops.infrastructure.database.session import DatabaseSettings,create_database_engine,create_session_factory
 from evidenceops.infrastructure.providers.mock_provider import MockProvider
 from evidenceops.infrastructure.providers.diagnosis_mock_provider import DiagnosisMockProvider
+from evidenceops.application.token_budget import ContextConfig
 from evidenceops.infrastructure.providers.openai_compatible_provider import OpenAICompatibleProvider
 from evidenceops.infrastructure.knowledge_tools import configured_knowledge_tools
 _UNSET=object() # 安装管理可显式提供持久化，不改变开发入口配置。
+
+
+def configured_context_config()->ContextConfig:
+	return ContextConfig(
+		context_window_tokens=int(os.getenv("EVIDENCEOPS_CONTEXT_WINDOW_TOKENS","32768")),
+		max_output_tokens=int(os.getenv("EVIDENCEOPS_MAX_OUTPUT_TOKENS","2048")),
+		safety_margin_tokens=int(os.getenv("EVIDENCEOPS_CONTEXT_SAFETY_MARGIN_TOKENS","256")),
+		max_run_tokens=int(os.getenv("EVIDENCEOPS_MAX_RUN_TOKENS","16384")),
+		estimator_id=os.getenv("EVIDENCEOPS_TOKEN_ESTIMATOR_ID","heuristic-json-v1"),
+		limits_source=os.getenv("EVIDENCEOPS_CONTEXT_LIMITS_SOURCE","local_conservative"),
+	)
 
 
 def build_final_answer(request:ModelRequest)->StructuredFinalAnswer:
@@ -105,6 +117,7 @@ def build_agent_app(diagnosis_persistence=_UNSET,connection_store=None)->object:
 		max_steps=4,
 		diagnosis_persistence=diagnosis_persistence,
 		run_timeout_seconds=float(os.getenv("EVIDENCEOPS_RUN_TIMEOUT_SECONDS","180")),
+		context_config=configured_context_config(),
 	)
 
 	from evidenceops.api.model_connections import ConnectionManager
@@ -131,6 +144,7 @@ def build_openai_agent_app(base_url:str,api_key:str,model:str,diagnosis_persiste
 		max_steps=4,
 		diagnosis_persistence=diagnosis_persistence,
 		run_timeout_seconds=float(os.getenv("EVIDENCEOPS_RUN_TIMEOUT_SECONDS","180")),
+		context_config=configured_context_config(),
 	)
 
 	from evidenceops.api.model_connections import ConnectionManager

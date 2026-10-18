@@ -16,6 +16,8 @@ from evidenceops.application.run_budget import RunBudget,RunBudgetExceeded
 from evidenceops.application.run_control import RunCancelled,RunControl
 from evidenceops.application.knowledge_evidence import matches_to_evidence
 from evidenceops.application.parsed_log_evidence import parsed_logs_to_evidence
+from evidenceops.application.context_assembler import ContextAssembler
+from evidenceops.application.token_budget import ContextConfig,ContextBudgetError,HeuristicTokenEstimator,TokenLedger
 
 
 @dataclass(frozen=True,slots=True)
@@ -37,6 +39,7 @@ class AgentLoop:
 		timeout_seconds:float=10.0,
 		max_steps:int=3,
 		response_format:str="text",
+		context_config:ContextConfig|None=None,
 	)->None:
 		if not isinstance(model,str) or not model.strip():
 			raise ValueError("model不能为空")
@@ -57,6 +60,8 @@ class AgentLoop:
 		self._timeout_seconds=timeout_seconds
 		self._max_steps=max_steps
 		self._response_format=response_format
+		self._context_config=context_config
+		self._context_assembler=ContextAssembler(context_config) if context_config is not None else None
 
 	def run(self,prompt:str,run_id:str|None=None,events:RunEvents|None=None,budget:RunBudget|None=None,
 		control:RunControl|None=None)->AgentLoopResult:
@@ -109,6 +114,7 @@ class AgentLoop:
 			history=({"role":"user","content":prompt,},)
 
 		records:list[ExecutionRecord]=[]
+		ledger=TokenLedger(self._context_config) if self._context_config is not None else None
 		def finish(final_answer,tool_results,error_code,error_message=None):
 			return AgentLoopResult(final_answer,tool_results,error_code,error_message,tuple(records))
 
@@ -116,6 +122,7 @@ class AgentLoop:
 
 		# 限制模型轮次，同轮多工具批次不逐项消耗轮次预算。
 		for model_round in range(1,self._max_steps+1):
+			call_result=None
 			try:
 				if control is not None:
 					control.check()
@@ -124,8 +131,12 @@ class AgentLoop:
 				return finish(None,tuple(tool_results),"RUN_CANCELLED","诊断已取消")
 			except RunBudgetExceeded:
 				return finish(None,tuple(tool_results),"RUN_TIMEOUT","诊断整体执行预算已耗尽")
+			try:
+				assembly=self._context_assembler.assemble(history,self._tools,ledger,response_format=self._response_format) if self._context_assembler is not None else None
+			except ContextBudgetError as error:
+				return finish(None,tuple(tool_results),error.error_code,str(error))
 			request=ModelRequest(
-				messages=history,
+				messages=assembly.messages if assembly is not None else history,
 				tools=self._tools,
 				model=self._model,
 				timeout_seconds=call_timeout,
@@ -133,6 +144,9 @@ class AgentLoop:
 				run_id=run_id,
 				response_format=self._response_format,
 				control=control,budget=budget,
+				max_output_tokens=self._context_config.max_output_tokens if self._context_config is not None else None,
+				context_window_tokens=self._context_config.context_window_tokens if self._context_config is not None else None,
+				estimated_input_tokens=assembly.estimated_input_tokens if assembly is not None else None,
 			)
 
 			started_at=datetime.now(timezone.utc)
@@ -141,11 +155,25 @@ class AgentLoop:
 				events.emit("model_started",model_round=model_round,model_request_id=request.request_id,model=self._model,
 					timeout_seconds=request.timeout_seconds)
 			def record_model(error_code=None):
+				usage=call_result.usage if error_code is None and call_result is not None else None
+				if ledger is not None and assembly is not None:
+					if error_code is None:
+						status=usage.status if usage is not None else "missing"
+						ledger.settle(assembly.reservation,usage.total_tokens if usage is not None else None,status)
+					else:
+						ledger.settle(assembly.reservation,None,"unknown")
 				records.append(ExecutionRecord(
 					kind="model",started_at=started_at,finished_at=datetime.now(timezone.utc),
 					duration_ms=(perf_counter()-started_clock)*1000,
 					status="succeeded" if error_code is None else ("cancelled" if error_code=="RUN_CANCELLED" else "failed"),error_code=error_code,
 					run_id=run_id,model_round=model_round,model_request_id=request.request_id,
+					estimated_input_tokens=assembly.estimated_input_tokens if assembly is not None else None,
+					reserved_output_tokens=assembly.reservation.max_output_tokens if assembly is not None else None,
+					reported_input_tokens=usage.prompt_tokens if usage is not None else None,
+					reported_output_tokens=usage.completion_tokens if usage is not None else None,
+					reported_total_tokens=usage.total_tokens if usage is not None else None,
+					usage_status=usage.status if usage is not None else ("unknown" if error_code else "missing"),
+					payload_hash=assembly.reservation.payload_hash if assembly is not None else None,
 				))
 				if events is not None:
 					events.emit("model_finished",model_round=model_round,model_request_id=request.request_id,
@@ -186,6 +214,8 @@ class AgentLoop:
 
 			record_model()
 			response=call_result.response
+			if call_result.usage is not None and call_result.usage.status=="invalid":
+				return finish(None,tuple(tool_results),"TOKEN_USAGE_INVALID","模型返回的Token计量格式无效")
 
 			if isinstance(response,(FinalAnswer,StructuredFinalAnswer)):
 				return finish(final_answer=response,tool_results=tuple(tool_results),error_code=None)

@@ -9,6 +9,7 @@ from evidenceops.application.llm_gateway import LLMGateway
 from evidenceops.application.model_protocol import ModelProvider
 from evidenceops.application.tool_evidence_collector import ToolEvidenceCollector
 from evidenceops.application.tool_runtime import ToolRuntime,ToolSpec
+from evidenceops.application.token_budget import ContextConfig
 
 
 @dataclass(slots=True)
@@ -54,6 +55,7 @@ def build_agent_diagnosis_assembly(
 	diagnosis_persistence:DiagnosisPersistence|None=None,
 	run_timeout_seconds:float|None=None,
 	model_config:dict|None=None, # 本次冻结且无密钥的配置快照。
+	context_config:ContextConfig|None=None,
 	run_id_factory=None, # 管理服务预先固定 Run 身份。
 )->AgentDiagnosisAssembly:
 	runtime=ToolRuntime(tools,timeout_seconds=tool_timeout_seconds)
@@ -68,6 +70,7 @@ def build_agent_diagnosis_assembly(
 		timeout_seconds=model_timeout_seconds,
 		max_steps=max_steps,
 		response_format=response_format,
+		context_config=context_config,
 	)
 
 	tool_collector=ToolEvidenceCollector(runtime,service_name)

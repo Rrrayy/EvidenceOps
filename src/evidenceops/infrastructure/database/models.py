@@ -56,6 +56,7 @@ class RunRow(Base):
 	finished_at:Mapped[datetime|None]=mapped_column(UTCDateTime(),nullable=True)
 	error_code:Mapped[str|None]=mapped_column(Text,nullable=True)
 	model_config:Mapped[dict|None]=mapped_column(JSON,nullable=True) # 历史实际模型与 Run 同库保存。
+	token_summary:Mapped[dict|None]=mapped_column(JSON().with_variant(JSONB(),"postgresql"),nullable=True)
 
 
 class EvidenceRow(Base):
@@ -184,3 +185,26 @@ class ExecutionRecordRow(Base):
 	handler_started_at:Mapped[datetime|None]=mapped_column(UTCDateTime(),nullable=True)
 	handler_finished_at:Mapped[datetime|None]=mapped_column(UTCDateTime(),nullable=True)
 	query_arguments:Mapped[str|None]=mapped_column(Text,nullable=True)
+	estimated_input_tokens:Mapped[int|None]=mapped_column(nullable=True)
+	reserved_output_tokens:Mapped[int|None]=mapped_column(nullable=True)
+	reported_input_tokens:Mapped[int|None]=mapped_column(nullable=True)
+	reported_output_tokens:Mapped[int|None]=mapped_column(nullable=True)
+	reported_total_tokens:Mapped[int|None]=mapped_column(nullable=True)
+	usage_status:Mapped[str|None]=mapped_column(Text,nullable=True)
+	payload_hash:Mapped[str|None]=mapped_column(Text,nullable=True)
+
+
+class ModelContextAuditRow(Base):
+	__tablename__="model_context_audits"
+	__table_args__=(UniqueConstraint("run_id","model_request_id",name="uq_context_audit_request"),)
+	audit_id:Mapped[int]=mapped_column(primary_key=True,autoincrement=True)
+	run_id:Mapped[str]=mapped_column(Text,ForeignKey("diagnosis_runs.run_id"),nullable=False)
+	model_round:Mapped[int]=mapped_column(nullable=False)
+	model_request_id:Mapped[str]=mapped_column(Text,nullable=False)
+	payload_hash:Mapped[str]=mapped_column(Text,nullable=False)
+	estimator_id:Mapped[str]=mapped_column(Text,nullable=False)
+	estimated_input_tokens:Mapped[int]=mapped_column(nullable=False)
+	reserved_output_tokens:Mapped[int]=mapped_column(nullable=False)
+	visible_evidence_ids:Mapped[list]=mapped_column(JSON().with_variant(JSONB(),"postgresql"),nullable=False)
+	deduplication_map:Mapped[dict]=mapped_column(JSON().with_variant(JSONB(),"postgresql"),nullable=False)
+	omissions:Mapped[list]=mapped_column(JSON().with_variant(JSONB(),"postgresql"),nullable=False)

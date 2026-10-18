@@ -63,4 +63,7 @@ def _execution_response(record):
 		"error_code":record.error_code,
 		"handler_started_at":record.handler_started_at.isoformat() if record.handler_started_at else None,
 		"handler_finished_at":record.handler_finished_at.isoformat() if record.handler_finished_at else None,
+		"estimated_input_tokens":record.estimated_input_tokens,"reserved_output_tokens":record.reserved_output_tokens,
+		"reported_input_tokens":record.reported_input_tokens,"reported_output_tokens":record.reported_output_tokens,
+		"reported_total_tokens":record.reported_total_tokens,"usage_status":record.usage_status,"payload_hash":record.payload_hash,
 	}

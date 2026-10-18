@@ -46,15 +46,20 @@ def database_schema(connection)->str|None:
 def archive_shape(version:str)->dict[str,set[str]]:
 	from evidenceops.infrastructure.database.models import Base
 	# 迁移链决定可升级性；档案兼容则逐版本明确哪些表和字段当时存在。
-	revisions=("0001","0002","0003","0004","0005","0006","0007","0008","0009")
+	revisions=("0001","0002","0003","0004","0005","0006","0007","0008","0009","0010")
 	if version not in revisions: raise UnsupportedSchema("备份版本不受支持")
 	index=revisions.index(version)
 	introduced={"diagnosis_runs":"0001","evidences":"0002","diagnosis_reports":"0003",
 		"execution_records":"0003","trace_events":"0004","knowledge_documents":"0006",
 		"knowledge_versions":"0006","knowledge_chunk_sets":"0006","knowledge_chunks":"0006",
 		"knowledge_embedding_sets":"0007","knowledge_chunk_vectors":"0007","knowledge_publications":"0007"}
+	introduced["model_context_audits"]="0010"
 	shape={table.name:{column.name for column in table.columns} for table in Base.metadata.sorted_tables
 		if table.name in introduced and revisions.index(introduced[table.name])<=index}
+	for column in ("token_summary",):
+		if "diagnosis_runs" in shape and index<revisions.index("0010"): shape["diagnosis_runs"].discard(column)
+	for column in ("estimated_input_tokens","reserved_output_tokens","reported_input_tokens","reported_output_tokens","reported_total_tokens","usage_status","payload_hash"):
+		if "execution_records" in shape and index<revisions.index("0010"): shape["execution_records"].discard(column)
 	if index<revisions.index("0005"): shape["diagnosis_runs"].discard("model_config")
 	if "evidences" in shape and index<revisions.index("0006"):
 		shape["evidences"]-={"content_snapshot","source_metadata"}

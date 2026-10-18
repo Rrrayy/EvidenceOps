@@ -53,6 +53,8 @@ class OpenAICompatibleProvider:
 		}
 
 		body={"model":request.model,"messages":list(request.messages),"tools":list(request.tools),}
+		if request.max_output_tokens is not None:
+			body["max_tokens"]=request.max_output_tokens
 
 		if request.response_format=="json_object":
 			body["response_format"]={"type":"json_object"}
@@ -268,7 +270,7 @@ class OpenAICompatibleProvider:
 
 		values=(raw_usage.get("prompt_tokens"),raw_usage.get("completion_tokens"),raw_usage.get("total_tokens"),)
 
-		if any(value is not None and (not isinstance(value,int) or value<0) for value in values):
-			raise ModelProviderError("MODEL_PROTOCOL_ERROR","usage中的Token数量格式错误")
-
-		return ModelUsage(prompt_tokens=values[0],completion_tokens=values[1],total_tokens=values[2])
+		if any(value is not None and (type(value) is not int or value<0) for value in values):
+			return ModelUsage(prompt_tokens=None,completion_tokens=None,total_tokens=None,status="invalid")
+		status="complete" if all(value is not None for value in values) else "partial"
+		return ModelUsage(prompt_tokens=values[0],completion_tokens=values[1],total_tokens=values[2],status=status)

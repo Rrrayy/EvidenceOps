@@ -23,6 +23,12 @@ class ConnectionInput(BaseModel): # 创建与更新明确字段白名单。
 	timeout_seconds:float=Field(default=60,ge=1,le=300) # Provider 实际支持参数。
 	api_key:str|None=Field(default=None,max_length=4096,repr=False) # 不出现在模型 repr。
 	expected_version:int|None=None # 乐观并发版本。
+	context_window_tokens:int|None=Field(default=None,gt=0,le=10_000_000)
+	max_output_tokens:int|None=Field(default=None,gt=0,le=1_000_000)
+	safety_margin_tokens:int|None=Field(default=None,ge=0,le=1_000_000)
+	max_run_tokens:int|None=Field(default=None,gt=0,le=10_000_000)
+	limits_source:str|None=Field(default=None,max_length=80)
+	limits_verified_at:str|None=Field(default=None,max_length=80)
 	@field_validator("name","default_model")
 	@classmethod
 	def nonempty(cls,value): # 全空白不能作为连接名称或模型身份。
@@ -151,7 +157,7 @@ class ManagedExecution: # 一次运行持有独立 Provider 和模型配置。
 			if not self.closed: self.manager.store.active[self.identity]-=1;self.closed=True;self.key=None # 尽快释放凭据引用。
 	def execute(self,request_id,description,event_sink=None): # 与现有 StreamRunner 的 Service 协议一致。
 		manager=self.manager;original=manager.assembly;provider=None;assembly=None # 正确区分资源所有权。
-		run_id=f"run-{uuid4()}";snapshot={"connection_id":self.identity,"connection_name":self.item["name"],"provider_id":self.item["provider_id"],"model_id":self.model,"requested_model_id":self.model,"config_version":self.item["config_version"]} # 不包含密钥或地址。
+		run_id=f"run-{uuid4()}";snapshot={"connection_id":self.identity,"connection_name":self.item["name"],"provider_id":self.item["provider_id"],"model_id":self.model,"requested_model_id":self.model,"config_version":self.item["config_version"],"context_window_tokens":self.item.get("context_window_tokens",32768),"max_output_tokens":self.item.get("max_output_tokens",2048),"safety_margin_tokens":self.item.get("safety_margin_tokens",256),"max_run_tokens":self.item.get("max_run_tokens",16384),"limits_source":self.item.get("limits_source","legacy_compatibility"),"estimator_id":"heuristic-json-v1"} # 不包含密钥或地址。
 		try: # 启动失败也要释放资源和租约。
 			manager.store.snapshot(run_id,snapshot) # 在 Run 创建前保存可追溯快照。
 			if self.identity=="system": base_provider=original.provider # 不关闭系统共享 Provider。
@@ -165,7 +171,8 @@ class ManagedExecution: # 一次运行持有独立 Provider 和模型配置。
 						raise ModelProviderError(error.error_code,"模型调用失败，请检查连接、权限或服务状态") from None # 防止供应商原文泄露密钥。
 					snapshot["model_id"]=response.model;manager.store.snapshot(run_id,snapshot) # 记录实际返回的模型标识。
 					return response # 不改变工具/报告协议。
-			assembly=build_agent_diagnosis_assembly(RecordedProvider(),self.item["provider_id"],original.tools,original.service_name,model=self.model,model_timeout_seconds=self.item.get("timeout_seconds",original.model_timeout_seconds),max_steps=original.max_steps,diagnosis_persistence=original.diagnosis_persistence,run_timeout_seconds=original.run_timeout_seconds,model_config=snapshot,run_id_factory=lambda:run_id) # 完整保留原有取消/预算/持久化。
+			from evidenceops.application.token_budget import ContextConfig
+			assembly=build_agent_diagnosis_assembly(RecordedProvider(),self.item["provider_id"],original.tools,original.service_name,model=self.model,model_timeout_seconds=self.item.get("timeout_seconds",original.model_timeout_seconds),max_steps=original.max_steps,diagnosis_persistence=original.diagnosis_persistence,run_timeout_seconds=original.run_timeout_seconds,model_config=snapshot,run_id_factory=lambda:run_id,context_config=ContextConfig(context_window_tokens=self.item.get("context_window_tokens",32768),max_output_tokens=self.item.get("max_output_tokens",2048),safety_margin_tokens=self.item.get("safety_margin_tokens",256),max_run_tokens=self.item.get("max_run_tokens",16384),limits_source=self.item.get("limits_source","legacy_compatibility"),limits_verified_at=self.item.get("limits_verified_at")))
 			with manager.store.lock: manager.running[run_id]=assembly.diagnosis_service # 取消路由准确找到本次 Service。
 			return assembly.diagnosis_service.execute(request_id,description,event_sink) # SSE 身份仍由原 Service 产生。
 		finally: # 不关闭共享诊断持久化。
