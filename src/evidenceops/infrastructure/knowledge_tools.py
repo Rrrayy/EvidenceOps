@@ -26,7 +26,7 @@ def configured_knowledge_tools(persistence)->tuple:
 	service=VectorKnowledgeService(persistence._session_factory)
 	method=os.getenv("EVIDENCEOPS_KNOWLEDGE_RETRIEVAL","cosine").strip().lower()
 	candidate_k=int(os.getenv("EVIDENCEOPS_KNOWLEDGE_CANDIDATE_K","10"))
-	if method not in ("cosine","hybrid") or not 5<=candidate_k<=50: raise ValueError("检索模式或候选数无效，候选数应在5到50之间")
+	if method not in ("cosine","keyword","bm25","hybrid","hybrid_bm25") or not 5<=candidate_k<=50: raise ValueError("检索模式或候选数无效，候选数应在5到50之间")
 	def search(query,top_k,budget):
 		return service.search_many(document_ids,query,provider,top_k=top_k,budget=budget,method=method,candidate_k=candidate_k)
 	return (build_knowledge_search_tool(search),)

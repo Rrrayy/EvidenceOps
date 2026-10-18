@@ -1,0 +1,13 @@
+{
+	"description":"开发者另编的留出验收题，首次运行前冻结，不参与BM25参数或分词调整；并非外部盲测，标注待架构师复核。required为必要依据，relevant为可接受依据。",
+	"cases":[
+		{"case_id":"accept-python-runtime","query":"服务启动时 Python 找不到 pandas，应该先比较哪个解释器和 pip","relevant_chunk_ids":["chunk-903deb07956bf0237614d3ee1a17897549e8b819cb30621df29ca72019e8672d","chunk-375570a9e825e12363e501411ad53cfaf207bfec46a179f572fa4fbc2ba9bbf7"],"required_chunk_ids":["chunk-903deb07956bf0237614d3ee1a17897549e8b819cb30621df29ca72019e8672d"]},
+		{"case_id":"accept-rpc-causality","query":"RPC超时和线程池满同时发生能不能直接下结论","relevant_chunk_ids":["chunk-94822a6bedd245d9714351dfdf7d444fe92bbee1d7b8f5b11b146701101cafab"],"required_chunk_ids":["chunk-94822a6bedd245d9714351dfdf7d444fe92bbee1d7b8f5b11b146701101cafab"]},
+		{"case_id":"accept-postgres-auth","query":"password authentication failed 要核对哪些连接目标和凭据","relevant_chunk_ids":["chunk-df44762bcdb738b74666210d97b4abb306c42f19222cfa1577a5920b6005800c"],"required_chunk_ids":["chunk-df44762bcdb738b74666210d97b4abb306c42f19222cfa1577a5920b6005800c"]},
+		{"case_id":"accept-outside","query":"Kubernetes CrashLoopBackOff 的探针失败怎么排查","relevant_chunk_ids":[],"required_chunk_ids":[]},
+		{"case_id":"accept-pool-lifecycle","query":"等待模型响应时数据库 Session 没释放，会不会造成连接池等待","relevant_chunk_ids":["chunk-b06798d41f6f52a09149f90abd51876af5303725e6bc0c170d0fff9c06cab72f","chunk-5ad705d5e3347c2f160792353e0664867bdb4d89ad7af05cf1db9e8177991d9e"],"required_chunk_ids":["chunk-b06798d41f6f52a09149f90abd51876af5303725e6bc0c170d0fff9c06cab72f"]},
+		{"case_id":"accept-java-capacity","query":"Java heap space 报错后直接扩大 Xmx 有什么风险","relevant_chunk_ids":["chunk-7dfb3c08e6c8f3d00d6064999a2f9f449939bcec20fc5f2c049240b9a8999861","chunk-151ec4d4be87a8ea8106658231f8cfc565c6b1a466588dbddc1502f969172163"],"required_chunk_ids":["chunk-7dfb3c08e6c8f3d00d6064999a2f9f449939bcec20fc5f2c049240b9a8999861"]},
+		{"case_id":"accept-go-synchronization","query":"goroutine 并发写共享变量，增加 sleep 是否等于同步","relevant_chunk_ids":["chunk-5040745283ad37b744d676582a03147d4c6a0ca0e8d42fdcea3fc8fe535e3bc3"],"required_chunk_ids":["chunk-5040745283ad37b744d676582a03147d4c6a0ca0e8d42fdcea3fc8fe535e3bc3"]},
+		{"case_id":"accept-rust-backtrace","query":"Rust unwrap Err 触发 panic，怎样保留调用栈排查","relevant_chunk_ids":["chunk-553a7a3cef3d409160f8218c9f7ea4b224dc1543c8bae248d9da575cc7d158a3","chunk-3ee960d2fcebf0d244000ed8963582135a11a9f2cc9035dcad174dcf8d70dd20"],"required_chunk_ids":["chunk-553a7a3cef3d409160f8218c9f7ea4b224dc1543c8bae248d9da575cc7d158a3"]}
+	]
+}

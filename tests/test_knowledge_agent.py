@@ -12,6 +12,7 @@ from evidenceops.application.diagnosis_response import to_response
 from evidenceops.application.history_response import history_response
 from evidenceops.application.knowledge_retrieval import KeywordKnowledgeRetriever
 from evidenceops.application.hybrid_knowledge import fuse_rankings
+from evidenceops.application.bm25_knowledge import bm25_ranking
 from evidenceops.application.model_protocol import ModelProviderError,StructuredFinalAnswer,ToolCall,ToolCallBatch
 from evidenceops.application.run_control import RunControl
 from evidenceops.application.tool_runtime import ToolRuntime
@@ -44,10 +45,13 @@ def persistence(tmp_path):
 
 
 @pytest.mark.parametrize("outcome",["success","protocol","forged","timeout"])
-@pytest.mark.parametrize("hybrid",[False,True])
+@pytest.mark.parametrize("hybrid",[False,True,"bm25","hybrid_bm25"])
 def test_model_sees_snapshots_and_ids_before_report_and_history(persistence,outcome,hybrid):
 	found=matches()
-	if hybrid: found=fuse_rankings(found,tuple(reversed(found)),5)
+	if hybrid is True: found=fuse_rankings(found,tuple(reversed(found)),5)
+	if hybrid in ("bm25","hybrid_bm25"):
+		lexical=bm25_ranking(found,"线程池 重试",5)
+		found=lexical if hybrid=="bm25" else fuse_rankings(found,lexical,5,keyword_name="bm25")
 	assert len(found)>=2
 	observed=[]
 	def final(request):
@@ -145,13 +149,18 @@ def test_snapshot_hash_cannot_mismatch():
 	with pytest.raises(ValueError,match="哈希"): replace(item,content_snapshot="篡改的正文")
 
 
-def test_sse_terminal_and_history_have_same_knowledge_snapshots(persistence):
+@pytest.mark.parametrize("method",["keyword","bm25","hybrid_bm25"])
+def test_sse_terminal_and_history_have_same_knowledge_snapshots(persistence,method):
 	from fastapi.testclient import TestClient
 	from evidenceops.api.agent_diagnosis import create_app
+	found=matches()
+	if method!="keyword":
+		lexical=bm25_ranking(found,"RPC 线程池 重试",5)
+		found=lexical if method=="bm25" else fuse_rankings(found,lexical,5,keyword_name="bm25")
 	def final(request):
 		fragments=json.loads(request.messages[-1]["content"])["data"]["matches"]
 		return draft([item["evidence_id"] for item in fragments])
-	tool=build_knowledge_search_tool(lambda query,**options:matches())
+	tool=build_knowledge_search_tool(lambda query,**options:found)
 	assembly=build_agent_diagnosis_assembly(MockProvider((ToolCall("knowledge-sse","search_knowledge",{"query":"RPC"}),final)),
 		"mock",(tool,),"order-service",diagnosis_persistence=persistence)
 	with TestClient(create_app(assembly)) as client:
@@ -164,6 +173,10 @@ def test_sse_terminal_and_history_have_same_knowledge_snapshots(persistence):
 		history=client.get("/api/v1/agent/runs/"+result["run_id"]).json()
 		assert len(history["evidences"])>=2
 		assert history["evidences"][0]["content_snapshot"]==result["evidences"][0]["content_snapshot"]
+		# 历史证据另含run_id，只比较诊断接口实际公开的字段。
+		assert [{key:saved[key] for key in live} for saved,live in zip(history["evidences"],result["evidences"])]==result["evidences"]
+		if method!="keyword":
+			assert history["evidences"][0]["source_metadata"]["retrieval_details"]==found[0].retrieval_details
 
 
 def test_retrieval_failure_stops_diagnosis_but_keeps_parallel_observation(persistence):

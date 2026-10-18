@@ -4,13 +4,15 @@ from dataclasses import replace
 from evidenceops.application.knowledge_retrieval import KnowledgeMatch,KeywordKnowledgeRetriever
 
 
-def fuse_rankings(vector:tuple[KnowledgeMatch,...],keyword:tuple[KnowledgeMatch,...],top_k:int,rrf_constant:int=60)->tuple[KnowledgeMatch,...]:
+def fuse_rankings(vector:tuple[KnowledgeMatch,...],keyword:tuple[KnowledgeMatch,...],top_k:int,rrf_constant:int=60,keyword_name:str="keyword")->tuple[KnowledgeMatch,...]:
 	if type(top_k) is not int or not 1<=top_k<=50: raise ValueError("top_k必须在1到50之间")
 	if type(rrf_constant) is not int or not 1<=rrf_constant<=1000: raise ValueError("RRF常数必须在1到1000之间")
 	scores={}
 	objects={}
 	details={}
-	for name,matches in (("vector",vector),("keyword",keyword)):
+	if keyword_name not in ("keyword","bm25"): raise ValueError("关键词分支名称无效")
+	lexical_config=keyword[0].retrieval_details if keyword_name=="bm25" and keyword else None
+	for name,matches in (("vector",vector),(keyword_name,keyword)):
 		seen=set()
 		for rank,match in enumerate(matches,1):
 			identity=match.chunk.chunk_id
@@ -24,9 +26,10 @@ def fuse_rankings(vector:tuple[KnowledgeMatch,...],keyword:tuple[KnowledgeMatch,
 			details.setdefault(identity,{})[name]={"rank":rank,"score":match.score}
 	# 不依赖输入集合遍历顺序；分数相同时以稳定身份决定次序。
 	identities=sorted(scores,key=lambda identity:(-scores[identity],identity))[:top_k]
-	return tuple(replace(objects[identity],score=scores[identity],rank=rank,retrieval_method="hybrid-rrf-keyword-v1",
+	return tuple(replace(objects[identity],score=scores[identity],rank=rank,retrieval_method="hybrid-rrf-"+keyword_name+"-v1",
 		retrieval_details={"score_kind":"rrf","rrf_constant":rrf_constant,"branches":details[identity],
-			"vector_candidates":len(vector),"keyword_candidates":len(keyword)}) for rank,identity in enumerate(identities,1))
+			"vector_candidates":len(vector),keyword_name+"_candidates":len(keyword),
+			**({"bm25_config":lexical_config} if lexical_config is not None else {})}) for rank,identity in enumerate(identities,1))
 
 
 def keyword_ranking(matches:tuple[KnowledgeMatch,...],query:str,candidate_k:int)->tuple[KnowledgeMatch,...]:
