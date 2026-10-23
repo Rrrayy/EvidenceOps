@@ -49,7 +49,7 @@
       ],
       "fixture_hashes": {
         "samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
-        "samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+        "samples/metrics/order-service.jsonl": "00430422f831fd58493db46cb893060f9d29356bdc3b3c2b96d3d981e75556f4",
         "samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
       },
       "evidence_checks": [
@@ -94,7 +94,7 @@
       ],
       "fixture_hashes": {
         "samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
-        "samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+        "samples/metrics/order-service.jsonl": "00430422f831fd58493db46cb893060f9d29356bdc3b3c2b96d3d981e75556f4",
         "samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
       }
     },
@@ -121,7 +121,7 @@
       ],
       "fixture_hashes": {
         "samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
-        "samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+        "samples/metrics/order-service.jsonl": "00430422f831fd58493db46cb893060f9d29356bdc3b3c2b96d3d981e75556f4",
         "samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
       }
     },
@@ -153,7 +153,7 @@
       ],
       "fixture_hashes": {
         "samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
-        "samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+        "samples/metrics/order-service.jsonl": "00430422f831fd58493db46cb893060f9d29356bdc3b3c2b96d3d981e75556f4",
         "samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
       },
       "evidence_checks": [
@@ -192,7 +192,7 @@
       ],
       "fixture_hashes": {
         "samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
-        "samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+        "samples/metrics/order-service.jsonl": "00430422f831fd58493db46cb893060f9d29356bdc3b3c2b96d3d981e75556f4",
         "samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
       },
       "evidence_checks": [
@@ -243,7 +243,7 @@
       ],
       "fixture_hashes": {
         "samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
-        "samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+        "samples/metrics/order-service.jsonl": "00430422f831fd58493db46cb893060f9d29356bdc3b3c2b96d3d981e75556f4",
         "samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
       },
       "evidence_checks": [
@@ -291,7 +291,7 @@
       ],
       "fixture_hashes": {
         "samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
-        "samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+        "samples/metrics/order-service.jsonl": "00430422f831fd58493db46cb893060f9d29356bdc3b3c2b96d3d981e75556f4",
         "samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
       },
       "evidence_checks": [
@@ -330,7 +330,7 @@
       ],
       "fixture_hashes": {
         "samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
-        "samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+        "samples/metrics/order-service.jsonl": "00430422f831fd58493db46cb893060f9d29356bdc3b3c2b96d3d981e75556f4",
         "samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
       },
       "evidence_checks": [
@@ -373,7 +373,7 @@
       ],
       "fixture_hashes": {
         "samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
-        "samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+        "samples/metrics/order-service.jsonl": "00430422f831fd58493db46cb893060f9d29356bdc3b3c2b96d3d981e75556f4",
         "samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
       },
       "evidence_checks": [
@@ -410,7 +410,7 @@
       ],
       "fixture_hashes": {
         "samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
-        "samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+        "samples/metrics/order-service.jsonl": "00430422f831fd58493db46cb893060f9d29356bdc3b3c2b96d3d981e75556f4",
         "samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
       },
       "expected_failure_stage": "collection"
@@ -441,7 +441,7 @@
       ],
       "fixture_hashes": {
         "samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
-        "samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+        "samples/metrics/order-service.jsonl": "00430422f831fd58493db46cb893060f9d29356bdc3b3c2b96d3d981e75556f4",
         "samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
       },
       "evidence_checks": [
@@ -478,7 +478,7 @@
       ],
       "fixture_hashes": {
         "samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
-        "samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+        "samples/metrics/order-service.jsonl": "00430422f831fd58493db46cb893060f9d29356bdc3b3c2b96d3d981e75556f4",
         "samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
       },
       "evidence_checks": [
@@ -525,7 +525,7 @@
       ],
       "fixture_hashes": {
         "samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
-        "samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+        "samples/metrics/order-service.jsonl": "00430422f831fd58493db46cb893060f9d29356bdc3b3c2b96d3d981e75556f4",
         "samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
       },
       "evidence_checks": [
@@ -569,7 +569,7 @@
       ],
       "fixture_hashes": {
         "samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
-        "samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+        "samples/metrics/order-service.jsonl": "00430422f831fd58493db46cb893060f9d29356bdc3b3c2b96d3d981e75556f4",
         "samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
       },
       "evidence_checks": [
@@ -607,7 +607,7 @@
       ],
       "fixture_hashes": {
         "samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
-        "samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+        "samples/metrics/order-service.jsonl": "00430422f831fd58493db46cb893060f9d29356bdc3b3c2b96d3d981e75556f4",
         "samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
       }
     },
@@ -636,7 +636,7 @@
       ],
       "fixture_hashes": {
         "samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
-        "samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+        "samples/metrics/order-service.jsonl": "00430422f831fd58493db46cb893060f9d29356bdc3b3c2b96d3d981e75556f4",
         "samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
       }
     },
@@ -665,7 +665,7 @@
       ],
       "fixture_hashes": {
         "samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
-        "samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+        "samples/metrics/order-service.jsonl": "00430422f831fd58493db46cb893060f9d29356bdc3b3c2b96d3d981e75556f4",
         "samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
       }
     },
@@ -696,7 +696,7 @@
       ],
       "fixture_hashes": {
         "samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
-        "samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+        "samples/metrics/order-service.jsonl": "00430422f831fd58493db46cb893060f9d29356bdc3b3c2b96d3d981e75556f4",
         "samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
       },
       "evidence_checks": [
@@ -735,7 +735,7 @@
       ],
       "fixture_hashes": {
         "samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
-        "samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+        "samples/metrics/order-service.jsonl": "00430422f831fd58493db46cb893060f9d29356bdc3b3c2b96d3d981e75556f4",
         "samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
       },
       "evidence_checks": [
@@ -787,7 +787,7 @@
       ],
       "fixture_hashes": {
         "samples/logs/order-service.jsonl": "0be780c6f7b78748622f1891372ced3a2d12c9e7fd11c582449dc5c7fbf1e5ba",
-        "samples/metrics/order-service.jsonl": "d1089f5fd84dcdd19ef5c1386087f82d8cd4a67a1345145cccde130eb38dfe03",
+        "samples/metrics/order-service.jsonl": "00430422f831fd58493db46cb893060f9d29356bdc3b3c2b96d3d981e75556f4",
         "samples/configs/order-service.jsonl": "94fb153fcada8239796f334709acecd52c872076204e0502aac1df4bed58bb2d"
       },
       "evidence_checks": [

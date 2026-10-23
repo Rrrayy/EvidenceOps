@@ -1,0 +1,6 @@
+# Normalize line endings: the evaluation fixture fingerprints (samples/evaluation/cases.json)
+# and the knowledge corpus chunk ids are derived from exact file bytes, so samples
+# must check out byte-identical on every platform.
+samples/** text eol=lf
+*.png binary
+*.ico binary
