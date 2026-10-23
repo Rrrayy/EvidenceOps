@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question or discussion
+    url: https://github.com/Rrrayy/EvidenceOps/discussions
+    about: Ask usage questions here rather than opening an issue.
+  - name: Security vulnerability
+    url: https://github.com/Rrrayy/EvidenceOps/security/advisories/new
+    about: Report vulnerabilities privately — never in a public issue.

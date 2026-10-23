@@ -1,19 +1,41 @@
-# EvidenceOps
+<div align="center">
+<img src="https://capsule-render.vercel.app/api?type=soft&height=280&color=0:0b1f3a,100:14355f&section=header&text=EvidenceOps&fontSize=72&fontColor=e8f1fb&desc=Evidence-driven%20workbench%20for%20software%20incident%20diagnosis&descSize=18&descAlignY=62" width="100%" alt="EvidenceOps"/>
+</div>
 
-<p align="center"><strong>面向软件运行故障的证据驱动诊断工作台</strong></p>
 <p align="center">
-<a href="README.md">English</a> · <a href="#快速启动">本机运行</a> · <a href="#核心能力">核心能力</a> · <a href="#系统架构">系统架构</a> · <a href="#当前检索对照结论">检索评测</a> · <a href="#测试">测试</a>
+  <a href="README.md">English</a> · <a href="#快速启动">快速启动</a> · <a href="#核心能力">核心能力</a> · <a href="#评测">评测</a> · <a href="#系统架构">系统架构</a> · <a href="#测试">测试</a>
 </p>
 
-EvidenceOps 是面向软件运行故障的本机诊断工作台。Agent 通过受限的只读工具查询日志、指标、配置和排障资料，将一次运行中的观测证据与诊断建议关联起来。网页控制台提供运行跟踪、证据检查、模型连接管理和历史回查。
+<p align="center">
+  <img alt="python" src="https://img.shields.io/badge/python-3.14-3776AB">
+  <img alt="node" src="https://img.shields.io/badge/node.js-%E2%89%A520.9-339933">
+  <img alt="cpp" src="https://img.shields.io/badge/C%2B%2B-20-00599C">
+  <img alt="license" src="https://img.shields.io/badge/license-Apache--2.0-blue">
+</p>
+
+> **当 AI 告诉你"根因是 order-service 的配置变更"，你拿什么向团队证明它不是猜的？**
+
+**每一条诊断结论都绑定同一次 Run 内采集的证据**——来源、观测时间、位置、版本、内容哈希与归档快照——事后可对质，即使原始日志已经轮转。
+
+<p align="center"><img src="docs/assets/console-evidence-citation.png" alt="诊断报告、E01–E03 证据引用与执行轨迹同屏" width="880"/></p>
+
+*报告、证据引用与执行轨迹同屏。截图使用 Mock 演示数据，结论已标注为演示输出。*
+
+**这是什么。** 面向软件运行故障的本机诊断工作台。Agent 通过受限的只读工具查询日志、指标、配置和排障资料，将一次运行中的观测证据与诊断建议关联起来。网页控制台提供运行跟踪、证据检查、模型连接管理和历史回查。
 
 **演示模式：**仓库提供确定性的 Mock 模型和 `order-service` 样例数据。Mock 返回固定演示结论，不会理解用户输入；报告会明确标记为演示。网页也可以配置真实的 OpenAI-compatible 诊断模型。
 
-**数据边界：**诊断输入中的粘贴或导入文本只作为问题描述，不会自动上传为日志证据。部署者可以在服务端登记本机日志文件，由 C++20 解析 CLI 和 Python Adapter 将受控查询转成结构化 Evidence；这不是任意路径访问或通用语言运行时解析。引用校验能验证证据身份和归属，但不能单独证明来源在语义上支持诊断结论。
+**它不做什么。**
 
-**运行范围：**当前面向本机、单租户和单 API worker。远程身份认证、多用户授权、分布式协调及通用客户数据源管理尚未实现。项目通过源码方式启动；仓库中的 Inno Setup 配置尚未构建并验收为可发布安装包。
+- 它不是多租户服务：没有远程身份认证、多用户授权与分布式协调——一台本机、一个 API worker。
+- 诊断输入中的粘贴或导入文本只作为问题描述，不会自动上传为日志证据。日志文件由部署者在服务端登记，经 C++20 解析管线的受控查询转成证据；这不是任意路径访问或通用语言运行时解析。
+- 引用校验只证明证据的身份与归属，不证明来源在语义上支持结论；对质仍由你完成。
+- Inno Setup 配置尚未构建并验收为可发布安装包；请以源码方式运行。
 
 ## 核心能力
+
+<details>
+<summary><strong>18 个能力组</strong>——受控工具执行、证据化报告、离线检索评测（点击展开）</summary>
 
 | 能力 | 行为 |
 | --- | --- |
@@ -32,6 +54,8 @@ EvidenceOps 是面向软件运行故障的本机诊断工作台。Agent 通过�
 | 诊断评测 | 20 案例离线题库、自动规则及可恢复的 CLI 人工审核 |
 | 知识检索 | 文档版本、ChunkSet、EmbeddingSet、向量持久化、精确 cosine、关键词、BM25 与 RRF 对照 |
 | 检索评测 | 片段级 Precision、Recall、MRR 与必需片段命中对照 |
+
+</details>
 
 ## 快速启动
 
@@ -446,4 +470,12 @@ npx.cmd --yes --package @playwright/cli playwright-cli -s=evidenceops open http:
 
 ## 贡献约定
 
-领域规则与模型/数据库适配器及前端传输层分离。修改附带相关失败路径测试，并同步中英文接口与配置说明。不提交凭据、本机数据库或生成的评测结果。Python 依赖清单固定直接依赖，前端安装使用 `package-lock.json`；仓库当前未声明许可证。
+领域规则与模型/数据库适配器及前端传输层分离。修改附带相关失败路径测试，并同步中英文接口与配置说明。不提交凭据、本机数据库或生成的评测结果。Python 依赖清单固定直接依赖，前端安装使用 `package-lock.json`。开发环境搭建、测试命令与 PR 检查清单见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+
+## 安全
+
+疑似安全漏洞请勿公开提交 issue，上报渠道见 [SECURITY.md](SECURITY.md)。
+
+## 许可证
+
+本项目基于 [Apache License 2.0](LICENSE) 发布。

@@ -1,19 +1,41 @@
-# EvidenceOps
+<div align="center">
+<img src="https://capsule-render.vercel.app/api?type=soft&height=280&color=0:0b1f3a,100:14355f&section=header&text=EvidenceOps&fontSize=72&fontColor=e8f1fb&desc=Evidence-driven%20workbench%20for%20software%20incident%20diagnosis&descSize=18&descAlignY=62" width="100%" alt="EvidenceOps"/>
+</div>
 
-<p align="center"><strong>Evidence-driven workbench for software incident diagnosis</strong></p>
 <p align="center">
-<a href="README.zh-CN.md">简体中文</a> · <a href="#quick-start">Run locally</a> · <a href="#capabilities">Capabilities</a> · <a href="#architecture">Architecture</a> · <a href="#retrieval-evaluation">Retrieval evaluation</a> · <a href="#http-api">HTTP API</a> · <a href="#testing">Tests</a>
+  <a href="README.zh-CN.md">简体中文</a> · <a href="#quick-start">Quick start</a> · <a href="#capabilities">Capabilities</a> · <a href="#evaluation">Evaluation</a> · <a href="#architecture">Architecture</a> · <a href="#testing">Tests</a>
 </p>
 
-EvidenceOps is a local workbench for diagnosing software incidents. Its Agent queries logs, metrics, configuration, and troubleshooting references through bounded, read-only tools, then links diagnosis claims to evidence collected during the same Run. The web console provides execution traces, evidence inspection, model connection management, and persisted Run history.
+<p align="center">
+  <img alt="python" src="https://img.shields.io/badge/python-3.14-3776AB">
+  <img alt="node" src="https://img.shields.io/badge/node.js-%E2%89%A520.9-339933">
+  <img alt="cpp" src="https://img.shields.io/badge/C%2B%2B-20-00599C">
+  <img alt="license" src="https://img.shields.io/badge/license-Apache--2.0-blue">
+</p>
+
+> **When the assistant tells you "the root cause is a config change in order-service" — how do you prove to your team that it did not guess it?**
+
+**Every diagnosis claim is bound to evidence captured within the same Run** — source, observation time, location, version, content hash, and an archived snapshot — so conclusions can be re-checked after the fact, even after the original log files rotate.
+
+<p align="center"><img src="docs/assets/console-evidence-citation.png" alt="Diagnosis report with clickable E01–E03 evidence references and the run timeline" width="880"/></p>
+
+*Report, evidence references and execution timeline in one screen. Mock demo data — conclusions are labelled as demonstration output.*
+
+**What it is.** A local workbench for diagnosing software incidents. The Agent queries logs, metrics, configuration, and troubleshooting references through bounded, read-only tools, then links diagnosis claims to evidence collected during the same Run. The web console provides execution traces, evidence inspection, model connection management, and persisted Run history.
 
 **Demo mode:** the repository includes a deterministic Mock provider and sample `order-service` data. Mock returns fixed demonstration findings and does not interpret user input; reports label its output as a demonstration. The web console can also configure a real OpenAI-compatible diagnosis model.
 
-**Data boundary:** pasted or imported text in the diagnosis input is treated as a problem description; it is not automatically uploaded as log evidence. An operator can register local log files on the server. A C++20 parsing CLI and Python adapter turn bounded queries over those registered files into structured Evidence. This does not grant arbitrary path access or provide general runtime-specific parsing. Citation checks verify Evidence identity and ownership, but do not establish that a source semantically supports a diagnosis claim.
+**What it does not do.**
 
-**Operating scope:** the application currently targets a local, single-tenant deployment with one API worker. Remote identity, multi-user authorization, distributed coordination, and general customer data-source management are not implemented. The project runs from source; the Inno Setup recipe has not been built and accepted as a release installer.
+- It is not a multi-tenant service: no remote identity, no multi-user authorization, no distributed coordination — one local machine, one API worker.
+- Text pasted or imported into the diagnosis input is a problem description, never auto-uploaded log evidence. Log files are registered by the operator on the server and read through a bounded C++20 parser pipeline; this grants no arbitrary path access or general runtime parsing.
+- Citation checks verify evidence identity and ownership — not that a source semantically supports the claim. The confrontation stays with you.
+- The Inno Setup recipe has not been built and accepted as a release installer; run from source.
 
 ## Capabilities
+
+<details>
+<summary><strong>18 capability groups</strong> — bounded tool execution, evidence-backed reports, offline retrieval evaluation (click to expand)</summary>
 
 | Capability | Behavior |
 | --- | --- |
@@ -32,6 +54,8 @@ EvidenceOps is a local workbench for diagnosing software incidents. Its Agent qu
 | Diagnosis evaluation | 20-case offline suite, automated rules, resumable CLI human review |
 | Knowledge retrieval | Document versions, ChunkSets, EmbeddingSets, persisted vectors, exact cosine, keyword/BM25 and RRF comparisons |
 | Retrieval evaluation | Fragment-level Precision, Recall, MRR and required-fragment hit comparisons |
+
+</details>
 
 ## Quick start
 
@@ -451,4 +475,12 @@ First-run scenarios require an uninitialized directory. Select individual groups
 
 ## Contributing
 
-Keep domain rules separate from model/database adapters and frontend transport. Include relevant failure-path tests and matching API/configuration documentation in both READMEs. Do not commit credentials, local databases or generated evaluation artifacts. Python files pin direct dependencies; frontend installs use `package-lock.json`. The repository currently declares no license.
+Keep domain rules separate from model/database adapters and frontend transport. Include relevant failure-path tests and matching API/configuration documentation in both READMEs. Do not commit credentials, local databases or generated evaluation artifacts. Python files pin direct dependencies; frontend installs use `package-lock.json`. See [CONTRIBUTING.md](CONTRIBUTING.md) for the development setup, test commands, and pull-request checklist.
+
+## Security
+
+See [SECURITY.md](SECURITY.md) for how to report vulnerabilities privately. Do not open public issues for suspected security problems.
+
+## License
+
+Released under the [Apache License 2.0](LICENSE).
