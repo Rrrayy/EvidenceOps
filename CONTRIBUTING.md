@@ -70,7 +70,7 @@ The 20-case diagnosis evaluation suite can be run offline:
 
 - [ ] Domain rules stay separate from model/database adapters and frontend transport.
 - [ ] Failure-path tests are included for the changed behavior.
-- [ ] Both `README.md` and `README.zh-CN.md` are updated when API or configuration documentation changes.
+- [ ] Both `README.md` (简体中文) and `README.en.md` (English) are updated when API or configuration documentation changes.
 - [ ] No credentials, local databases, or generated evaluation artifacts are committed.
 - [ ] Python dependency changes go through `requirements.txt` / `requirements-dev.txt`; frontend changes go through `package-lock.json`.
 - [ ] The "What it does not do" section of the READMEs still holds — if a change extends the operating scope, call it out explicitly in the PR description.

@@ -18,7 +18,7 @@ pwsh -File scripts/start_installed.ps1
 
 打开 `http://127.0.0.1:3013`。首次设置依次检查存储、模型和数据来源；现有工具查询仓库样例，不会因为输入了客户故障描述就自动读取客户主机日志。使用 Mock 不产生模型费用；用户模型仅在主动验证或诊断时调用。
 
-完成安装与构建后，日常启动只需在仓库根目录执行 `pwsh -File scripts/start_installed.ps1`，它同时启动前后端，无需另外运行前端命令。保持启动终端运行，按 `Ctrl+C` 停止；再次执行该命令可使用原数据目录启动。脚本不配置开机自启。常见启动问题见[项目快速启动](README.zh-CN.md#快速启动)。
+完成安装与构建后，日常启动只需在仓库根目录执行 `pwsh -File scripts/start_installed.ps1`，它同时启动前后端，无需另外运行前端命令。保持启动终端运行，按 `Ctrl+C` 停止；再次执行该命令可使用原数据目录启动。脚本不配置开机自启。常见启动问题见[项目快速启动](README.md#快速启动)。
 
 可指定 `-DataDirectory D:/EvidenceOpsData -ApiPort 8014 -WebPort 3013`。两端必须由同一运行账号访问同一数据目录。入口限制本机访问，必须使用单 API worker。同一个数据目录或 SQLite 文件不能启动第二个实例。
 

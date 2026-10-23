@@ -3,7 +3,11 @@
 </div>
 
 <p align="center">
-  <a href="README.zh-CN.md">简体中文</a> · <a href="#quick-start">Quick start</a> · <a href="#capabilities">Capabilities</a> · <a href="#evaluation">Evaluation</a> · <a href="#architecture">Architecture</a> · <a href="#testing">Tests</a>
+  <a href="README.en.md"><img alt="English" src="https://img.shields.io/badge/切换语言-English-14355f?style=for-the-badge"></a>
+</p>
+
+<p align="center">
+  <a href="#快速启动">快速启动</a> · <a href="#核心能力">核心能力</a> · <a href="#评测">评测</a> · <a href="#系统架构">系统架构</a> · <a href="#测试">测试</a>
 </p>
 
 <p align="center">
@@ -13,57 +17,57 @@
   <img alt="license" src="https://img.shields.io/badge/license-Apache--2.0-blue">
 </p>
 
-> **When the assistant tells you "the root cause is a config change in order-service" — how do you prove to your team that it did not guess it?**
+> **当 AI 告诉你"根因是 order-service 的配置变更"，你拿什么向团队证明它不是猜的？**
 
-**Every diagnosis claim is bound to evidence captured within the same Run** — source, observation time, location, version, content hash, and an archived snapshot — so conclusions can be re-checked after the fact, even after the original log files rotate.
+**每一条诊断结论都绑定同一次 Run 内采集的证据**——来源、观测时间、位置、版本、内容哈希与归档快照——事后可对质，即使原始日志已经轮转。
 
-<p align="center"><img src="docs/assets/console-evidence-citation.png" alt="Diagnosis report with clickable E01–E03 evidence references and the run timeline" width="880"/></p>
+<p align="center"><img src="docs/assets/console-evidence-citation.png" alt="诊断报告、E01–E03 证据引用与执行轨迹同屏" width="880"/></p>
 
-*Report, evidence references and execution timeline in one screen. Mock demo data — conclusions are labelled as demonstration output.*
+*报告、证据引用与执行轨迹同屏。截图使用 Mock 演示数据，结论已标注为演示输出。*
 
-**What it is.** A local workbench for diagnosing software incidents. The Agent queries logs, metrics, configuration, and troubleshooting references through bounded, read-only tools, then links diagnosis claims to evidence collected during the same Run. The web console provides execution traces, evidence inspection, model connection management, and persisted Run history.
+**这是什么。** 面向软件运行故障的本机诊断工作台。Agent 通过受限的只读工具查询日志、指标、配置和排障资料，将一次运行中的观测证据与诊断建议关联起来。网页控制台提供运行跟踪、证据检查、模型连接管理和历史回查。
 
-**Demo mode:** the repository includes a deterministic Mock provider and sample `order-service` data. Mock returns fixed demonstration findings and does not interpret user input; reports label its output as a demonstration. The web console can also configure a real OpenAI-compatible diagnosis model.
+**演示模式：**仓库提供确定性的 Mock 模型和 `order-service` 样例数据。Mock 返回固定演示结论，不会理解用户输入；报告会明确标记为演示。网页也可以配置真实的 OpenAI-compatible 诊断模型。
 
-**What it does not do.**
+**它不做什么。**
 
-- It is not a multi-tenant service: no remote identity, no multi-user authorization, no distributed coordination — one local machine, one API worker.
-- Text pasted or imported into the diagnosis input is a problem description, never auto-uploaded log evidence. Log files are registered by the operator on the server and read through a bounded C++20 parser pipeline; this grants no arbitrary path access or general runtime parsing.
-- Citation checks verify evidence identity and ownership — not that a source semantically supports the claim. The confrontation stays with you.
-- The Inno Setup recipe has not been built and accepted as a release installer; run from source.
+- 它不是多租户服务：没有远程身份认证、多用户授权与分布式协调——一台本机、一个 API worker。
+- 诊断输入中的粘贴或导入文本只作为问题描述，不会自动上传为日志证据。日志文件由部署者在服务端登记，经 C++20 解析管线的受控查询转成证据；这不是任意路径访问或通用语言运行时解析。
+- 引用校验只证明证据的身份与归属，不证明来源在语义上支持结论；对质仍由你完成。
+- Inno Setup 配置尚未构建并验收为可发布安装包；请以源码方式运行。
 
-## Capabilities
+## 核心能力
 
 <details>
-<summary><strong>18 capability groups</strong> — bounded tool execution, evidence-backed reports, offline retrieval evaluation (click to expand)</summary>
+<summary><strong>18 个能力组</strong>——受控工具执行、证据化报告、离线检索评测（点击展开）</summary>
 
-| Capability | Behavior |
+| 能力 | 行为 |
 | --- | --- |
-| Orchestration | Provider-independent Agent Loop, OpenAI-compatible adapter, deterministic Mock |
-| Controlled tools | Allowlisted registration, argument validation, bounded execution, call correlation, cooperative cancellation |
-| Log parsing | C++20 CLI parses supported formats; Python adapter validates versioned JSON and builds traceable log Evidence |
-| Evidence-backed reports | Source, observation time, location, version, content hash, Run-scoped reference checks, archived snapshots |
-| Web console | Diagnosis workspace, searchable history, evidence drawer, execution timeline, offline evaluation viewer |
-| Model connections | Encrypted credentials, model catalogs, explicit capability validation, defaults and per-Run selection |
-| Durable history | Installed mode uses SQLite by default; PostgreSQL is available for managed storage |
-| Installation and storage | First-run setup, connection checks, storage switching, logical backup import/export and restore |
-| Streaming and replay | SSE lifecycle events and cursor replay without re-executing the diagnosis |
-| Context governance | Per-request input-token estimates, output and safety reservations, per-Run token budget, provider usage records |
-| Execution control | Shared time budget, individual timeouts, and cooperative cancellation |
-| Startup reconciliation | Single-instance lock; orphaned Runs atomically fail with a terminal event |
-| Diagnosis evaluation | 20-case offline suite, automated rules, resumable CLI human review |
-| Knowledge retrieval | Document versions, ChunkSets, EmbeddingSets, persisted vectors, exact cosine, keyword/BM25 and RRF comparisons |
-| Retrieval evaluation | Fragment-level Precision, Recall, MRR and required-fragment hit comparisons |
+| 诊断编排 | 独立于供应商的 Agent Loop、OpenAI-compatible 适配器、确定性 Mock |
+| 受控工具 | 白名单注册、参数校验、有界执行、工具调用关联与协作取消 |
+| 日志解析 | C++20 CLI 解析受支持格式，Python Adapter 校验版本化 JSON 并生成可追溯日志 Evidence |
+| 证据报告 | 来源、观测时间、位置、版本、内容哈希、运行内引用校验与历史快照 |
+| 网页控制台 | 诊断工作台、可检索历史、证据抽屉、执行时间线与离线评测查看 |
+| 模型连接 | 加密凭据、模型目录、显式能力验证、默认配置与本次诊断选择 |
+| 历史归档 | 安装版默认 SQLite，可切换至受管理的 PostgreSQL |
+| 安装与存储 | 首次设置、连接检查、存储切换、逻辑备份导入导出与恢复 |
+| 流式与重连 | SSE 生命周期事件，按游标补发，不重新执行诊断 |
+| 上下文治理 | 每轮请求估算输入 Token、预留输出和安全余量、限制 Run 累计 Token，并记录供应商用量 |
+| 执行控制 | 共享时间预算、单次超时与协作取消 |
+| 启动收尾 | 单实例锁保护；遗留 Run 原子失败并追加终止事件 |
+| 诊断评测 | 20 案例离线题库、自动规则及可恢复的 CLI 人工审核 |
+| 知识检索 | 文档版本、ChunkSet、EmbeddingSet、向量持久化、精确 cosine、关键词、BM25 与 RRF 对照 |
+| 检索评测 | 片段级 Precision、Recall、MRR 与必需片段命中对照 |
 
 </details>
 
-## Quick start
+## 快速启动
 
-Use Python 3.14, Node.js 20.9 or later, and PowerShell 7. Run commands from the repository root. Docker Compose is only needed for the optional PostgreSQL development service; the installed app uses SQLite by default.
+需要 Python 3.14、Node.js 20.9 或更高版本以及 PowerShell 7。以下命令均在仓库根目录执行。只有可选的 PostgreSQL 开发服务需要 Docker Compose；安装版默认使用 SQLite。
 
-### Start the complete application (recommended)
+### 启动完整应用（推荐）
 
-**Use this entry point to start both the web console and the backend.** After downloading the repository, install dependencies and build the frontend from the repository root:
+**使用网页控制台请通过此入口同时启动前后端。** 首次下载后，先在仓库根目录安装依赖并构建前端：
 
 ```powershell
 python -m venv .venv
@@ -75,40 +79,40 @@ cd ..
 pwsh -File scripts/start_installed.ps1
 ```
 
-Open [EvidenceOps](http://127.0.0.1:3013). The launcher runs the installed API on `8014` and the web console on `3013`, sharing a data directory and a server-side management token. A fresh installation defaults to SQLite and Mock. First-run setup checks storage, model configuration and the sample data-source boundary.
+打开 [EvidenceOps](http://127.0.0.1:3013)。启动脚本运行 8014 安装版 API 与 3013 网页，统一数据目录和服务端管理令牌。全新安装默认使用 SQLite 与 Mock；首次设置检查存储、模型配置，并明确当前数据源为样例。
 
-Once dependencies and the build are ready, subsequent starts require only this command from the repository root:
+依赖与构建准备好后，日常启动只需在仓库根目录执行：
 
 ```powershell
 pwsh -File scripts/start_installed.ps1
 ```
 
-Keep this terminal running. Press `Ctrl+C` to stop both services; closing the terminal ends web access, and the launcher does not configure startup at login. Run the same command to start again. Reusing the data directory preserves history and configuration. After frontend source updates, stop the services, rerun `npm.cmd ci` and `npm.cmd run build` in `frontend`, then start the launcher again.
+保持此终端运行。按 `Ctrl+C` 停止前后端；关闭终端后服务不会继续提供网页，也不会自动在开机时启动。再次运行同一命令即可启动，使用同一数据目录时保留已有历史和配置。更新前端源码后，停止服务并重新执行 `npm.cmd ci`、`npm.cmd run build`（在 `frontend` 目录），再启动脚本。
 
-| Service | Default address | Purpose |
+| 服务 | 默认地址 | 用途 |
 | --- | --- | --- |
-| Web console | `http://127.0.0.1:3013` | User-facing entry point |
-| Installed API | `http://127.0.0.1:8014` | Web backend and storage management |
+| 网页控制台 | `http://127.0.0.1:3013` | 用户访问入口 |
+| 安装版 API | `http://127.0.0.1:8014` | 网页后台及存储管理 |
 
-The launcher sets the web proxy target and data directory. No separate `npm run start` or manual frontend proxy change is required. The development API commands below start only the backend, without the web console.
+启动脚本设置网页代理与数据目录，无需额外启动 `npm run start` 或手动修改前端代理地址。下方的单独开发 API 命令仅启动后端，不会启动网页。
 
-### Windows installer status
+### Windows 安装包状态
 
-An Inno Setup recipe is present at `installer/EvidenceOps.iss`, but it has not yet been compiled and verified as a customer installer. Use the source installation above for now. Customer installation, data locations, backups, and operating limits are described in [CUSTOMER_INSTALLATION.md](CUSTOMER_INSTALLATION.md).
+仓库中包含 `installer/EvidenceOps.iss` Inno Setup 配置，但尚未编译并验证为可交付的客户安装程序。现阶段请按上方源码安装步骤部署。客户安装、数据目录、备份和运行边界见[本机安装与数据存储](CUSTOMER_INSTALLATION.md)。
 
-| Startup issue | Action |
+| 启动问题 | 处理方式 |
 | --- | --- |
-| `pwsh` not found | Install PowerShell 7 and reopen the terminal |
-| `node` or `npm.cmd` not found | Install a compatible Node.js version and reopen the terminal |
-| Missing dependencies or frontend build | Complete the installation commands above and confirm `npm.cmd run build` succeeds |
-| Port already in use | Stop the existing instance, or choose different `-ApiPort` and `-WebPort` values and open the new web port |
-| Browser reports connection refused | Check that the launcher terminal is still running; if it exited, inspect its error output and restart |
+| 找不到 `pwsh` | 安装 PowerShell 7，并重新打开终端 |
+| 找不到 `node` 或 `npm.cmd` | 安装符合要求的 Node.js，并重新打开终端 |
+| 提示依赖或前端构建未准备好 | 完成上面的首次安装命令，确认 `npm.cmd run build` 成功 |
+| 端口被占用 | 停止原实例，或指定不同的 `-ApiPort` 和 `-WebPort`，访问新的网页端口 |
+| 浏览器显示拒绝连接 | 确认启动终端仍在运行；若脚本退出，检查该终端错误信息后重新启动 |
 
-Use `-DataDirectory D:/EvidenceOpsData -ApiPort 8014 -WebPort 3013` to change the launcher settings. This is a source-based installation, not a packaged installer. See [local installation and storage](CUSTOMER_INSTALLATION.md) for migration and backup details.
+可用 `-DataDirectory D:/EvidenceOpsData -ApiPort 8014 -WebPort 3013` 调整启动参数。当前采用源码安装，没有打包安装程序。迁移与备份细节见[本机安装与数据存储](CUSTOMER_INSTALLATION.md)。
 
-### Run the development API separately
+### 单独启动开发 API
 
-The development API retains explicit memory/PostgreSQL modes and does not expose installation storage management. Runtime dependencies are pinned in `requirements.txt`; test dependencies are in `requirements-dev.txt`.
+开发入口保留显式 memory/PostgreSQL 模式，不提供安装存储管理。`requirements.txt` 固定后端运行依赖，`requirements-dev.txt` 包含测试依赖。
 
 ```powershell
 .venv/Scripts/python.exe -m pip install -r requirements-dev.txt
@@ -118,13 +122,13 @@ $env:EVIDENCEOPS_PERSISTENCE='memory'
 .\.venv\Scripts\python.exe -m uvicorn evidenceops.api.agent_app:app --host 127.0.0.1 --port 8000
 ```
 
-Open [API documentation](http://127.0.0.1:8000/docs). This mode needs no database or model credentials; persisted history and replay are unavailable.
+打开 [API 文档](http://127.0.0.1:8000/docs)。此模式无需数据库或模型凭据；持久化历史与重放不可用。
 
-For separate frontend development, run `npm ci` in `frontend`, set `EVIDENCEOPS_API_URL` to this API in the frontend shell, then run `npm run dev`. The default web port is `3000`. Use the installed API when developing storage management. The proxy target is server-side configuration, never a browser-supplied URL.
+前端单独开发时，在 `frontend` 执行 `npm ci`，在前端终端将 `EVIDENCEOPS_API_URL` 指向该 API，再执行 `npm run dev`，默认网页端口为 3000。开发存储管理页面需连接安装版 API。代理目标属于服务端配置，不允许浏览器指定任意目标地址。
 
-### Enable PostgreSQL for the development API
+### 为开发 API 启用 PostgreSQL
 
-Stop the API before changing modes. Create a local, untracked `.env` containing `POSTGRES_PASSWORD=<your-local-password>`. Compose reads that file; Python reads environment variables.
+切换配置前停止 API。在本地未跟踪的 `.env` 设置 `POSTGRES_PASSWORD=<你的本地密码>`。Compose 读取该文件，Python 读取环境变量。
 
 ```powershell
 $env:POSTGRES_PASSWORD=((Get-Content .env | Where-Object { $_ -match '^POSTGRES_PASSWORD=' } | Select-Object -First 1) -replace '^POSTGRES_PASSWORD=','')
@@ -135,69 +139,67 @@ $env:EVIDENCEOPS_PERSISTENCE='postgres'
 .\.venv\Scripts\python.exe -m uvicorn evidenceops.api.agent_app:app --host 127.0.0.1 --port 8000
 ```
 
-Wait for PostgreSQL to become healthy before migrating. The host connects to `127.0.0.1:5433`; the container listens on `5432`. The named volume retains database files across container replacement. Deleting it deletes the data. Changing the initialization password later does not change the existing database role password. The development API requires explicit migration; the installed application manages SQLite migrations and offers confirmed PostgreSQL initialization/upgrades in its storage page.
+等待 PostgreSQL healthy 后迁移。宿主机连接 `127.0.0.1:5433`，容器内监听 `5432`。命名卷在容器替换后保留数据库文件，删除卷会删除数据。初始化后修改密码变量不会更改已有数据库角色密码。开发 API 需显式迁移；安装版自动管理 SQLite 迁移，并在存储页面提供需确认的 PostgreSQL 初始化和升级。
 
-### Configure a real model
+### 配置真实模型
 
-In the web console, use **Settings → Model connections** to save and validate a user connection, then select it near the diagnosis input. Alternatively, set these variables in the API shell and restart to provide a read-only system connection:
+网页中通过**设置 → 模型连接**保存并验证用户连接，再在诊断输入区附近选择。也可在 API 终端配置以下变量并重启，提供只读系统连接：
 
 ```powershell
 $env:EVIDENCEOPS_PROVIDER='openai-compatible'
 $env:EVIDENCEOPS_MODEL_BASE_URL='https://your-provider.example/compatible-mode/v1'
 $env:EVIDENCEOPS_MODEL_NAME='your-tool-capable-model'
-$model_secret=Read-Host 'Model API key' -AsSecureString
+$model_secret=Read-Host '模型 API Key' -AsSecureString
 $env:EVIDENCEOPS_MODEL_API_KEY=[System.Net.NetworkCredential]::new('', $model_secret).Password
 Remove-Variable model_secret
 $env:EVIDENCEOPS_MODEL_TIMEOUT_SECONDS='120'
 $env:EVIDENCEOPS_RUN_TIMEOUT_SECONDS='180'
 ```
 
-Replace the URL/model with provider configuration. The adapter uses Chat Completions tool calls and JSON-object output; compatibility naming alone does not guarantee support. Real requests incur provider charges.
+替换为供应商实际地址和模型。适配器使用 Chat Completions 工具调用与 JSON-object 输出；仅声明接口兼容不代表完整支持协议。真实请求产生供应商费用。
 
-## Architecture
+## 系统架构
 
 ```mermaid
 flowchart TD
-    Browser["Web console: Next.js / React"] --> Proxy["Same-origin API proxy / AI SDK SSE adapter"]
-    Proxy --> Install["Installation and storage management"]
-    Install --> API["FastAPI diagnosis API"]
-    Client["HTTP / SSE client"] --> API
+    Browser["网页控制台：Next.js / React"] --> Proxy["同源 API 代理 / AI SDK SSE 适配"]
+    Proxy --> Install["安装与存储管理"]
+    Install --> API["FastAPI 诊断 API"]
+    Client["HTTP / SSE 客户端"] --> API
     API --> Service["Diagnosis Service"]
     Service --> Loop["Agent Loop"]
     Loop --> Context["Context Assembler / Token Ledger"]
     Context --> Gateway["LLM Gateway"]
-    Gateway --> Provider["Mock / OpenAI-compatible provider"]
+    Gateway --> Provider["Mock / OpenAI-compatible 模型"]
     Loop --> Runtime["Tool Runtime"]
-    Runtime --> Samples["Sample log / metric / config connectors"]
-    Runtime --> Parsed["Allowlisted log tool"]
-    Parsed --> Adapter["Python adapter: resource bounds and JSON validation"]
-    Adapter --> CLI["C++20 log parser CLI"]
-    CLI --> Files["Server-registered local log files"]
-    Runtime --> Knowledge["Knowledge retrieval tool"]
-    Knowledge --> Corpus["Relational database: published knowledge and vectors"]
+    Runtime --> Samples["样例日志 / 指标 / 配置 Connector"]
+    Runtime --> Parsed["白名单日志工具"]
+    Parsed --> Adapter["Python Adapter：资源限制与 JSON 校验"]
+    Adapter --> CLI["C++20 日志解析 CLI"]
+    CLI --> Files["服务端登记的本机日志文件"]
+    Runtime --> Knowledge["知识检索工具"]
+    Knowledge --> Corpus["关系数据库：已发布知识与向量"]
     Samples --> Evidence["Evidence Collector"]
-    Adapter --> Evidence
-    Knowledge --> Evidence
     Evidence --> Loop
-    Loop --> Report["Structured draft / reference validation / report"]
+    Loop --> Report["结构化草稿 / 引用校验 / 报告"]
     Report --> Service
-    Service --> Store["SQLite / PostgreSQL: Runs, Evidence, reports, execution records, events, model snapshots"]
-    API --> History["History and event replay"]
+    Service --> Store["SQLite / PostgreSQL：Run、证据、报告、执行记录、事件、模型快照"]
+    API --> History["历史查询与事件重放"]
     History --> Store
-    Proxy --> Connections["Model connection management / encrypted credentials"]
+    Proxy --> Connections["模型连接管理 / 加密凭据"]
     Connections --> Provider
-    Eval["Offline evaluation / CLI review"] --> Service
+    Eval["离线评测 / CLI 审核"] --> Service
 ```
 
-The model proposes tool calls; Tool Runtime only executes registered capabilities after argument validation. Log files pass through the C++ CLI and Python boundary checks before becoming Evidence; knowledge fragments remain separately identified as troubleshooting references. The application layer owns Run lifecycle, context budgets, cancellation, and report construction. Infrastructure supplies database and model adapters.
+模型提出工具调用，Tool Runtime 只执行服务端已注册且通过参数校验的能力。日志文件经过 C++ CLI 解析及 Python 边界校验后才成为 Evidence；知识片段作为排障参考单独标识。应用层负责 Run 生命周期、上下文预算、取消和报告构建，基础设施层提供数据库及模型适配器。
 
-### Log evidence pipeline
+### 日志证据链路
 
-`query_parsed_logs` accepts only a `source_id` from a server-side manifest; the model cannot supply a file path. The C++20 parser covers glog, ZooKeeper, muduo, and plain-text patterns found in the project's RPC samples. Unmatched or malformed lines are retained as `unknown` events with warnings. Muduo UTC timestamps are parsed; formats without an explicit timezone remain unknown rather than receiving a guessed timezone. Format recognition is deliberately bounded and does not imply support for arbitrary languages, frameworks, or log platforms.
+`query_parsed_logs` 只接受服务端清单中登记的 `source_id`，不会让模型传入文件路径。当前 C++20 解析器覆盖项目 RPC 样本中出现的 glog、ZooKeeper、muduo 和普通文本规则；不匹配或损坏的行会保留为 `unknown` 并附带警告。只有带 UTC 标记的 muduo 时间会生成确定时间，其他未包含时区的格式不会猜测时区。格式识别范围有限，不代表已支持任意语言、框架或日志平台。
 
-The Python adapter bounds input size, process time, stdout/stderr, event count, and result JSON. It validates the source identity, line ranges, counters, and event formats. Each query rereads a registered file; one call returns at most 20 events under a character budget, and oversized events are skipped rather than truncated. The adapter computes SHA-256 for the complete input snapshot. Log Evidence archives that hash, a versioned parser snapshot, line ranges, parser status, selection cursor, and import observation time; the standalone C++ CLI reports its hash as not computed. Continuation occurs in a later call; compare the input hash before combining results so file changes are not mistaken for one snapshot.
+Python Adapter 对输入大小、进程时间、stdout/stderr、事件数量和结果 JSON 做边界检查，并验证来源、行范围、统计字段和事件格式。每次查询重新读取登记文件；单次返回最多 20 条事件，选择结果有字符预算，过大事件会跳过而不会截断。Adapter 为完整输入快照计算 SHA-256，日志 Evidence 保存该哈希、版本化解析快照、行范围、解析状态、选择游标和导入观测时间；单独运行 C++ CLI 时哈希字段为未计算。续读发生在后续调用；调用方应比较输入哈希，避免把文件变化前后的结果误认为同一快照。
 
-Enable the log tool by setting both `EVIDENCEOPS_LOG_SOURCES_FILE` and `EVIDENCEOPS_LOG_PARSER_BINARY`. The manifest is a server-managed JSON file, for example:
+启用日志工具需要同时设置 `EVIDENCEOPS_LOG_SOURCES_FILE` 和 `EVIDENCEOPS_LOG_PARSER_BINARY`。清单为服务端维护的 JSON 文件，例如：
 
 ```json
 [
@@ -206,99 +208,99 @@ Enable the log tool by setting both `EVIDENCEOPS_LOG_SOURCES_FILE` and `EVIDENCE
 ]
 ```
 
-Manifest paths are controlled by the operator; roles are `server`, `client`, or `unknown`. Text imported into the diagnosis input does not register a source. There is no customer-facing log upload, path-management UI, log-retention platform, or general parser marketplace.
+清单路径由部署者控制，来源角色为 `server`、`client` 或 `unknown`。导入到诊断输入框的文本不会注册来源；当前没有面向客户的日志上传、路径配置界面、日志保留平台或通用解析器市场。
 
-### Context window and token budgets
+### 上下文窗口与 Token 预算
 
-Before each model request, the Agent Loop estimates the full current message history, tool definitions, and response format, then reserves output capacity and a safety margin. Defaults are a `32768`-token context window, `2048` output tokens per call, a `256`-token safety margin, and a `16384`-token cumulative budget per Run. Model connections can store limits per model, and each Run retains the configuration snapshot.
+每次模型请求前，Agent Loop 都会对当前完整消息历史、工具定义和响应格式进行估算，并为输出上限和安全余量预留空间。默认配置为上下文窗口 `32768`、单次输出 `2048`、安全余量 `256`、单次 Run 累计预算 `16384` Token。模型连接可以按模型单独保存这些限制；每次运行会保存配置快照。
 
-`heuristic-json-v1` estimates from serialized text length. It is not a provider tokenizer and does not guarantee exact capacity. When the provider reports usage, input, output, and total token counts are recorded; missing or invalid usage remains explicitly marked. If a request exceeds its context budget or the Run budget, it fails before being sent to the model; history is not silently truncated or discarded. **Automatic summarization, priority-based evidence pruning, chunk compression, and provider tokenizer adapters are not implemented.** The frontend timeline displays per-call estimates, output reservations, and provider usage when available. SSE streams execution events, not generated model tokens.
+当前 `heuristic-json-v1` 是按序列化文本长度估算的启发式方法，不是供应商 tokenizer，也不构成精确容量保证。供应商返回用量时，系统记录输入、输出和总 Token；缺失或无效时会保留对应计量状态。超出单请求上下文或 Run 累计预算时，请求在发往模型前失败，不会静默截断或丢弃历史。**自动摘要、按证据优先级裁剪、分块压缩和供应商 tokenizer 适配尚未实现。**前端时间线展示每轮估算值、输出预留值及可用的供应商用量；SSE 传输执行事件，不流式输出模型 Token。
 
-### Knowledge components
+### 知识组件
 
-The knowledge layer prepares reference material separately from incident observations. A logical document has content-addressed versions; each version can have multiple chunk sets bound to a splitting algorithm and configuration. Chunks retain original text ranges, heading paths and content hashes. Local loading requires an explicit knowledge purpose and accepts UTF-8 Markdown/TXT within a configured directory and byte limit.
+知识层将参考资料与故障观测分开处理。逻辑文档拥有按内容生成身份的版本；同一版本可以有多套绑定切分算法和配置的片段集合。片段保留原文范围、标题路径和内容哈希。本地加载必须明确指定知识用途，只读取配置目录和字节限制内的 UTF-8 Markdown/TXT。
 
-The SQLAlchemy repository stores documents, immutable versions, chunk sets, encoding configurations and vectors. A default publication pointer selects a ready EmbeddingSet per document. Exact cosine search filters candidates before scoring and rejects incompatible encoders. Keyword retrieval and retrieval metrics provide a deterministic baseline. Ingestion, build and publication use the internal CLI; there are no knowledge administration HTTP endpoints or console controls.
+SQLAlchemy 仓储保存文档、不可变版本、切分集合、编码配置和向量。每份文档通过默认发布指针选择 ready 状态的 EmbeddingSet；精确 cosine 检索先过滤候选再评分，并拒绝不兼容编码器。关键词检索和检索指标提供确定性基线。摄取、构建、发布通过内部 CLI 操作，没有知识管理 HTTP 接口或工作台操作入口。
 
-The independent OpenAI-compatible Embedding adapter supports real encoding. Enable `search_knowledge` explicitly with SQLAlchemy persistence; it searches an operator-configured allowlist of up to 16 documents using compatible encoding configurations, one query encoding and a shared candidate budget. Results are ranked globally. Each returned fragment receives an Evidence ID before the next model request. The exact visible text, content hash, source version, chunk identity, score and encoding-set identity are archived and returned by diagnosis/history responses, including failed runs. Empty search results create no Evidence; retrieval failures retain the existing fail-run policy. The default mock scenario does not invoke this tool automatically.
+独立的 OpenAI 兼容 Embedding 适配器支持真实编码。显式启用 `search_knowledge` 后，Agent 可检索服务端配置的至多 16 份文档白名单，要求编码配置兼容，只编码一次查询，共享候选预算并统一排序；每个片段在下一轮模型请求前绑定独立 Evidence ID。本次可见正文、哈希、来源版本、片段身份、分数和编码集合身份一起归档，并进入诊断及历史响应，失败 Run 同样保留。零命中不生成 Evidence；检索故障沿用终止诊断的工具失败策略。默认 Mock 场景不会自动调用知识工具。
 
-Configuration: set `EVIDENCEOPS_KNOWLEDGE_ENABLED=true`, `EVIDENCEOPS_KNOWLEDGE_DOCUMENT_IDS` (comma-separated IDs; the singular `EVIDENCEOPS_KNOWLEDGE_DOCUMENT_ID` remains supported), `EMBEDDING_PROVIDER`, `EMBEDDING_ENDPOINT` (full HTTPS `/embeddings` URL), `EMBEDDING_MODEL`, `EMBEDDING_DIMENSIONS` and `EMBEDDING_API_KEY` (or `DASHSCOPE_API_KEY`). Optional revision and document/query prefixes must match the published encoding configuration. Apply `alembic upgrade head` before enabling the tool. Diagnostic model credentials remain separate. `scripts/verify_knowledge_agent.py` verifies real Embedding, PostgreSQL, citations and failure retention with a deterministic generation provider.
+配置项：`EVIDENCEOPS_KNOWLEDGE_ENABLED=true`、`EVIDENCEOPS_KNOWLEDGE_DOCUMENT_IDS`（逗号分隔，兼容旧单数配置 `EVIDENCEOPS_KNOWLEDGE_DOCUMENT_ID`）、`EMBEDDING_PROVIDER`、`EMBEDDING_ENDPOINT`（完整 HTTPS `/embeddings` 地址）、`EMBEDDING_MODEL`、`EMBEDDING_DIMENSIONS`、`EMBEDDING_API_KEY`（或 `DASHSCOPE_API_KEY`）。可选模型修订和文档/查询前缀必须与已发布编码配置一致。启用前执行 `alembic upgrade head`；诊断模型凭据独立配置。`scripts/verify_knowledge_agent.py` 使用真实 Embedding、PostgreSQL 和确定性生成替身验证引用及失败保留。
 
-The practice corpus in `samples/knowledge/manifest.json` covers RPC timeouts, Python imports, PostgreSQL connections, SQLAlchemy pools, Java heap failures, Go races and Rust panics. These original summaries reference official documentation; they are learning material, not incident observations or a comprehensive language support guarantee. With database and Embedding settings configured, run:
+练习语料清单位于 `samples/knowledge/manifest.json`，覆盖 RPC 超时、Python 导入、PostgreSQL 连接、SQLAlchemy 连接池、Java 堆内存、Go 数据竞争和 Rust panic。资料为引用官方文档的原创摘要，不能视为现场观测或完整的多语言支持承诺。配置数据库与 Embedding 后执行：
 
 ```powershell
 python -m evidenceops.application.knowledge_corpus_cli prepare samples/knowledge/manifest.json --publish
 python -m evidenceops.application.knowledge_corpus_cli evaluate samples/knowledge/manifest.json
 ```
 
-Publication is atomic per document, not across the corpus. Repeating an unchanged published build reuses its encoding set. The document-level baseline is complemented by fragment-labeled cosine, BM25 and Reciprocal Rank Fusion (RRF) comparisons. `EVIDENCEOPS_KNOWLEDGE_RETRIEVAL` can opt into `bm25` or `hybrid_bm25`; cosine remains the default. The BM25 implementation uses the repository's tokenizer and `k1=1.2`, `b=0.75`. Hybrid BM25-RRF fuses ranks rather than adding incomparable raw scores. RRF scores are not cosine similarities; branch scores and ranks are archived as retrieval metadata. Without a similarity threshold, unrelated queries can still return Top-K fragments.
+发布以单份文档为原子单位，不是整库原子切换；重复构建未变化且已发布的资料会复用编码集合。检索支持精确 cosine、旧关键词、BM25、关键词-RRF 和 BM25-RRF。通过 `EVIDENCEOPS_KNOWLEDGE_RETRIEVAL=bm25` 或 `hybrid_bm25` 可选择 BM25 实验模式，默认仍为 cosine；BM25 使用固定英文词/中文单字分词及 `k1=1.2,b=0.75`，旧 `hybrid` 模式继续保留。各路共享发布候选与编码配置；BM25 与 RRF 分数不是余弦相似度，分路排名和参数随检索元数据归档。
 
-### Retrieval evaluation
+#### 当前检索对照结论
 
-The internal snapshot covers seven manuals and 37 fragments: 17 development cases (15 positive) and eight developer-authored holdout cases (seven positive). Metrics measure Top-3 retrieval against fragment labels, not report correctness. The holdout set is not a third-party blind test, and its complete cases/results are not all tracked in Git; these numbers are project progress evidence, not a fully reproducible public benchmark.
+内部检索对照快照使用 7 份手册、37 个片段；开发题 17 道（15 道正例），另有 8 道内部留出题（7 道正例）。指标只衡量标注相关片段的 Top-3 检索，不衡量真实报告正确率。留出题由项目开发者编写，不是第三方盲测；留出题集和结果报告当前不都在 Git 跟踪中，因此这些数字是项目进度证据，不是克隆仓库即可完整复现的公开基准。
 
-| Set | Method | Recall@3 | Required-fragment hits |
+| 题集 | 方法 | Recall@3 | 必需片段命中 |
 | --- | --- | ---: | ---: |
-| Development | cosine | 72.22% | 13/15 |
-| Development | BM25 | 71.11% | 14/15 |
-| Development | BM25-RRF | 74.44% | 14/15 |
-| Holdout | cosine | 85.71% | 7/7 |
-| Holdout | BM25 | 78.57% | 6/7 |
-| Holdout | BM25-RRF | 78.57% | 6/7 |
+| 开发 | cosine | 72.22% | 13/15 |
+| 开发 | BM25 | 71.11% | 14/15 |
+| 开发 | BM25-RRF | 74.44% | 14/15 |
+| 留出 | cosine | 85.71% | 7/7 |
+| 留出 | BM25 | 78.57% | 6/7 |
+| 留出 | BM25-RRF | 78.57% | 6/7 |
 
-Keep cosine as the default and expose BM25/RRF as explicit comparison methods. No method wins consistently on this small corpus. All three no-applicable-material cases returned candidates under the tested methods, so non-empty retrieval does not establish answerability. Retrieval ranking and semantic support in generated reports require separate evaluation.
+结论是保留 cosine 默认，将 BM25 与 RRF 作为可显式选择的对照方法；小样本下没有一种方案稳定全面胜出。三道无适用资料题在五种方法下均返回候选，因此非空结果不代表可回答，也不具备自动无答案识别能力。检索引用和报告语义支持仍须分层验收。
 
-When available material does not support a diagnosis, the model may return the explicit `insufficient_evidence` outcome. This is stored as `failed / EVIDENCE_INSUFFICIENT`, with `report=null`, retained observations and `error_detail` containing the reason and `missing_information`. Diagnosis, terminal SSE and history responses expose that explanation. A malformed outcome remains `MODEL_PROTOCOL_ERROR`; normal reports still require valid evidence references. Reference validity does not establish semantic support.
+资料不足以支持诊断时，模型可返回独立的 `insufficient_evidence` 结果。系统将其保存为 `failed / EVIDENCE_INSUFFICIENT`，`report=null`，保留已有观测，并通过 `error_detail` 返回不足原因及 `missing_information`。诊断响应、终止 SSE 和历史查询均可读取说明。格式错误仍为 `MODEL_PROTOCOL_ERROR`；正常报告仍须引用有效证据，引用存在不等于语义支持成立。
 
-Search is bounded to five fragments and 16,000 characters per call. Without a similarity threshold, unrelated queries can still return Top-K; empty-result handling is not an automatic no-answer classifier. Reference text is untrusted data and cannot establish incident causality. Citation existence checks and prompt boundaries do not guarantee semantic correctness or prevent all prompt injection. pgvector/ANN indexes, reranking, MMR, and parent-child retrieval are not implemented. Runtime cancellation stops waiting and rejects late results; a running synchronous Embedding HTTP request is not forcibly terminated.
+每次检索最多五个片段、总正文最多 16,000 字符。默认不设相似度阈值，无关问题仍可能返回 Top-K；空结果处理不等于自动识别无答案。资料属于不可信数据，不能证明本次故障因果；引用存在性检查和提示约束不保证语义正确，也不能完全防止提示注入。pgvector/近似索引、重排、父子片段检索及 MMR 尚未实现。取消会停止等待并拒绝晚到结果，已经运行的同步 Embedding HTTP 请求不会被强制终止。
 
-| Directory | Responsibility |
+| 目录 | 职责 |
 | --- | --- |
-| `src/evidenceops/domain/` | Run lifecycle, Evidence and report invariants |
-| `src/evidenceops/application/` | Orchestration, contracts, collection, history, reconciliation |
-| `src/evidenceops/infrastructure/` | SQLAlchemy repositories and model providers |
-| `src/evidenceops/connectors/` | Local read-only data sources |
-| `src/evidenceops/api/` | HTTP endpoints and SSE transport |
-| `src/evidenceops/evaluation/` | Offline checks and review CLI |
-| `frontend/src/components/` | Diagnosis, history, evaluation, model connections and storage pages |
-| `frontend/src/lib/`, `frontend/src/app/api/` | Typed contracts, Run state, SSE parsing and controlled same-origin proxy |
-| `scripts/` | Local service launcher |
-| `alembic/`, `tests/`, `samples/` | Migrations, regression tests, reproducible fixtures |
+| `src/evidenceops/domain/` | Run 生命周期、Evidence 与报告约束 |
+| `src/evidenceops/application/` | 编排、接口契约、收集、历史查询与启动收尾 |
+| `src/evidenceops/infrastructure/` | SQLAlchemy 仓储和模型供应商 |
+| `src/evidenceops/connectors/` | 本地只读数据源 |
+| `src/evidenceops/api/` | HTTP 接口与 SSE 传输 |
+| `src/evidenceops/evaluation/` | 离线检查与审核 CLI |
+| `frontend/src/components/` | 诊断、历史、评测、模型连接与存储页面 |
+| `frontend/src/lib/`、`frontend/src/app/api/` | 类型契约、Run 状态、SSE 解析与受控同源代理 |
+| `scripts/` | 本机服务启动入口 |
+| `alembic/`、`tests/`、`samples/` | 迁移、回归测试与可复现样本 |
 
-## Web console
+## 网页控制台
 
-The frontend uses Next.js 16 App Router, React 19, TypeScript, AI SDK 6, assistant-ui, Radix Dialog and Tailwind CSS 4. Its five pages use a graphite sidebar, neutral workspace, compact forms and status colors tied to actual outcomes.
+前端采用 Next.js 16 App Router、React 19、TypeScript、AI SDK 6、assistant-ui、Radix Dialog 与 Tailwind CSS 4。五个页面使用石墨色侧栏、中性工作区、紧凑表单，以及对应真实结果的状态色。
 
-| Page | Responsibilities |
+| 页面 | 职责 |
 | --- | --- |
-| Diagnosis workspace | Text input/local text import, per-Run model selection, streaming timeline, cancellation, report and clickable evidence references |
-| Run history | Server-side search, status filtering, pagination, Run ID lookup and URL-based reload |
-| Evaluation results | Read-only local import of schema-version-1 JSON, validated statistics, rule checks and human-review status |
-| Model connections | Add/edit/delete, credential replacement, model catalogs, explicit validation and independent global defaults |
-| Data and storage | First-run setup, actual storage state, database checks, maintenance progress, backups and restore |
+| 诊断工作台 | 文本输入与本地文本导入、本次模型选择、实时执行时间线、取消、报告与可点击证据引用 |
+| 运行历史 | 服务端搜索、状态筛选、分页、Run ID 查询及地址刷新回查 |
+| 评测结果 | 本地只读导入 schema_version=1 的 JSON，校验统计并查看规则和人工审核状态 |
+| 模型连接 | 添加、编辑、删除、替换凭据、获取目录、显式验证及独立全局默认 |
+| 数据与存储 | 首次设置、实际存储状态、数据库检查、维护进度、备份与恢复 |
 
-The browser sends provider traffic through the controlled backend. Credentials are submitted only when creating or replacing them; reads do not return API keys. Keys do not enter browser persistent storage, URLs or logs. Model catalogs, recommendations and manually entered IDs do not imply account access or Agent readiness. Validation separately checks authentication, model calls, tool/result correlation and structured reports, and may incur provider charges.
+模型供应商请求由受控后端执行。凭据只在创建或替换时提交，读取接口不返回 API Key；密钥不进入浏览器持久存储、URL 或日志。接口目录、推荐项和手填模型均不代表账号有权限或满足 Agent 要求。验证分别检查认证、模型调用、工具结果关联及结构化报告，可能产生少量供应商费用。
 
-Per-Run selection does not change the global default. Each Run records its connection name, provider, requested/actual model and configuration version; later connection edits or deletion do not rewrite history. Older Runs without model information display “Not recorded.” Embedding and Rerank are separate concerns; selecting a diagnosis model does not reconfigure them or rebuild an index.
+工作台临时选择不改变全局默认。每个 Run 保存连接名称、供应商、请求/实际模型及配置版本；后续修改或删除连接不改写历史。旧 Run 缺少模型信息时显示“未记录”。Embedding 与 Rerank 按用途独立管理，切换诊断模型不会重配这些能力或重建索引。
 
-`POST /api/diagnosis` adapts AI SDK messages to one backend diagnosis. Once a Run ID is known, interrupted observation retries GET with bounded backoff, without repeating creation. Events are deduplicated by Run ID and sequence; gaps and cross-Run data are rejected. Transport failure and business failure are separate states. Closing an observation connection does not cancel the backend Run; cancellation requires an explicit request.
+`POST /api/diagnosis` 将 AI SDK 消息适配为一次后端诊断。取得 Run ID 后，断线按有界退避恢复 GET 观察，不重复创建。事件按 Run ID 与序号去重，拒绝缺口和跨 Run 数据。传输失败与业务失败分别表达；关闭观察连接不取消后台诊断，取消需要显式请求。
 
-Evidence views expose the saved summary, location, time, version and hash, not original log files. Offline evaluation imports stay in the browser and do not start online evaluation. See the [model connection API contract](frontend/MODEL_CONNECTIONS_CONTRACT.md).
+证据视图展示已归档的摘要、位置、时间、版本与哈希，不提供原始日志全文。离线评测文件只在浏览器读取，不启动在线评测。接口细节见[模型连接接口契约](frontend/MODEL_CONNECTIONS_CONTRACT.md)。
 
-The UI, proxy and backend validate input structure: blank, punctuation-only, symbol-only and over-100000-character descriptions are rejected; short error codes and multilingual logs are accepted. Character checks cannot establish meaningful fault context. Mock uses fixed tool calls and reports without interpreting input. Reports use the Run snapshot to display a Mock demo label and sample confidence. Mock can still run from the workbench; a separate demo entry point is not implemented.
+故障输入由页面、代理及后端进行结构校验：拒绝空白、纯标点、纯符号及超过 100000 字符的描述，允许短错误码和多语言日志。字符校验不能判断语义是否充分。Mock 使用固定工具调用与报告，不理解输入；报告按运行快照显示“Mock 演示报告”和“样例置信度”。目前 Mock 仍可从工作台发起，尚未分离独立演示入口。
 
-### Frontend development and file responsibilities
+### 前端开发与文件职责
 
-| Directory | Responsibility |
+| 目录 | 职责 |
 | --- | --- |
-| `frontend/src/components/` | Workbench, history, evaluation, connections and storage pages |
-| `frontend/src/lib/` | Contracts, event parsing, Run state, evidence numbering and API clients |
-| `frontend/src/app/api/diagnosis/` | AI SDK message and backend SSE adaptation |
-| `frontend/src/app/api/backend/` | Fixed target, route allowlist and management-token forwarding |
-| `frontend/src/app/globals.css` | Styles, states, focus and responsive layouts |
-| `frontend/tests/` | Unit tests, isolated backend and Playwright CLI scenarios |
+| `frontend/src/components/` | 工作台、历史、评测、模型连接和存储页面 |
+| `frontend/src/lib/` | 类型契约、事件解析、运行状态、证据编号和接口请求 |
+| `frontend/src/app/api/diagnosis/` | AI SDK 消息与后端 SSE 的适配 |
+| `frontend/src/app/api/backend/` | 固定目标、路由白名单和维护令牌转发 |
+| `frontend/src/app/globals.css` | 样式、状态、焦点和响应式布局 |
+| `frontend/tests/` | 单元测试、隔离后端与 Playwright CLI 场景 |
 
-For frontend-only development, start FastAPI as described above, then run in another terminal:
+单独开发前端时，先按上文启动 FastAPI，再在另一个终端运行：
 
 ```powershell
 cd frontend
@@ -307,87 +309,84 @@ $env:EVIDENCEOPS_API_URL='http://127.0.0.1:8000'
 npm.cmd run dev
 ```
 
-The development web port defaults to 3000; `npm.cmd run start -- --port 3013` specifies a production port. When starting installed services separately, both must share `EVIDENCEOPS_DATA_DIR`; the Next.js server reads the management token from it. Prefer the root launcher for the complete application to keep configuration consistent.
+开发网页默认端口为 3000；`npm.cmd run start -- --port 3013` 可指定生产端口。单独启动安装版前后端时，两端必须使用同一 `EVIDENCEOPS_DATA_DIR`，Next.js 服务端从中读取管理令牌。完整应用优先使用根目录启动脚本，避免配置不一致。
 
-## Data and storage
+## 数据与存储
 
-Installed mode separates application files from persistent data. Windows defaults to `%LOCALAPPDATA%/EvidenceOps`; other platforms use `$XDG_DATA_HOME/evidenceops` or `~/.local/share/evidenceops`. The directory is resolved on the running host and may be overridden with `EVIDENCEOPS_DATA_DIR`.
+安装版将程序文件与持久数据分离。Windows 默认目录为 `%LOCALAPPDATA%/EvidenceOps`，其他平台使用 `$XDG_DATA_HOME/evidenceops` 或 `~/.local/share/evidenceops`。目录在实际运行主机上解析，可通过 `EVIDENCEOPS_DATA_DIR` 覆盖。
 
-Runs, reports, evidence summaries, execution records, events and model snapshots are stored in the selected diagnosis database. Model connections use a separate encrypted configuration store. SQLite starts without an external database. PostgreSQL requires an administrator-provided dedicated database and account; the application does not install a database server or provision roles.
+Run、报告、证据摘要、执行记录、事件和模型快照保存到所选诊断数据库；模型连接使用独立加密配置库。SQLite 无需外部数据库服务。PostgreSQL 使用管理员准备的专用数据库和账号，程序不安装数据库服务器或创建数据库角色。
 
-Storage maintenance waits for active diagnoses and model validations while rejecting new diagnoses. Switching backs up the source, imports into an empty target and verifies contents before publishing configuration. Database failures keep the management interface available and pause diagnosis; they do not silently fall back to memory.
+存储维护等待已有诊断和模型验证结束，同时拒绝新诊断。切换前备份，向空目标导入并校验后发布新配置。数据库故障时管理页面仍可访问，诊断暂停，不自动降级到内存模式。
 
-Logical backups can be created, downloaded, imported and restored, up to 100 MB. Restore requires explicit confirmation and preserves Run identities and references. SQLite restore uses a new file; PostgreSQL restore requires an empty target. API keys are excluded by default. Portable credentials require a separate passphrase of at least 12 characters and are reprotected by the destination account; restored connections require validation. Windows DPAPI-protected key files alone are not portable to another user.
+安装入口从迁移链读取当前结构版本，拒绝未知或多头版本；知识能力按实际工具注册及存储就绪状态声明。逻辑备份保存知识版本、片段、编码集合、向量、发布指针和Run正文快照，按原版本验证后转换旧档案，不伪造缺失正文。
 
-The installation entry point resolves the current schema from the migration chain and rejects unknown or multiple-head database revisions. Knowledge capability reflects actual tool registration and storage readiness. Backups include knowledge versions, chunks, encoding sets, vectors, publication pointers and archived Run text snapshots. Legacy archives are validated against their declared shape before conversion; missing historical text is not invented.
+逻辑备份支持创建、下载、导入和恢复，上限 100 MB。恢复需明确确认，并保留 Run 身份与引用关系；SQLite 使用新文件，PostgreSQL 要求目标为空。默认不包含 API Key；携带可迁移凭据需至少 12 字符的独立口令，由目标账号重新保护，恢复后的模型连接需要验证。仅复制 Windows DPAPI 密钥文件不能保证另一用户可以解密。
 
-## Configuration
+## 配置
 
-| Variable | Default | Purpose |
+| 环境变量 | 默认值 | 用途 |
 | --- | --- | --- |
-| `EVIDENCEOPS_PROVIDER` | `mock` | `mock` or `openai-compatible` |
-| `EVIDENCEOPS_PERSISTENCE` | Development: `memory`; fresh installation: SQLite | Development `memory`/`postgres`; installed mode manages the selected storage |
-| `EVIDENCEOPS_API_URL` | `http://127.0.0.1:8000` | Next.js server proxy target; the launcher sets its API port |
-| `EVIDENCEOPS_DATA_DIR` | Platform data directory | Installed application data and management token directory |
-| `EVIDENCEOPS_ADMIN_TOKEN_FILE` | `<data directory>/admin.token` | Optional Next.js management-token file override |
-| `EVIDENCEOPS_CONNECTIONS_DIR` | Installed: `<data directory>/model-connections`; development: `output/model-connections` | Encrypted connection store |
-| `EVIDENCEOPS_CONNECTIONS_KEY` | Locally generated/protected key | Optional externally supplied Fernet key |
-| `EVIDENCEOPS_MODEL_ALLOWED_HOSTS` | `maas.qianwenaiapi.com,dashscope.aliyuncs.com` | Allowed provider hosts, including custom services |
-| `EVIDENCEOPS_MODEL_ALLOW_HTTP` | Disabled | Explicit administrator opt-in for HTTP provider endpoints |
-| `EVIDENCEOPS_MODEL_BASE_URL` | — | Provider base URL |
-| `EVIDENCEOPS_MODEL_API_KEY` | — | Provider credential |
-| `EVIDENCEOPS_MODEL_NAME` | — | Provider model |
-| `EVIDENCEOPS_MODEL_TIMEOUT_SECONDS` | `60` | Individual real-model timeout |
-| `EVIDENCEOPS_RUN_TIMEOUT_SECONDS` | `180` | API diagnosis budget |
-| `EVIDENCEOPS_KNOWLEDGE_ENABLED` | Disabled | Explicitly enable knowledge search |
-| `EVIDENCEOPS_KNOWLEDGE_DOCUMENT_IDS` | — | Comma-separated document allowlist |
-| `EVIDENCEOPS_KNOWLEDGE_RETRIEVAL` | `cosine` | `cosine`, `keyword`, `bm25`, `hybrid`, or `hybrid_bm25` |
-| `EVIDENCEOPS_CONTEXT_WINDOW_TOKENS` | `32768` | Context window snapshot/default |
-| `EVIDENCEOPS_MAX_OUTPUT_TOKENS` | `2048` | Per-request output reservation |
-| `EVIDENCEOPS_CONTEXT_SAFETY_MARGIN_TOKENS` | `256` | Input estimate safety margin |
-| `EVIDENCEOPS_MAX_RUN_TOKENS` | `16384` | Cumulative Run token budget |
-| `EVIDENCEOPS_TOKEN_ESTIMATOR_ID` | `heuristic-json-v1` | Token estimate implementation identifier |
-| `EVIDENCEOPS_CONTEXT_LIMITS_SOURCE` | `local_conservative` | Source label for resolved context limits; not provider verification |
-| `EVIDENCEOPS_LOG_SOURCES_FILE` | — | Server-managed allowlist of local log sources |
-| `EVIDENCEOPS_LOG_PARSER_BINARY` | — | Path to the C++20 log parser executable |
-| `POSTGRES_HOST` / `POSTGRES_PORT` | `127.0.0.1` / `5433` | Host database endpoint |
-| `POSTGRES_DB` / `POSTGRES_USER` | `evidenceops` / `evidenceops` | Database and role |
-| `POSTGRES_PASSWORD` | — | Required for PostgreSQL mode |
+| `EVIDENCEOPS_PROVIDER` | `mock` | `mock` 或 `openai-compatible` |
+| `EVIDENCEOPS_PERSISTENCE` | 开发入口 `memory`；全新安装 SQLite | 开发入口 `memory`/`postgres`；安装版管理所选存储 |
+| `EVIDENCEOPS_API_URL` | `http://127.0.0.1:8000` | Next.js 服务端代理目标，启动脚本设置 API 端口 |
+| `EVIDENCEOPS_DATA_DIR` | 平台数据目录 | 安装版数据与管理令牌目录 |
+| `EVIDENCEOPS_ADMIN_TOKEN_FILE` | `<数据目录>/admin.token` | 可选的 Next.js 管理令牌文件覆盖 |
+| `EVIDENCEOPS_CONNECTIONS_DIR` | 安装版 `<数据目录>/model-connections`；开发入口 `output/model-connections` | 加密模型连接库 |
+| `EVIDENCEOPS_CONNECTIONS_KEY` | 本机生成并保护 | 可选的外部 Fernet 密钥 |
+| `EVIDENCEOPS_MODEL_ALLOWED_HOSTS` | `maas.qianwenaiapi.com,dashscope.aliyuncs.com` | 供应商主机白名单，包含自定义服务 |
+| `EVIDENCEOPS_MODEL_ALLOW_HTTP` | 禁用 | 管理员显式允许 HTTP 模型接口 |
+| `EVIDENCEOPS_MODEL_BASE_URL` | — | 模型基础地址 |
+| `EVIDENCEOPS_MODEL_API_KEY` | — | 模型凭据 |
+| `EVIDENCEOPS_MODEL_NAME` | — | 模型名称 |
+| `EVIDENCEOPS_MODEL_TIMEOUT_SECONDS` | `60` | 真实模型单次超时 |
+| `EVIDENCEOPS_RUN_TIMEOUT_SECONDS` | `180` | API 诊断预算 |
+| `EVIDENCEOPS_CONTEXT_WINDOW_TOKENS` | `32768` | 系统连接使用的上下文窗口预算；用户模型连接可单独配置 |
+| `EVIDENCEOPS_MAX_OUTPUT_TOKENS` | `2048` | 单次模型调用输出预留 |
+| `EVIDENCEOPS_CONTEXT_SAFETY_MARGIN_TOKENS` | `256` | 输入估算与输出预留之外的安全余量 |
+| `EVIDENCEOPS_MAX_RUN_TOKENS` | `16384` | 单次诊断的累计 Token 预算 |
+| `EVIDENCEOPS_TOKEN_ESTIMATOR_ID` | `heuristic-json-v1` | Token 估算方法标识 |
+| `EVIDENCEOPS_CONTEXT_LIMITS_SOURCE` | `local_conservative` | 窗口限制的来源标识，不代表供应商已验证 |
+| `EVIDENCEOPS_LOG_SOURCES_FILE` | 未设置 | 服务端登记日志来源清单；设置后还需配置解析器程序 |
+| `EVIDENCEOPS_LOG_PARSER_BINARY` | 未设置 | C++20 `log_evidence_cli` 可执行文件路径 |
+| `POSTGRES_HOST` / `POSTGRES_PORT` | `127.0.0.1` / `5433` | 宿主机数据库地址 |
+| `POSTGRES_DB` / `POSTGRES_USER` | `evidenceops` / `evidenceops` | 数据库及角色 |
+| `POSTGRES_PASSWORD` | — | PostgreSQL 模式必填 |
 
-Restart after changing environment variables. API budgets do not automatically apply to direct assembly or offline Eval callers.
+修改环境变量后重启。直接使用组装器或离线 Eval 不自动启用 API 的预算。
 
 ## HTTP API
 
-| Method | Endpoint | Purpose |
+| 方法 | 接口 | 用途 |
 | --- | --- | --- |
-| POST | `/api/v1/agent/diagnosis` | Create a diagnosis and return its result |
-| POST | `/api/v1/agent/diagnosis/stream` | Create a diagnosis and stream lifecycle events |
-| GET | `/api/v1/agent/runs/{run_id}` | Read persisted status and artifacts |
-| GET | `/api/v1/agent/runs/{run_id}/events` | Read ordered event pages |
-| GET | `/api/v1/agent/runs/{run_id}/events/stream` | Replay and observe an existing Run |
-| POST | `/api/v1/agent/runs/{run_id}/cancel` | Request cancellation |
-| GET | `/api/v1/agent/capabilities` | Query actual service capabilities |
-| GET | `/api/v1/agent/runs` | Search/filter and paginate persisted Runs |
-| GET | `/api/v1/agent/model-services` | Supported service presets |
-| GET / POST | `/api/v1/agent/model-connections` | List or create connections |
-| GET / PATCH / DELETE | `/api/v1/agent/model-connections/{id}` | Read, edit or delete a connection |
-| PUT | `/api/v1/agent/model-connections/default` | Set the global default connection/model |
-| POST | `/api/v1/agent/model-connections/{id}/catalog` | Fetch the model catalog |
-| POST | `/api/v1/agent/model-connections/{id}/validation` | Validate connection/model capabilities |
-| GET | `/api/v1/agent/setup/status`, `/api/v1/agent/storage/status` | Installed setup/storage state |
-| POST | `/api/v1/agent/storage/check` | Check a target database connection |
-| POST / GET | `/api/v1/agent/storage/operations`, `/api/v1/agent/storage/operations/{id}` | Start maintenance/read progress |
-| GET / POST | `/api/v1/agent/storage/backups/{id}`, `/api/v1/agent/storage/backups/import` | Download/import a logical backup |
+| POST | `/api/v1/agent/diagnosis` | 创建诊断，返回结果 |
+| POST | `/api/v1/agent/diagnosis/stream` | 创建诊断，推送过程 |
+| GET | `/api/v1/agent/runs/{run_id}` | 查询持久化状态与档案 |
+| GET | `/api/v1/agent/runs/{run_id}/events` | 分页读取有序事件 |
+| GET | `/api/v1/agent/runs/{run_id}/events/stream` | 补发并观察已有 Run |
+| POST | `/api/v1/agent/runs/{run_id}/cancel` | 请求取消 |
+| GET | `/api/v1/agent/capabilities` | 查询实际服务能力 |
+| GET | `/api/v1/agent/runs` | 搜索、筛选和分页查询归档 Run |
+| GET | `/api/v1/agent/model-services` | 查询支持的服务预设 |
+| GET / POST | `/api/v1/agent/model-connections` | 查询或创建模型连接 |
+| GET / PATCH / DELETE | `/api/v1/agent/model-connections/{id}` | 读取、编辑或删除连接 |
+| PUT | `/api/v1/agent/model-connections/default` | 设置全局默认连接和模型 |
+| POST | `/api/v1/agent/model-connections/{id}/catalog` | 获取模型目录 |
+| POST | `/api/v1/agent/model-connections/{id}/validation` | 验证连接和模型能力 |
+| GET | `/api/v1/agent/setup/status`、`/api/v1/agent/storage/status` | 安装设置与存储状态 |
+| POST | `/api/v1/agent/storage/check` | 检查目标数据库连接 |
+| POST / GET | `/api/v1/agent/storage/operations`、`/api/v1/agent/storage/operations/{id}` | 发起维护、读取进度 |
+| GET / POST | `/api/v1/agent/storage/backups/{id}`、`/api/v1/agent/storage/backups/import` | 下载、导入逻辑备份 |
 
-Send the included request from another shell:
+在另一个终端发送样本：
 
 ```powershell
 curl.exe -N -X POST "http://127.0.0.1:8000/api/v1/agent/diagnosis/stream" -H "Content-Type: application/json" --data-binary "@samples/requests/sse-diagnosis.json"
 ```
 
-Diagnosis requests accept `description` plus optional `connection_id`, `model_id` and `expected_version`. Results include IDs, status, timestamps, error code, Evidence, report, execution records and nullable `model_config`. Synchronous failed diagnoses currently return HTTP 503; history can return HTTP 200 with `status=failed`. HTTP and diagnostic success are separate. Setup/storage routes require the installed entry point; maintenance writes use a server-side management token.
+诊断请求接收 `description`，可选 `connection_id`、`model_id` 和 `expected_version`。结果包含 ID、状态、时间戳、错误码、Evidence、报告、执行记录与可空的 `model_config`。同步诊断失败目前返回 HTTP 503；历史查询可以返回 HTTP 200 和 `status=failed`。HTTP 请求成功与诊断成功是两个维度。设置与存储接口要求安装版入口，维护写入使用服务端管理令牌。
 
-SSE publishes Run, model, and tool lifecycle events, optional cancellation requests, and a terminal `run_completed`, `run_failed`, or `run_cancelled`. It streams execution events, not model tokens.
+SSE 发布 Run、模型和工具生命周期事件、可选取消请求，以及 `run_completed`、`run_failed` 或 `run_cancelled` 终止事件。推送的是执行过程，不是模型逐 Token 输出。
 
 ```powershell
 $run_id=(Read-Host 'Run ID').Trim()
@@ -397,42 +396,42 @@ curl.exe -N "http://127.0.0.1:8000/api/v1/agent/runs/$run_id/events/stream?after
 curl.exe -i -X POST "http://127.0.0.1:8000/api/v1/agent/runs/$run_id/cancel"
 ```
 
-Replay starts strictly after the cursor. Alternatively send `Last-Event-ID: <run_id>:2`; header and query cursors must agree if both supplied. Pages expose `events`, `next_sequence`, `max_sequence`, `has_more`, and `status`, with limits of 1–1000. GET does not create a diagnosis. Clients retain complete event IDs and deduplicate; browser EventSource clients should close on terminal events.
+重放从游标之后开始，也可传 `Last-Event-ID: <run_id>:2`；两种游标同时提供必须一致。分页字段为 `events`、`next_sequence`、`max_sequence`、`has_more` 和 `status`，分页大小为 1～1000。GET 不创建诊断。客户端保存完整事件 ID 并去重；浏览器 EventSource 收到终止事件后应关闭。
 
-Cancellation HTTP 202 acknowledges a request, not a committed terminal state. Repeated requests are idempotent; finalization conflicts return 409. A cancelled Run has `status=cancelled`, `error_code=null`, and no report.
+取消 HTTP 202 表示接纳请求，不代表终态已提交。重复请求幂等，终态认领冲突返回 409。取消后的 Run 为 `status=cancelled`、`error_code=null`，报告为空。
 
-## Reliability and operating limits
+## 可靠性与运行边界
 
-- **Persistence:** business events commit before delivery. Final Run state, artifacts, and terminal event commit atomically. Transport failure does not undo commits; transport-only `stream_failed` has no durable SSE ID.
-- **Replay:** history and new events share a database cursor. Short sessions close before delivery/waiting. Poll interval is 0.5 seconds; heartbeats are 15 seconds.
-- **Capacity:** four POST streaming diagnoses and sixteen GET observation connections per process, with separate admission limits. These are not a global limit for synchronous POST requests.
-- **Execution control:** cooperative checks reject late results. Commits, cleanup, and non-cooperative threads can exceed the budget. Local model cancellation does not guarantee upstream generation/billing stops.
-- **Startup:** PostgreSQL uses a session advisory lock; installed SQLite uses local file locks. Orphaned `pending/running` Runs atomically become `failed / RUN_INTERRUPTED` with a terminal event; repeated startup is idempotent. Agent execution is not resumed.
-- **Crash boundary:** committed artifacts survive. Complete Evidence and execution records are primarily archived at finalization, so events can survive while corresponding artifacts remain absent.
-- **Deployment scope:** local, single tenant, one worker, lifespan enabled. Remote login, multi-user authorization, distributed coordination, automated retention/backups and customer data-source configuration are not implemented. The launcher supervises its child processes; stopping it terminates those processes. Long-running service installation requires a separate supervisor and shutdown policy.
+- **持久化：** 业务事件提交后发送，最终 Run、业务档案和终止事件原子提交。传输失败不撤销提交；仅传输故障的 `stream_failed` 不带持久化 SSE ID。
+- **重放：** 历史与新事件共用数据库游标。短 Session 在发送/等待前关闭，0.5 秒轮询，15 秒心跳。
+- **容量：** 每进程 4 个 POST 流式诊断、16 个 GET 观察连接，分别限流；这不是同步 POST 的全局并发上限。
+- **执行控制：** 协作检查拒绝迟到结果。提交、清理和非协作线程可能超过预算。本地取消模型不保证上游停止生成或计费。
+- **启动收尾：** PostgreSQL 使用会话锁，安装版 SQLite 使用本机文件锁。遗留 `pending/running` 原子改为 `failed / RUN_INTERRUPTED` 并追加终止事件；重复启动幂等，不续跑 Agent。
+- **崩溃边界：** 已提交档案保留。完整 Evidence 和执行记录主要在收尾归档，因此可能事件已保存而对应业务档案仍缺失。
+- **部署范围：** 本机、单租户、单 worker，启用 lifespan。远程登录、多用户权限、分布式协调、自动保留/备份和客户数据源配置未实现。启动脚本监督子进程，停止脚本会终止这些进程；长期服务安装需另行配置进程管理与关停策略。
 
-History/replay require persistent storage: installed SQLite or PostgreSQL; the development memory mode cannot provide them. Typical replay errors: `RUN_NOT_FOUND` (404), invalid/conflicting cursors (422), `INVALID_EVENT_CURSOR` or `EVENT_HISTORY_GAP` (409), `REPLAY_BUSY` (429). Model protocol failures and tool rejection remain explicit diagnosis results.
+历史/重放要求持久存储：安装版 SQLite 或 PostgreSQL；开发入口内存模式不提供历史。常见重放错误：`RUN_NOT_FOUND`（404）、游标格式/冲突（422）、`INVALID_EVENT_CURSOR` 或 `EVENT_HISTORY_GAP`（409）、`REPLAY_BUSY`（429）。模型协议失败和工具拒绝仍返回明确诊断结果。
 
-## Evaluation
+## 评测
 
-The 20-case suite reuses the diagnostic runtime without HTTP/PostgreSQL. Automated rules inspect tool arguments, expected outcomes, evidence, and references. CLI review evaluates report meaning.
+20 案例复用诊断运行时，不依赖 HTTP/PostgreSQL。自动规则检查工具参数、预期结果、证据和引用，CLI 审核检查报告语义。
 
 ```powershell
 .\.venv\Scripts\python.exe -X utf8 -m evidenceops.evaluation --mode mock --output eval_result_mock.json
 .\.venv\Scripts\python.exe -X utf8 -m evidenceops.evaluation review eval_result_mock.json
 ```
 
-Use `--mode real` with provider variables configured for real-model evaluation. Review accepts y/n and an optional comment, saves each decision, and resumes pending cases.
+配置模型变量后，使用 `--mode real` 评测真实模型。审核输入 y/n 及可选评论，每条保存，重启后继续待审案例。
 
-| Metric | Definition |
+| 指标 | 定义 |
 | --- | --- |
-| `rule_pass_rate` | Rule-passed cases / all cases |
-| `semantic_pass_rate` | Human-approved cases / all cases |
-| `final_pass_rate` | Cases passing both / all cases |
+| `rule_pass_rate` | 规则通过数 / 全部案例 |
+| `semantic_pass_rate` | 人工通过数 / 全部案例 |
+| `final_pass_rate` | 两者均通过数 / 全部案例 |
 
-Pending reviews and exceptions remain in the denominator. Correctly rejected invalid requests can pass. Mock results verify engineering behavior, not real-model accuracy.
+待审核和执行异常保留在分母。按预期拒绝非法请求也可以评测通过。Mock 验证工程行为，不能代表真实模型准确率。
 
-## Testing
+## 测试
 
 ```powershell
 .venv/Scripts/python.exe -m pip install -r requirements-dev.txt
@@ -440,18 +439,9 @@ $env:PYTHONPATH=(Join-Path $PWD.Path 'src')
 .\.venv\Scripts\python.exe -X utf8 -m pytest -q -p no:cacheprovider
 ```
 
-Coverage includes domain rules, tools, providers, persistence, evaluation, streaming, budgets, cancellation, replay, and startup reconciliation. PostgreSQL tests are opt-in: configure database variables and set `EVIDENCEOPS_TEST_POSTGRES='1'` before pytest, then remove it afterward. They use isolated schemas and test lock keys. Real-provider acceptance is separate from deterministic regression.
+覆盖领域规则、工具、模型、持久化、评测、流式、预算、取消、重放和启动收尾。PostgreSQL 测试需显式启用：配置数据库变量，pytest 前设置 `EVIDENCEOPS_TEST_POSTGRES='1'`，结束后移除。实验使用隔离 schema 和测试锁键。真实模型验收与确定性回归分开执行。
 
-The parser requires a C++20 compiler, CMake 3.20 or later, and Python 3 for the CLI contract tests. Build and test it independently:
-
-```powershell
-cd cpp/log_evidence_engine
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
-cmake --build build
-ctest --test-dir build --output-on-failure
-```
-
-Frontend checks:
+前端检查：
 
 ```powershell
 cd frontend
@@ -460,27 +450,36 @@ npm run typecheck
 npm run build
 ```
 
-Playwright CLI scenarios cover diagnosis/cancellation/reconnect, history, evidence, connection management, installation, backup/restore, failures, file races, keyboard interactions and 320–1440 px layouts. They require isolated services on `3011/8011` and `3015/8015`, deterministic providers and a fresh installation directory for first-run tests. Never run mutation/restore scenarios against customer data. [The test report](frontend/FRONTEND_TEST_REPORT.md) records a dated verification run and its limits.
+日志解析器在 `cpp/log_evidence_engine/` 下独立构建，要求 C++20 编译器、CMake 3.20 或更高版本，以及 CLI 契约测试所需的 Python 3：
 
-`frontend/tests/serve_backend.py` provides the isolated backend factory; `EVIDENCEOPS_BROWSER_TEST_ROOT` selects a fresh test directory. Regular scenarios use web 3011 / API 8011. Installed scenarios use web 3015 / API 8015 with the same fresh data directory on both sides, using `create_installed_app` with the `build_test_app` factory. Test providers inject failures and delays without contacting vendors.
+```powershell
+cd cpp/log_evidence_engine
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build
+ctest --test-dir build --output-on-failure
+```
 
-After preparing those services, run from the repository root:
+Playwright CLI 场景覆盖诊断、取消、重连、历史、证据、模型管理、安装、备份恢复、故障、文件竞态、键盘交互及 320～1440 像素布局。测试需隔离的 3011/8011 和 3015/8015 服务、确定性模型，以及首次设置用的全新安装目录。写入与恢复场景不能指向客户数据。[测试报告](frontend/FRONTEND_TEST_REPORT.md)保留具体日期的验证证据及边界。
+
+`frontend/tests/serve_backend.py` 提供隔离后端工厂；`EVIDENCEOPS_BROWSER_TEST_ROOT` 指定全新测试目录。普通场景使用网页 3011 / API 8011；安装场景使用网页 3015 / API 8015，并让两端使用同一全新数据目录。安装场景以 `create_installed_app` 配合 `build_test_app` 工厂启动。测试模型不请求供应商，故障和延迟仅在测试供应商中注入。
+
+准备上述服务后，在根目录执行：
 
 ```powershell
 npx.cmd --yes --package @playwright/cli playwright-cli -s=evidenceops open http://127.0.0.1:3011 --browser msedge
 .venv/Scripts/python.exe frontend/tests/run_browser_audit.py
 ```
 
-First-run scenarios require an uninitialized directory. Select individual groups with, for example, `run_browser_audit.py failures audit-regressions`. Results, logs, screenshots and isolated databases go to the ignored `output/playwright/` directory.
+首次设置场景需要尚未初始化的目录。可回归指定组，如 `run_browser_audit.py failures audit-regressions`。结果、日志、截图和隔离数据库写入已忽略的 `output/playwright/`。
 
-## Contributing
+## 贡献约定
 
-Keep domain rules separate from model/database adapters and frontend transport. Include relevant failure-path tests and matching API/configuration documentation in both READMEs. Do not commit credentials, local databases or generated evaluation artifacts. Python files pin direct dependencies; frontend installs use `package-lock.json`. See [CONTRIBUTING.md](CONTRIBUTING.md) for the development setup, test commands, and pull-request checklist.
+领域规则与模型/数据库适配器及前端传输层分离。修改附带相关失败路径测试，并同步中英文接口与配置说明。不提交凭据、本机数据库或生成的评测结果。Python 依赖清单固定直接依赖，前端安装使用 `package-lock.json`。开发环境搭建、测试命令与 PR 检查清单见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
-## Security
+## 安全
 
-See [SECURITY.md](SECURITY.md) for how to report vulnerabilities privately. Do not open public issues for suspected security problems.
+疑似安全漏洞请勿公开提交 issue，上报渠道见 [SECURITY.md](SECURITY.md)。
 
-## License
+## 许可证
 
-Released under the [Apache License 2.0](LICENSE).
+本项目基于 [Apache License 2.0](LICENSE) 发布。
