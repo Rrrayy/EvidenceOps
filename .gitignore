@@ -43,7 +43,7 @@ frontend/next-env.d.ts
 output/
 .playwright-cli/
 
-# Internal Markdown notes
+# Internal Markdown notes: ignored by default; published documents are whitelisted explicitly
 *.md
 !/samples/knowledge/*.md
 !/README.md
@@ -51,3 +51,9 @@ output/
 !/frontend/MODEL_CONNECTIONS_CONTRACT.md
 !/frontend/FRONTEND_TEST_REPORT.md
 !/CUSTOMER_INSTALLATION.md
+!/CONTRIBUTING.md
+!/CODE_OF_CONDUCT.md
+!/SECURITY.md
+!/CHANGELOG.md
+!/docs/**/*.md
+!.github/**/*.md
