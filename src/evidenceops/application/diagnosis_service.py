@@ -17,6 +17,7 @@ from evidenceops.application.tool_errors import ToolCollectionError
 from evidenceops.domain.diagnosis_report import DiagnosisReport,validate_report_evidence
 from evidenceops.domain.diagnosis_run import DiagnosisRun,RunStatus
 from evidenceops.domain.evidence import Evidence
+from evidenceops.application.context_audit import ContextAudit
 
 
 class EvidenceCollector(Protocol):
@@ -38,6 +39,7 @@ class DiagnosisExecution:
 	error_detail:dict|None
 	execution_records:tuple[ExecutionRecord,...]=()
 	model_config:dict|None=None # Run 使用的无密钥快照。
+	context_audits:tuple[ContextAudit,...]=()
 
 
 class DiagnosisService:
@@ -98,6 +100,7 @@ class DiagnosisService:
 		report:DiagnosisReport,
 		records:tuple[ExecutionRecord,...],
 		terminal_event:dict|None=None,
+		context_audits:tuple[ContextAudit,...]=(),
 	)->None:
 		if self._diagnosis_persistence is None:
 			return
@@ -109,6 +112,8 @@ class DiagnosisService:
 
 				transaction.report.create(report)
 				transaction.execution_record.create_many(run.run_id,records)
+				for audit in context_audits:
+					transaction.context_audit.record(run.run_id,audit.model_round,audit.model_request_id,audit.assembly)
 				transaction.run.update(run)
 				if terminal_event is not None:
 					if self._model_config and hasattr(transaction.run,"save_model"): transaction.run.save_model(run.run_id,self._model_config) # 实际响应模型与成功档案共同提交。
@@ -117,7 +122,7 @@ class DiagnosisService:
 			raise RunPersistenceError("complete",run.run_id) from error
 
 	def _persist_failure(self,run:DiagnosisRun,evidences:tuple[Evidence,...],records:tuple[ExecutionRecord,...],
-		terminal_event:dict|None=None)->None:
+		terminal_event:dict|None=None,context_audits:tuple[ContextAudit,...]=())->None:
 
 		if self._diagnosis_persistence is None:
 			return
@@ -127,6 +132,8 @@ class DiagnosisService:
 				for evidence in evidences:
 					transaction.evidence.create(evidence)
 				transaction.execution_record.create_many(run.run_id,records)
+				for audit in context_audits:
+					transaction.context_audit.record(run.run_id,audit.model_round,audit.model_request_id,audit.assembly)
 				transaction.run.update(run)
 				if terminal_event is not None:
 					if self._model_config and hasattr(transaction.run,"save_model"): transaction.run.save_model(run.run_id,self._model_config) # 失败档案同样保留当时配置。
@@ -158,10 +165,11 @@ class DiagnosisService:
 			arguments=(result.run,result.evidences,result.report,result.execution_records) if (
 				result.report is not None) else (result.run,result.evidences,result.execution_records)
 			persist=self._persist_success if result.report is not None else self._persist_failure
+			options={"context_audits":result.context_audits} if result.context_audits else {}
 			if event is not None and self._diagnosis_persistence is not None:
-				persist(*arguments,terminal_event=event)
+				persist(*arguments,terminal_event=event,**options)
 			else:
-				persist(*arguments)
+				persist(*arguments,**options)
 		if events is None:
 			commit()
 			return
@@ -183,9 +191,10 @@ class DiagnosisService:
 		control=self._registry.get(run.run_id)
 
 		records:tuple[ExecutionRecord,...]=()
+		context_audits:tuple[ContextAudit,...]=()
 
 		def finish(*args):
-			return DiagnosisExecution(*args,execution_records=records,model_config=dict(self._model_config) if self._model_config else None)
+			return DiagnosisExecution(*args,execution_records=records,model_config=dict(self._model_config) if self._model_config else None,context_audits=context_audits)
 
 		evidences:tuple[Evidence,...]=()
 		draft:DiagnosisDraft|None=None
@@ -217,6 +226,7 @@ class DiagnosisService:
 
 			if isinstance(collection,AgentCollectionResult):
 				records=collection.execution_records
+				context_audits=collection.context_audits
 				evidences=collection.evidences
 				draft=collection.draft
 			else:
@@ -235,16 +245,19 @@ class DiagnosisService:
 
 		except AgentCollectionError as error:
 			records=error.execution_records
+			context_audits=error.context_audits
 			evidences=self._failure_evidences(run,error.evidences)
 			return stop(error.error_code,{**error.details,"code":error.error_code,"message":error.error_message})
 
 		except ToolCollectionError as error:
 			records=getattr(error,"execution_records",records)
+			context_audits=getattr(error,"context_audits",context_audits)
 			evidences=self._failure_evidences(run,error.evidences)
 			return stop("EVIDENCE_COLLECTION_FAILED",{"code":error.error_code,"message":error.error_message})
 
 		except Exception as error:
 			records=getattr(error,"execution_records",records)
+			context_audits=getattr(error,"context_audits",context_audits)
 			return stop("EVIDENCE_COLLECTION_FAILED")
 
 		if not evidences:

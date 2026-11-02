@@ -15,6 +15,7 @@ from evidenceops.infrastructure.database.run_repository import SqlAlchemyRunRepo
 from evidenceops.infrastructure.database.trace_event_repository import SqlAlchemyTraceEventRepository
 from evidenceops.infrastructure.database.knowledge_repository import SqlAlchemyKnowledgeRepository
 from evidenceops.infrastructure.database.session import transaction_scope
+from evidenceops.infrastructure.database.context_audit_repository import ContextAuditRepository
 
 
 INSTANCE_LOCK_KEY=(1163284304,1)
@@ -28,6 +29,7 @@ class SqlAlchemyDiagnosisTransaction:
 	execution_record:SqlAlchemyExecutionRecordRepository
 	trace_event:SqlAlchemyTraceEventRepository
 	knowledge:SqlAlchemyKnowledgeRepository
+	context_audit:ContextAuditRepository
 
 
 class SqlAlchemyDiagnosisPersistence:
@@ -94,6 +96,7 @@ class SqlAlchemyDiagnosisPersistence:
 				execution_record=SqlAlchemyExecutionRecordRepository(session),
 				trace_event=SqlAlchemyTraceEventRepository(session),
 				knowledge=SqlAlchemyKnowledgeRepository(session),
+				context_audit=ContextAuditRepository(session),
 			)
 
 	def close(self)->None:

@@ -3,16 +3,18 @@ from dataclasses import dataclass
 from evidenceops.application.diagnosis_draft import DiagnosisDraft
 from evidenceops.domain.evidence import Evidence
 from evidenceops.application.execution_record import ExecutionRecord
+from evidenceops.application.context_audit import ContextAudit
 
 
 class AgentCollectionError(RuntimeError):
-	def __init__(self,error_code:str,error_message:str,execution_records:tuple[ExecutionRecord,...]=(),evidences:tuple[Evidence,...]=(),details:dict|None=None)->None:
+	def __init__(self,error_code:str,error_message:str,execution_records:tuple[ExecutionRecord,...]=(),evidences:tuple[Evidence,...]=(),details:dict|None=None,context_audits:tuple[ContextAudit,...]=())->None:
 		super().__init__(error_message)
 		self.error_code=error_code
 		self.error_message=error_message
 		self.execution_records=execution_records
 		self.evidences=evidences
 		self.details=details or {}
+		self.context_audits=context_audits
 
 
 @dataclass(frozen=True,slots=True)
@@ -20,6 +22,7 @@ class AgentCollectionResult:
 	evidences:tuple[Evidence,...]
 	draft:DiagnosisDraft
 	execution_records:tuple[ExecutionRecord,...]=()
+	context_audits:tuple[ContextAudit,...]=()
 
 	def __post_init__(self)->None:
 		if not isinstance(self.evidences,tuple):

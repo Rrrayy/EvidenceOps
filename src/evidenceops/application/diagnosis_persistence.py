@@ -6,6 +6,7 @@ from evidenceops.application.execution_record_repository import ExecutionRecordR
 from evidenceops.application.report_repository import ReportRepository
 from evidenceops.application.run_repository import RunRepository
 from evidenceops.application.trace_event_repository import TraceEventRepository
+from evidenceops.application.context_audit_repository import ContextAuditRepository
 
 
 class DiagnosisTransaction(Protocol):
@@ -14,6 +15,7 @@ class DiagnosisTransaction(Protocol):
 	report:ReportRepository
 	execution_record:ExecutionRecordRepository
 	trace_event:TraceEventRepository
+	context_audit:ContextAuditRepository
 
 
 class DiagnosisPersistence(Protocol):

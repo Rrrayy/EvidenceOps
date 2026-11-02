@@ -58,15 +58,16 @@ class AgentEvidenceCollector:
 				raise conversion_error
 			return self._convert_result(loop_result,tuple(evidences))
 		except RunCancelled as error:
-			raise AgentCollectionError("RUN_CANCELLED",str(error),loop_result.execution_records,tuple(evidences)) from error
+			raise AgentCollectionError("RUN_CANCELLED",str(error),loop_result.execution_records,tuple(evidences),context_audits=loop_result.context_audits) from error
 		except RunBudgetExceeded as error:
-			raise AgentCollectionError("RUN_TIMEOUT",str(error),loop_result.execution_records,tuple(evidences)) from error
+			raise AgentCollectionError("RUN_TIMEOUT",str(error),loop_result.execution_records,tuple(evidences),context_audits=loop_result.context_audits) from error
 		except (AgentCollectionError,ToolCollectionError) as error:
 			error.execution_records=loop_result.execution_records
 			error.evidences=tuple(evidences)
+			error.context_audits=loop_result.context_audits
 			raise
 		except Exception as error:
-			raise AgentCollectionError("EVIDENCE_COLLECTION_FAILED","Agent结果转换失败",loop_result.execution_records,tuple(evidences)) from error
+			raise AgentCollectionError("EVIDENCE_COLLECTION_FAILED","Agent结果转换失败",loop_result.execution_records,tuple(evidences),context_audits=loop_result.context_audits) from error
 
 	def _convert_result(self,loop_result:AgentLoopResult,evidences:tuple[Evidence,...])->AgentCollectionResult:
 		if not isinstance(loop_result.final_answer,StructuredFinalAnswer):
@@ -90,4 +91,5 @@ class AgentEvidenceCollector:
 			evidences=evidences,
 			draft=draft,
 			execution_records=loop_result.execution_records,
+			context_audits=loop_result.context_audits,
 		)
