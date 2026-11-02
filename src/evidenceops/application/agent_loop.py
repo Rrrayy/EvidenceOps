@@ -9,14 +9,15 @@ from typing import Any
 from uuid import uuid4
 
 from evidenceops.application.llm_gateway import LLMGateway,ModelGatewayError
-from evidenceops.application.model_protocol import FinalAnswer,ModelRequest,StructuredFinalAnswer,ToolCall,ToolCallBatch
+from evidenceops.application.model_protocol import FinalAnswer,ModelCallResult,ModelRequest,StructuredFinalAnswer,ToolCall,ToolCallBatch
 from evidenceops.application.tool_runtime import ToolResult,ToolRuntime,ToolSpec
 from evidenceops.application.run_events import RunEvents
 from evidenceops.application.run_budget import RunBudget,RunBudgetExceeded
 from evidenceops.application.run_control import RunCancelled,RunControl
 from evidenceops.application.knowledge_evidence import matches_to_evidence
 from evidenceops.application.parsed_log_evidence import parsed_logs_to_evidence
-from evidenceops.application.context_assembler import ContextAssembler
+from evidenceops.application.context_assembler import ContextAssembler,ContextAssembly,to_projections
+from evidenceops.application.context_audit import ContextAudit
 from evidenceops.application.token_budget import ContextConfig,ContextBudgetError,HeuristicTokenEstimator,TokenLedger
 
 
@@ -27,6 +28,7 @@ class AgentLoopResult:
 	error_code:str|None
 	error_message:str|None=None
 	execution_records:tuple[ExecutionRecord,...]=()
+	context_audits:tuple[ContextAudit,...]=()
 
 
 class AgentLoop:
@@ -65,17 +67,217 @@ class AgentLoop:
 
 	def run(self,prompt:str,run_id:str|None=None,events:RunEvents|None=None,budget:RunBudget|None=None,
 		control:RunControl|None=None)->AgentLoopResult:
-		if not isinstance(prompt,str) or not prompt.strip():
-			raise ValueError("prompt不能为空")
+		prompt,run_id=self._validate(prompt,run_id)
 
-		if run_id is None:
-			run_id=str(uuid4())
+		history=self._build_history(prompt)
 
-		if not isinstance(run_id,str) or not run_id.strip():
-			raise ValueError("run_id不能为空")
+		records:list[ExecutionRecord]=[]
+		context_audits:list[ContextAudit]=[]
+		ledger=TokenLedger(self._context_config) if self._context_config is not None else None
+		def finish(final_answer,tool_results,error_code,error_message=None):
+			return AgentLoopResult(final_answer,tool_results,error_code,error_message,tuple(records),tuple(context_audits))
 
+		tool_results:list[ToolResult]=[]
+
+		# 限制模型轮次，同轮多工具批次不逐项消耗轮次预算。
+		for model_round in range(1,self._max_steps+1):
+			call_result=None
+			try:
+				if control is not None:
+					control.check()
+				call_timeout=budget.limit(self._timeout_seconds) if budget is not None else self._timeout_seconds
+			except RunCancelled:
+				return finish(None,tuple(tool_results),"RUN_CANCELLED","诊断已取消")
+			except RunBudgetExceeded:
+				return finish(None,tuple(tool_results),"RUN_TIMEOUT","诊断整体执行预算已耗尽")
+			try:
+				request,assembly=self._start_model_round(history,tool_results,ledger,run_id,call_timeout,control,budget)
+			except ContextBudgetError as error:
+				return finish(None,tuple(tool_results),error.error_code,str(error))
+
+			if assembly is not None:
+				context_audits.append(ContextAudit(model_round,request.request_id,assembly))
+			started_at=datetime.now(timezone.utc)
+			started_clock=perf_counter()
+			if events is not None:
+				events.emit("model_started",model_round=model_round,model_request_id=request.request_id,model=self._model,
+					timeout_seconds=request.timeout_seconds)
+
+			try:
+				call_result=self._gateway.complete(request)
+				if control is not None:
+					control.check()
+				# HTTP阶段超时不是硬截止时间；拒绝超过共享截止时间才到达的回答。
+				if budget is not None:
+					budget.check()
+			except RunCancelled:
+				self._record_model_round(records,events,request,model_round,assembly,ledger,call_result,
+					started_at,started_clock,"RUN_CANCELLED")
+				return finish(None,tuple(tool_results),"RUN_CANCELLED","诊断已取消")
+			except RunBudgetExceeded:
+				self._record_model_round(records,events,request,model_round,assembly,ledger,call_result,
+					started_at,started_clock,"RUN_TIMEOUT")
+				return finish(None,tuple(tool_results),"RUN_TIMEOUT","诊断整体执行预算已耗尽")
+			except ModelGatewayError as error:
+				if budget is not None and budget.remaining()<=0:
+					self._record_model_round(records,events,request,model_round,assembly,ledger,call_result,
+						started_at,started_clock,"RUN_TIMEOUT")
+					return finish(None,tuple(tool_results),"RUN_TIMEOUT","诊断整体执行预算已耗尽")
+				self._record_model_round(records,events,request,model_round,assembly,ledger,call_result,
+					started_at,started_clock,error.error_code)
+				return finish(
+					final_answer=None,
+					tool_results=tuple(tool_results),
+					error_code=error.error_code,
+					error_message=error.error_message,
+				)
+			except Exception:
+				self._record_model_round(records,events,request,model_round,assembly,ledger,call_result,
+					started_at,started_clock,"MODEL_EXECUTION_FAILED")
+				return finish(
+					final_answer=None,
+					tool_results=tuple(tool_results),
+					error_code="MODEL_EXECUTION_FAILED",
+					error_message="模型调用失败",
+				)
+
+			self._record_model_round(records,events,request,model_round,assembly,ledger,call_result,
+				started_at,started_clock)
+			response=call_result.response
+			if call_result.usage is not None and call_result.usage.status=="invalid":
+				return finish(None,tuple(tool_results),"TOKEN_USAGE_INVALID","模型返回的Token计量格式无效")
+
+			if isinstance(response,(FinalAnswer,StructuredFinalAnswer)):
+				return finish(final_answer=response,tool_results=tuple(tool_results),error_code=None)
+
+			if not isinstance(response,(ToolCall,ToolCallBatch)):
+				return finish(None,tuple(tool_results),"INVALID_MODEL_RESPONSE","模型返回了无法识别的响应类型")
+
+			calls=(response,) if isinstance(response,ToolCall) else response.calls
+			seen_ids={result.tool_call_id for result in tool_results}
+			if any(call.tool_call_id in seen_ids for call in calls):
+				return finish(None,tuple(tool_results),"MODEL_PROTOCOL_ERROR","工具调用ID不能跨轮重复")
+
+			bound_results=self._run_tools(calls,run_id,model_round,records,events,budget,control)
+			tool_results.extend(bound_results)
+			history=self._append_tool_history(history,calls,bound_results)
+
+			# 保留现有失败策略：完整收齐本批结果后停止诊断，不生成残缺报告。
+			failed=next((result for result in bound_results if not result.ok),None)
+			if failed is not None:
+				return finish(None,tuple(tool_results),failed.error_code,failed.error_message)
+		return finish(
+			final_answer=None,
+			tool_results=tuple(tool_results),
+			error_code="AGENT_MAX_STEPS",
+			error_message="Agent Loop达到最大执行步数",
+		)
+
+	@staticmethod
+	def _append_tool_history(history:tuple[dict[str,Any],...],calls:tuple[ToolCall,...],
+		bound_results:tuple[ToolResult,...])->tuple[dict[str,Any],...]:
+		# 一条assistant消息声明全部调用，再为每个调用追加对应的tool消息。
+		history+=({
+			"role":"assistant",
+			"tool_calls":[{
+				"id":call.tool_call_id,
+				"type":"function",
+				"function":{
+					"name":call.tool_name,
+					"arguments":json.dumps(call.arguments,ensure_ascii=False,separators=(",",":")),
+				},
+			} for call in calls],
+		},)
+		history+=tuple({
+			"role":"tool",
+			"tool_call_id":result.tool_call_id,
+			"content":json.dumps({
+				"evidence_id":result.evidence_id,
+				"ok":result.ok,
+				"data":result.data,
+				"error_code":result.error_code,
+				"error_message":result.error_message,
+			},ensure_ascii=False,separators=(",",":")),
+		} for result in bound_results)
+		return history
+
+	def _run_tools(self,calls:tuple[ToolCall,...],run_id:str,model_round:int,records:list[ExecutionRecord],
+		events:RunEvents|None,budget:RunBudget|None,control:RunControl|None)->tuple[ToolResult,...]:
+		if len(calls)==1:
+			call=calls[0]
+			options={} if events is None else {"events":events,"model_round":model_round}
+			if budget is not None:
+				options["budget"]=budget
+			if control is not None:
+				options["control"]=control
+			batch_results=(self._runtime.execute(call.tool_name,call.arguments,tool_call_id=call.tool_call_id,**options),)
+		else:
+			options={} if events is None else {"events":events,"model_round":model_round}
+			if budget is not None:
+				options["budget"]=budget
+			if control is not None:
+				options["control"]=control
+			batch_results=self._runtime.execute_many(calls,**options)
+
+		records.extend(
+			replace(result.execution_record,run_id=run_id,model_round=model_round)
+			for result in batch_results if result.execution_record is not None
+		)
+
+		# 必须先绑定再发给模型；Collector后续保存同一批快照，不能重新检索。
+		bound_results=tuple(self._bind_result(run_id,result) for result in batch_results)
+		return bound_results
+
+	@staticmethod
+	def _record_model_round(records:list[ExecutionRecord],events:RunEvents|None,request:ModelRequest,model_round:int,
+		assembly:ContextAssembly|None,ledger:TokenLedger|None,call_result:ModelCallResult|None,
+		started_at:datetime,started_clock:float,error_code:str|None=None)->None:
+		usage=call_result.usage if error_code is None and call_result is not None else None
+		if ledger is not None and assembly is not None:
+			if error_code is None:
+				status=usage.status if usage is not None else "missing"
+				ledger.settle(assembly.reservation,usage.total_tokens if usage is not None else None,status)
+			else:
+				ledger.settle(assembly.reservation,None,"unknown")
+		records.append(ExecutionRecord(
+			kind="model",started_at=started_at,finished_at=datetime.now(timezone.utc),
+			duration_ms=(perf_counter()-started_clock)*1000,
+			status="succeeded" if error_code is None else ("cancelled" if error_code=="RUN_CANCELLED" else "failed"),error_code=error_code,
+			run_id=request.run_id,model_round=model_round,model_request_id=request.request_id,
+			estimated_input_tokens=assembly.estimated_input_tokens if assembly is not None else None,
+			reserved_output_tokens=assembly.reservation.max_output_tokens if assembly is not None else None,
+			reported_input_tokens=usage.prompt_tokens if usage is not None else None,
+			reported_output_tokens=usage.completion_tokens if usage is not None else None,
+			reported_total_tokens=usage.total_tokens if usage is not None else None,
+			usage_status=usage.status if usage is not None else ("unknown" if error_code else "missing"),
+			payload_hash=assembly.reservation.payload_hash if assembly is not None else None,
+		))
+		if events is not None:
+			events.emit("model_finished",model_round=model_round,model_request_id=request.request_id,
+				status=records[-1].status,error_code=error_code,duration_ms=records[-1].duration_ms)
+
+	def _start_model_round(self,history:tuple[dict[str,Any],...],tool_results:list[ToolResult],ledger:TokenLedger|None,
+		run_id:str,call_timeout:float,control:RunControl|None,budget:RunBudget|None)->tuple[ModelRequest,ContextAssembly|None]:
+		projections=to_projections(tuple(evidence for result in tool_results if result.bound_evidences for evidence in result.bound_evidences))
+		assembly=self._context_assembler.assemble(history,self._tools,ledger,evidences=projections,response_format=self._response_format) if self._context_assembler is not None else None
+		request=ModelRequest(
+			messages=assembly.messages if assembly is not None else history,
+			tools=self._tools,
+			model=self._model,
+			timeout_seconds=call_timeout,
+			request_id=str(uuid4()),
+			run_id=run_id,
+			response_format=self._response_format,
+			control=control,budget=budget,
+			max_output_tokens=self._context_config.max_output_tokens if self._context_config is not None else None,
+			context_window_tokens=self._context_config.context_window_tokens if self._context_config is not None else None,
+			estimated_input_tokens=assembly.estimated_input_tokens if assembly is not None else None,
+		)
+		return request,assembly
+
+	def _build_history(self,prompt:str)->tuple[dict[str,Any],...]:
 		if self._response_format=="json_object":
-			history:tuple[dict[str,Any],...]=(
+			history=(
 				{
 					"role":"system",
 					"content":(
@@ -113,179 +315,20 @@ class AgentLoop:
 		else:
 			history=({"role":"user","content":prompt,},)
 
-		records:list[ExecutionRecord]=[]
-		ledger=TokenLedger(self._context_config) if self._context_config is not None else None
-		def finish(final_answer,tool_results,error_code,error_message=None):
-			return AgentLoopResult(final_answer,tool_results,error_code,error_message,tuple(records))
+		return history
 
-		tool_results:list[ToolResult]=[]
+	@staticmethod
+	def _validate(prompt:str,run_id:str|None)->tuple[str,str]:
+		if not isinstance(prompt,str) or not prompt.strip():
+			raise ValueError("prompt不能为空")
 
-		# 限制模型轮次，同轮多工具批次不逐项消耗轮次预算。
-		for model_round in range(1,self._max_steps+1):
-			call_result=None
-			try:
-				if control is not None:
-					control.check()
-				call_timeout=budget.limit(self._timeout_seconds) if budget is not None else self._timeout_seconds
-			except RunCancelled:
-				return finish(None,tuple(tool_results),"RUN_CANCELLED","诊断已取消")
-			except RunBudgetExceeded:
-				return finish(None,tuple(tool_results),"RUN_TIMEOUT","诊断整体执行预算已耗尽")
-			try:
-				assembly=self._context_assembler.assemble(history,self._tools,ledger,response_format=self._response_format) if self._context_assembler is not None else None
-			except ContextBudgetError as error:
-				return finish(None,tuple(tool_results),error.error_code,str(error))
-			request=ModelRequest(
-				messages=assembly.messages if assembly is not None else history,
-				tools=self._tools,
-				model=self._model,
-				timeout_seconds=call_timeout,
-				request_id=str(uuid4()),
-				run_id=run_id,
-				response_format=self._response_format,
-				control=control,budget=budget,
-				max_output_tokens=self._context_config.max_output_tokens if self._context_config is not None else None,
-				context_window_tokens=self._context_config.context_window_tokens if self._context_config is not None else None,
-				estimated_input_tokens=assembly.estimated_input_tokens if assembly is not None else None,
-			)
+		if run_id is None:
+			run_id=str(uuid4())
 
-			started_at=datetime.now(timezone.utc)
-			started_clock=perf_counter()
-			if events is not None:
-				events.emit("model_started",model_round=model_round,model_request_id=request.request_id,model=self._model,
-					timeout_seconds=request.timeout_seconds)
-			def record_model(error_code=None):
-				usage=call_result.usage if error_code is None and call_result is not None else None
-				if ledger is not None and assembly is not None:
-					if error_code is None:
-						status=usage.status if usage is not None else "missing"
-						ledger.settle(assembly.reservation,usage.total_tokens if usage is not None else None,status)
-					else:
-						ledger.settle(assembly.reservation,None,"unknown")
-				records.append(ExecutionRecord(
-					kind="model",started_at=started_at,finished_at=datetime.now(timezone.utc),
-					duration_ms=(perf_counter()-started_clock)*1000,
-					status="succeeded" if error_code is None else ("cancelled" if error_code=="RUN_CANCELLED" else "failed"),error_code=error_code,
-					run_id=run_id,model_round=model_round,model_request_id=request.request_id,
-					estimated_input_tokens=assembly.estimated_input_tokens if assembly is not None else None,
-					reserved_output_tokens=assembly.reservation.max_output_tokens if assembly is not None else None,
-					reported_input_tokens=usage.prompt_tokens if usage is not None else None,
-					reported_output_tokens=usage.completion_tokens if usage is not None else None,
-					reported_total_tokens=usage.total_tokens if usage is not None else None,
-					usage_status=usage.status if usage is not None else ("unknown" if error_code else "missing"),
-					payload_hash=assembly.reservation.payload_hash if assembly is not None else None,
-				))
-				if events is not None:
-					events.emit("model_finished",model_round=model_round,model_request_id=request.request_id,
-						status=records[-1].status,error_code=error_code,duration_ms=records[-1].duration_ms)
+		if not isinstance(run_id,str) or not run_id.strip():
+			raise ValueError("run_id不能为空")
 
-			try:
-				call_result=self._gateway.complete(request)
-				if control is not None:
-					control.check()
-				# HTTP阶段超时不是硬截止时间；拒绝超过共享截止时间才到达的回答。
-				if budget is not None:
-					budget.check()
-			except RunCancelled:
-				record_model("RUN_CANCELLED")
-				return finish(None,tuple(tool_results),"RUN_CANCELLED","诊断已取消")
-			except RunBudgetExceeded:
-				record_model("RUN_TIMEOUT")
-				return finish(None,tuple(tool_results),"RUN_TIMEOUT","诊断整体执行预算已耗尽")
-			except ModelGatewayError as error:
-				if budget is not None and budget.remaining()<=0:
-					record_model("RUN_TIMEOUT")
-					return finish(None,tuple(tool_results),"RUN_TIMEOUT","诊断整体执行预算已耗尽")
-				record_model(error.error_code)
-				return finish(
-					final_answer=None,
-					tool_results=tuple(tool_results),
-					error_code=error.error_code,
-					error_message=error.error_message,
-				)
-			except Exception:
-				record_model("MODEL_EXECUTION_FAILED")
-				return finish(
-					final_answer=None,
-					tool_results=tuple(tool_results),
-					error_code="MODEL_EXECUTION_FAILED",
-					error_message="模型调用失败",
-				)
-
-			record_model()
-			response=call_result.response
-			if call_result.usage is not None and call_result.usage.status=="invalid":
-				return finish(None,tuple(tool_results),"TOKEN_USAGE_INVALID","模型返回的Token计量格式无效")
-
-			if isinstance(response,(FinalAnswer,StructuredFinalAnswer)):
-				return finish(final_answer=response,tool_results=tuple(tool_results),error_code=None)
-
-			if not isinstance(response,(ToolCall,ToolCallBatch)):
-				return finish(None,tuple(tool_results),"INVALID_MODEL_RESPONSE","模型返回了无法识别的响应类型")
-
-			calls=(response,) if isinstance(response,ToolCall) else response.calls
-			seen_ids={result.tool_call_id for result in tool_results}
-			if any(call.tool_call_id in seen_ids for call in calls):
-				return finish(None,tuple(tool_results),"MODEL_PROTOCOL_ERROR","工具调用ID不能跨轮重复")
-
-			if len(calls)==1:
-				call=calls[0]
-				options={} if events is None else {"events":events,"model_round":model_round}
-				if budget is not None:
-					options["budget"]=budget
-				if control is not None:
-					options["control"]=control
-				batch_results=(self._runtime.execute(call.tool_name,call.arguments,tool_call_id=call.tool_call_id,**options),)
-			else:
-				options={} if events is None else {"events":events,"model_round":model_round}
-				if budget is not None:
-					options["budget"]=budget
-				if control is not None:
-					options["control"]=control
-				batch_results=self._runtime.execute_many(calls,**options)
-
-			records.extend(
-				replace(result.execution_record,run_id=run_id,model_round=model_round)
-				for result in batch_results if result.execution_record is not None
-			)
-
-			# 必须先绑定再发给模型；Collector后续保存同一批快照，不能重新检索。
-			bound_results=tuple(self._bind_result(run_id,result) for result in batch_results)
-			tool_results.extend(bound_results)
-			# 一条assistant消息声明全部调用，再为每个调用追加对应的tool消息。
-			history+=({
-				"role":"assistant",
-				"tool_calls":[{
-					"id":call.tool_call_id,
-					"type":"function",
-					"function":{
-						"name":call.tool_name,
-						"arguments":json.dumps(call.arguments,ensure_ascii=False,separators=(",",":")),
-					},
-				} for call in calls],
-			},)
-			history+=tuple({
-				"role":"tool",
-				"tool_call_id":result.tool_call_id,
-				"content":json.dumps({
-					"evidence_id":result.evidence_id,
-					"ok":result.ok,
-					"data":result.data,
-					"error_code":result.error_code,
-					"error_message":result.error_message,
-				},ensure_ascii=False,separators=(",",":")),
-			} for result in bound_results)
-
-			# 保留现有失败策略：完整收齐本批结果后停止诊断，不生成残缺报告。
-			failed=next((result for result in bound_results if not result.ok),None)
-			if failed is not None:
-				return finish(None,tuple(tool_results),failed.error_code,failed.error_message)
-		return finish(
-			final_answer=None,
-			tool_results=tuple(tool_results),
-			error_code="AGENT_MAX_STEPS",
-			error_message="Agent Loop达到最大执行步数",
-		)
+		return prompt,run_id
 
 	@staticmethod
 	def _bind_result(run_id:str,result:ToolResult)->ToolResult:
