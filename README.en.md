@@ -39,7 +39,7 @@
 ## Capabilities
 
 <details>
-<summary><strong>18 capability groups</strong> — bounded tool execution, evidence-backed reports, offline retrieval evaluation (click to expand)</summary>
+<summary><strong>15 capability groups</strong> — bounded tool execution, evidence-backed reports, offline retrieval evaluation (click to expand)</summary>
 
 | Capability | Behavior |
 | --- | --- |
@@ -52,7 +52,7 @@
 | Durable history | Installed mode uses SQLite by default; PostgreSQL is available for managed storage |
 | Installation and storage | First-run setup, connection checks, storage switching, logical backup import/export and restore |
 | Streaming and replay | SSE lifecycle events and cursor replay without re-executing the diagnosis |
-| Context governance | Per-request input-token estimates, output and safety reservations, per-Run token budget, provider usage records |
+| Context governance | Input estimates, output and safety reservations, per-Run budgets, provider usage records, and archived context audits |
 | Execution control | Shared time budget, individual timeouts, and cooperative cancellation |
 | Startup reconciliation | Single-instance lock; orphaned Runs atomically fail with a terminal event |
 | Diagnosis evaluation | 20-case offline suite, automated rules, resumable CLI human review |
@@ -217,6 +217,10 @@ Manifest paths are controlled by the operator; roles are `server`, `client`, or 
 Before each model request, the Agent Loop estimates the full current message history, tool definitions, and response format, then reserves output capacity and a safety margin. Defaults are a `32768`-token context window, `2048` output tokens per call, a `256`-token safety margin, and a `16384`-token cumulative budget per Run. Model connections can store limits per model, and each Run retains the configuration snapshot.
 
 `heuristic-json-v1` estimates from serialized text length. It is not a provider tokenizer and does not guarantee exact capacity. When the provider reports usage, input, output, and total token counts are recorded; missing or invalid usage remains explicitly marked. If a request exceeds its context budget or the Run budget, it fails before being sent to the model; history is not silently truncated or discarded. **Automatic summarization, priority-based evidence pruning, chunk compression, and provider tokenizer adapters are not implemented.** The frontend timeline displays per-call estimates, output reservations, and provider usage when available. SSE streams execution events, not generated model tokens.
+
+With context governance and persistence enabled, each assembled model request records its round, request ID, payload hash, actual estimator identifier, input-token estimate, output reservation, visible evidence IDs, deduplication map, and omission records. Audits commit in the same transaction as the terminal archive for succeeded, failed, or cancelled Runs; repeated writes for the same Run and model request ID do not create duplicate rows. The audit table does not store full message bodies, and a payload hash cannot reconstruct them; knowledge text snapshots are stored separately with Evidence. No frontend-facing context audit query endpoint is currently available.
+
+Visible-evidence-ID audits currently cover knowledge retrieval and parsed-log results with bound evidence projections. Ordinary `query_service_logs`, `query_service_metrics`, and `query_service_config` results still enter the model's tool history, but do not yet bind the corresponding audit projections, so their visible-ID records may be empty. An empty record does not mean the model received no tool data. Context audits collected in memory can be lost if the process crashes before the terminal transaction commits.
 
 ### Knowledge components
 
@@ -412,7 +416,7 @@ Cancellation HTTP 202 acknowledges a request, not a committed terminal state. Re
 - **Capacity:** four POST streaming diagnoses and sixteen GET observation connections per process, with separate admission limits. These are not a global limit for synchronous POST requests.
 - **Execution control:** cooperative checks reject late results. Commits, cleanup, and non-cooperative threads can exceed the budget. Local model cancellation does not guarantee upstream generation/billing stops.
 - **Startup:** PostgreSQL uses a session advisory lock; installed SQLite uses local file locks. Orphaned `pending/running` Runs atomically become `failed / RUN_INTERRUPTED` with a terminal event; repeated startup is idempotent. Agent execution is not resumed.
-- **Crash boundary:** committed artifacts survive. Complete Evidence and execution records are primarily archived at finalization, so events can survive while corresponding artifacts remain absent.
+- **Crash boundary:** committed artifacts survive. Complete Evidence, execution records, and context audits are primarily archived at finalization, so events can survive while corresponding artifacts and audit records remain absent.
 - **Deployment scope:** local, single tenant, one worker, lifespan enabled. Remote login, multi-user authorization, distributed coordination, automated retention/backups and customer data-source configuration are not implemented. The launcher supervises its child processes; stopping it terminates those processes. Long-running service installation requires a separate supervisor and shutdown policy.
 
 History/replay require persistent storage: installed SQLite or PostgreSQL; the development memory mode cannot provide them. Typical replay errors: `RUN_NOT_FOUND` (404), invalid/conflicting cursors (422), `INVALID_EVENT_CURSOR` or `EVENT_HISTORY_GAP` (409), `REPLAY_BUSY` (429). Model protocol failures and tool rejection remain explicit diagnosis results.
