@@ -32,6 +32,9 @@ def compare_cases(factory,document_ids,provider,cases,top_k=3,candidate_k=10)->d
 		raise ValueError("候选数与top_k无效")
 	if not isinstance(cases,list) or not 1<=len(cases)<=100: raise ValueError("需要1到100个案例")
 	seen=set()
+	category_fields=("scenario","answerability","expected_disposition","incident_evidence_available","review_criteria")
+	allowed_scenarios={"knowledge_answerable","incident_evidence_required","no_applicable_knowledge","applicability_mismatch","version_conflict"}
+	allowed_dispositions={"answer_with_knowledge","insufficient_evidence","no_supported_knowledge_answer"}
 	# 全部输入先校验，避免后面的坏案例使前面的付费请求白跑。
 	for case in cases:
 		if not isinstance(case,dict) or not isinstance(case.get("case_id"),str) or not case["case_id"].strip() or case["case_id"] in seen:
@@ -46,6 +49,21 @@ def compare_cases(factory,document_ids,provider,cases,top_k=3,candidate_k=10)->d
 		relevant=frozenset(case["relevant_chunk_ids"])
 		required=frozenset(case["required_chunk_ids"])
 		if not required<=relevant: raise ValueError("必需片段必须属于相关片段")
+		if any(field in case for field in category_fields):
+			if case.get("scenario") not in allowed_scenarios: raise ValueError("answerability案例scenario无效")
+			if case.get("answerability") not in ("answerable_from_knowledge","needs_incident_evidence","no_applicable_knowledge","not_represented_in_corpus"):
+				raise ValueError("answerability标签无效")
+			if case.get("expected_disposition") not in allowed_dispositions: raise ValueError("预期回答策略无效")
+			facts=case.get("incident_evidence_available")
+			criteria=case.get("review_criteria")
+			if not isinstance(facts,list) or any(not isinstance(item,str) or not item.strip() for item in facts):
+				raise ValueError("现场证据清单无效")
+			if not isinstance(criteria,list) or not criteria or any(not isinstance(item,str) or not item.strip() for item in criteria):
+				raise ValueError("人工审核标准无效")
+			if case["scenario"]=="incident_evidence_required" and (case["answerability"]!="needs_incident_evidence" or case["expected_disposition"]!="insufficient_evidence"):
+				raise ValueError("缺少现场证据案例必须预期证据不足")
+			if case["scenario"] in ("version_conflict","applicability_mismatch") and case["answerability"]!="not_represented_in_corpus":
+				raise ValueError("当前语料未建模的适用范围案例必须标记为不可评测")
 	results=[]
 	snapshot=None
 	# 此对照专用于当前37片段小语料，超过50直接失败，不截断候选假装完整基线。
@@ -76,6 +94,8 @@ def compare_cases(factory,document_ids,provider,cases,top_k=3,candidate_k=10)->d
 		result={"case_id":case["case_id"],"query":case["query"],"positive":bool(relevant),
 			"relevant_chunk_ids":sorted(relevant),"required_chunk_ids":sorted(required),
 			"shared_query_seconds":round(perf_counter()-started,4),"timings":timings,"modes":{}}
+		for field in category_fields:
+			if field in case: result[field]=case[field]
 		for name,matches in (("cosine",ranked[:top_k]),("keyword",keyword[:top_k]),("bm25",bm25[:top_k]),("hybrid",fused),("hybrid_bm25",bm25_fused)):
 			result["modes"][name]={**fragment_metrics(tuple(match.chunk.chunk_id for match in matches),relevant,required,top_k),
 				"required_ranks":{identity:next((rank for rank,match in enumerate(matches,1) if match.chunk.chunk_id==identity),None) for identity in sorted(required)},
@@ -94,8 +114,21 @@ def compare_cases(factory,document_ids,provider,cases,top_k=3,candidate_k=10)->d
 		summary[name].update(required_passes=sum(value["required_hit"] for value in critical),required_cases=len(critical))
 		negative=[result["modes"][name] for result in results if not result["positive"]]
 		summary[name].update(negative_nonempty_cases=sum(value["returned_count"]>0 for value in negative),negative_cases=len(negative))
+	category_summary={}
+	for scenario in sorted({case["scenario"] for case in cases if "scenario" in case}):
+		group=[result for result in results if result.get("scenario")==scenario]
+		category_summary[scenario]={"cases":len(group),"answerability_labels":sorted({case["answerability"] for case in group}),
+			"expected_dispositions":sorted({case["expected_disposition"] for case in group}),"modes":{}}
+		for name in ("cosine","keyword","bm25","hybrid","hybrid_bm25"):
+			values=[case["modes"][name] for case in group]
+			category_summary[scenario]["modes"][name]={
+				"nonempty_cases":sum(value["returned_count"]>0 for value in values),
+				"required_hits":sum(value["required_hit"] is True for value in values if value["required_hit"] is not None),
+				"required_cases":sum(value["required_hit"] is not None for value in values),
+			}
 	return {"top_k":top_k,"candidate_k":candidate_k,"rrf_constant":60,"bm25":{"k1":1.2,"b":0.75,"tokenizer":"word-or-han-char-v1"},"positive_cases":len(positive),"negative_cases":len(results)-len(positive),
-		"snapshot":snapshot,"summary":summary,"results":results,"limitations":"人工片段标注需复核；同快照同查询向量，不评估生成/拒答；timings区分共享加载编码cosine与本地算法，不代表各配置独立端到端延迟；旧词频为子串匹配，BM25为词项匹配，差异不只评分公式"}
+		"snapshot":snapshot,"summary":summary,"scenario_summary":category_summary,"answerability_assessed":False,
+		"results":results,"limitations":"人工片段标注需复核；scenario_summary衡量检索行为，不代表生成模型已按预期回答；无现场事实的根因问题即使召回手册也需要真实报告语义审核；同快照同查询向量不评估生成/拒答；timings区分共享加载编码cosine与本地算法，不代表各配置独立端到端延迟；旧词频为子串匹配，BM25为词项匹配，差异不只评分公式"}
 
 
 def main():

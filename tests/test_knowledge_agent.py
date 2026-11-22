@@ -1,16 +1,21 @@
 import json
+import os
 from dataclasses import replace
 from threading import Event
+from uuid import uuid4
 
 import pytest
 from sqlalchemy import create_engine
+from sqlalchemy.schema import CreateSchema,DropSchema
 from sqlalchemy.orm import sessionmaker
 
+from evidenceops.api.agent_diagnosis import create_app
 from evidenceops.application.agent_diagnosis_factory import build_agent_diagnosis_assembly
 from evidenceops.application.diagnosis_history import load_diagnosis_history
 from evidenceops.application.diagnosis_response import to_response
 from evidenceops.application.history_response import history_response
 from evidenceops.application.knowledge_retrieval import KeywordKnowledgeRetriever
+from evidenceops.application.knowledge_splitter import KnowledgeSplitter
 from evidenceops.application.hybrid_knowledge import fuse_rankings
 from evidenceops.application.bm25_knowledge import bm25_ranking
 from evidenceops.application.model_protocol import ModelProviderError,StructuredFinalAnswer,ToolCall,ToolCallBatch
@@ -18,8 +23,13 @@ from evidenceops.application.run_control import RunControl
 from evidenceops.application.tool_runtime import ToolRuntime
 from evidenceops.connectors.knowledge_search import build_knowledge_search_tool
 from evidenceops.infrastructure.database.diagnosis_persistence import SqlAlchemyDiagnosisPersistence
+from evidenceops.infrastructure.database.knowledge_repository import SqlAlchemyKnowledgeRepository
 from evidenceops.infrastructure.database.models import Base
+from evidenceops.infrastructure.database.session import DatabaseSettings,create_database_engine,create_session_factory
+from evidenceops.infrastructure.database.vector_repository import VectorRepository
+from evidenceops.infrastructure.knowledge_tools import configured_knowledge_tools
 from evidenceops.infrastructure.providers.mock_provider import MockProvider
+from evidenceops.domain.knowledge import ChunkSet,DocumentVersion,KnowledgeDocument,SplitterConfig
 from evidenceops.mocks.thread_pool import build_thread_pool_tool
 from test_knowledge_evidence import corpus
 
@@ -42,6 +52,38 @@ def persistence(tmp_path):
 	Base.metadata.create_all(engine)
 	yield SqlAlchemyDiagnosisPersistence(sessionmaker(bind=engine,expire_on_commit=False),engine)
 	engine.dispose()
+
+
+@pytest.fixture(params=("sqlite","postgres"))
+def bm25_agent_persistence(request,tmp_path):
+	if request.param=="sqlite":
+		engine=create_engine("sqlite:///"+str(tmp_path/"bm25-agent.sqlite"),connect_args={"check_same_thread":False})
+		Base.metadata.create_all(engine)
+		try:
+			yield SqlAlchemyDiagnosisPersistence(sessionmaker(bind=engine,expire_on_commit=False),engine)
+		finally:
+			engine.dispose()
+		return
+	if not os.getenv("POSTGRES_PASSWORD"):
+		pytest.skip("需要POSTGRES_PASSWORD")
+	settings=DatabaseSettings.from_environment()
+	engine=create_database_engine(settings)
+	schema="bm25_agent_"+uuid4().hex
+	try:
+		with engine.begin() as connection:
+			connection.execute(CreateSchema(schema))
+		test_engine=engine.execution_options(schema_translate_map={None:schema})
+		Base.metadata.create_all(test_engine)
+		factory=sessionmaker(bind=test_engine,expire_on_commit=False)
+		yield SqlAlchemyDiagnosisPersistence(factory,engine)
+	finally:
+		engine.dispose()
+		cleanup_engine=create_database_engine(settings)
+		try:
+			with cleanup_engine.begin() as connection:
+				connection.execute(DropSchema(schema,cascade=True,if_exists=True))
+		finally:
+			cleanup_engine.dispose()
 
 
 @pytest.mark.parametrize("outcome",["success","protocol","forged","timeout"])
@@ -104,6 +146,107 @@ def test_empty_knowledge_result_has_no_evidence_but_other_tools_still_work(persi
 		assert result.run.status.value=="succeeded"
 		assert len(result.evidences)==1 and result.evidences[0].source.value=="metric"
 	finally: assembly.close()
+
+
+def test_knowledge_reference_without_incident_observations_is_insufficient(persistence):
+	found=matches()
+	seen=[]
+	def insufficient(request):
+		message=next(item for item in request.messages if item["role"]=="tool")
+		payload=json.loads(message["content"])
+		assert payload["data"]["matches"]
+		seen.extend(payload["data"]["matches"])
+		return StructuredFinalAnswer({"outcome":"insufficient_evidence",
+			"reason":"排障手册只能提供核验方法，当前没有服务运行时信息确认根因。",
+			"missing_information":["服务实际使用的sys.executable","同一解释器下python -m pip show pandas的结果"]})
+	tool=build_knowledge_search_tool(lambda query,**options:found)
+	provider=MockProvider((ToolCall("root-cause-reference","search_knowledge",{"query":"ModuleNotFoundError pandas 根因"}),insufficient))
+	assembly=build_agent_diagnosis_assembly(provider,"mock",(tool,),"order-service",diagnosis_persistence=persistence)
+	try:
+		result=assembly.diagnosis_service.execute("request-root-cause-reference","ModuleNotFoundError pandas，终端pip安装过，这次根因是什么")
+		history=history_response(load_diagnosis_history(persistence,result.run.run_id))
+		response=to_response(result)
+		assert result.run.error_code=="EVIDENCE_INSUFFICIENT"
+		assert result.report is None and history["report"] is None
+		assert history["status"]=="failed" and len(history["evidences"])==len(seen)>0
+		assert history["error_detail"]["missing_information"]==[
+			"服务实际使用的sys.executable","同一解释器下python -m pip show pandas的结果"]
+		assert [item["content_snapshot"] for item in response["evidences"]]==[item["content"] for item in seen]
+	finally:
+		assembly.close()
+
+
+def test_bm25_agent_stream_and_history_without_embedding(bm25_agent_persistence,monkeypatch):
+	from fastapi.testclient import TestClient
+	from evidenceops.infrastructure import knowledge_tools
+	from evidenceops.application.vector_knowledge import VectorKnowledgeService
+	content=("# Python 导入故障\n\n"
+		"ModuleNotFoundError 表示当前运行的 Python 解释器没有找到导入模块。\n\n"
+		"使用服务实际启动的解释器执行 python -m pip show pandas，确认安装位置和运行环境一致。")
+	document=KnowledgeDocument("bm25-agent-"+uuid4().hex,"Python 导入故障手册","acceptance:python-import")
+	version=DocumentVersion(document.document_id,document.source_ref,content)
+	chunk_set=ChunkSet(version.version_id,SplitterConfig())
+	chunks=KnowledgeSplitter().split(version,chunk_set)
+	with bm25_agent_persistence._session_factory.begin() as session:
+		SqlAlchemyKnowledgeRepository(session).save_ingestion(document,version,chunk_set,chunks)
+	VectorKnowledgeService(bm25_agent_persistence._session_factory).publish_chunk_set(document.document_id,chunk_set.chunk_set_id)
+	with bm25_agent_persistence._session_factory() as session:
+		publication=VectorRepository(session).active_publication(document.document_id)
+	assert publication==(chunk_set.chunk_set_id,None)
+	monkeypatch.setenv("EVIDENCEOPS_KNOWLEDGE_ENABLED","true")
+	monkeypatch.setenv("EVIDENCEOPS_KNOWLEDGE_DOCUMENT_IDS",document.document_id)
+	monkeypatch.setenv("EVIDENCEOPS_KNOWLEDGE_RETRIEVAL","bm25")
+	for name in ("EMBEDDING_PROVIDER","EMBEDDING_ENDPOINT","EMBEDDING_MODEL","EMBEDDING_DIMENSIONS","EMBEDDING_API_KEY","DASHSCOPE_API_KEY"):
+		monkeypatch.delenv(name,raising=False)
+	monkeypatch.setattr(knowledge_tools,"configured_embedding_provider",lambda:pytest.fail("BM25不应创建Embedding Provider"))
+	tools=configured_knowledge_tools(bm25_agent_persistence)
+	assert len(tools)==1 and tools[0].name=="search_knowledge"
+	visible=[]
+	def final(request):
+		tool_messages=[message for message in request.messages if message["role"]=="tool"]
+		assert len(tool_messages)==1
+		payload=json.loads(tool_messages[0]["content"])
+		matches=payload["data"]["matches"]
+		assert matches
+		assert any("ModuleNotFoundError" in item["content"] for item in matches)
+		assert any("pandas" in item["content"] for item in matches)
+		assert all(item["metadata"]["embedding_set_id"] is None for item in matches)
+		assert all(item["metadata"]["retrieval_method"]=="bm25-v1" for item in matches)
+		visible.extend(matches)
+		identities=[item["evidence_id"] for item in matches]
+		return StructuredFinalAnswer({
+			"root_cause":{"text":"目前没有运行时证据，无法确认pandas是否安装在服务实际使用的解释器中。","evidence_ids":identities},
+			"recommendations":[{"text":"使用服务启动时的解释器执行python -m pip show pandas，并记录sys.executable。","evidence_ids":identities}],
+			"confidence":0.2,"limitations":"检索到的是排障参考手册，不是本次服务的运行时观测。"})
+	provider=MockProvider((ToolCall("bm25-agent-search","search_knowledge",{
+		"query":"ModuleNotFoundError pandas Python解释器","top_k":3}),final))
+	assembly=build_agent_diagnosis_assembly(provider,"mock",tools,"order-service",diagnosis_persistence=bm25_agent_persistence)
+	try:
+		with TestClient(create_app(assembly)) as client:
+			capabilities=client.get("/api/v1/agent/capabilities").json()
+			assert capabilities["knowledge_search"] is True
+			response=client.post("/api/v1/agent/diagnosis/stream",json={"description":"排查ModuleNotFoundError pandas"})
+			assert response.status_code==200
+			events=[json.loads(line[6:]) for line in response.text.splitlines() if line.startswith("data: ")]
+			assert [event["event"] for event in events]==[
+				"run_started","model_started","model_finished","tool_started","tool_finished",
+				"model_started","model_finished","run_completed"]
+			result=events[-1]["data"]["result"]
+			assert result["status"]=="succeeded" and result["report"] is not None
+			history=client.get("/api/v1/agent/runs/"+result["run_id"]).json()
+			assert history["status"]=="succeeded" and history["error_code"] is None
+			assert len(history["evidences"])==len(visible)>0
+			assert history["execution_records"][1]["query_arguments"]=={
+				"query":"ModuleNotFoundError pandas Python解释器","top_k":3}
+			for saved,live,model_visible in zip(history["evidences"],result["evidences"],visible):
+				assert saved["content_snapshot"]==live["content_snapshot"]==model_visible["content"]
+				assert saved["evidence_id"]==live["evidence_id"]==model_visible["evidence_id"]
+				assert saved["source_metadata"]["embedding_set_id"] is None
+				assert saved["source_metadata"]["retrieval_method"]=="bm25-v1"
+				assert saved["source_metadata"]==model_visible["metadata"]
+				assert saved["evidence_id"] in result["report"]["root_cause"]["evidence_ids"]
+	finally:
+		assembly.close()
 
 
 @pytest.mark.parametrize("arguments",[{"query":" "},{"query":"x","top_k":True},{"query":"x","top_k":6},{"query":"x","path":"secret"}])

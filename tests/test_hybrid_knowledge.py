@@ -133,7 +133,9 @@ def test_shared_published_snapshot_filter_and_comparison(factory):
 	for kwargs in ({'threshold':0.3},{'top_k':'3'},{'top_k':3,'candidate_k':2}):
 		with pytest.raises(ValueError): service.search_many((document.document_id,),'RPC',encoder,method='hybrid',**kwargs)
 	with pytest.raises(ValueError): VectorKnowledgeService(factory,max_candidates=1).search_many((document.document_id,),'RPC',encoder,method='hybrid')
-	case={'case_id':'test','query':'RPC','relevant_chunk_ids':[chunks[0].chunk_id],'required_chunk_ids':[chunks[0].chunk_id]}
+	case={'case_id':'test','query':'RPC','relevant_chunk_ids':[chunks[0].chunk_id],'required_chunk_ids':[chunks[0].chunk_id],
+		'scenario':'incident_evidence_required','answerability':'needs_incident_evidence','expected_disposition':'insufficient_evidence',
+		'incident_evidence_available':[],'review_criteria':['不得把参考资料当成现场事实']}
 	before=encoder.calls
 	report=compare_cases(factory,(document.document_id,),encoder,[case])
 	assert encoder.calls==before+1 and report['positive_cases']==1
@@ -143,6 +145,10 @@ def test_shared_published_snapshot_filter_and_comparison(factory):
 	assert report['results'][0]['modes']['bm25']['required_ranks'][chunks[0].chunk_id]==1
 	assert report['summary']['bm25']['negative_cases']==0
 	assert set(report['summary'])=={'cosine','keyword','bm25','hybrid','hybrid_bm25'}
+	assert report['answerability_assessed'] is False
+	assert report['results'][0]['expected_disposition']=='insufficient_evidence'
+	assert report['scenario_summary']['incident_evidence_required']['modes']['bm25']=={
+		'nonempty_cases':1,'required_hits':1,'required_cases':1}
 	assert all(value>=0 for value in report['results'][0]['timings'].values())
 	# 单路词法不调用供应商；融合的供应商错误不能被伪装为空命中。
 	failing=TestEncoder(config,fail_at=1)

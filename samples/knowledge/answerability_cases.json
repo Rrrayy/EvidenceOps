@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "description": "RAG可回答性回归集。固定检索输入与人工回答预期，用于检索行为对照；不预测线上用户问题，也不自动判定模型回答语义正确。",
+  "corpus_id": "evidenceops-troubleshooting-practice-v1",
+  "cases": [
+    {
+      "case_id": "python-next-investigation",
+      "query": "ModuleNotFoundError pandas 服务启动时应该先核对什么",
+      "scenario": "knowledge_answerable",
+      "answerability": "answerable_from_knowledge",
+      "expected_disposition": "answer_with_knowledge",
+      "incident_evidence_available": ["服务启动时报ModuleNotFoundError: No module named pandas", "开发者称曾执行pip install pandas"],
+      "relevant_chunk_ids": ["chunk-903deb07956bf0237614d3ee1a17897549e8b819cb30621df29ca72019e8672d", "chunk-375570a9e825e12363e501411ad53cfaf207bfec46a179f572fa4fbc2ba9bbf7"],
+      "required_chunk_ids": ["chunk-903deb07956bf0237614d3ee1a17897549e8b819cb30621df29ca72019e8672d"],
+      "review_criteria": ["给出使用服务实际解释器执行python -m pip show pandas的核验步骤", "不得把环境错配陈述为已确认根因", "引用必须指向支持该排查步骤的片段"]
+    },
+    {
+      "case_id": "python-root-cause-without-runtime-facts",
+      "query": "服务报ModuleNotFoundError pandas但终端执行过pip install这次根因是什么",
+      "scenario": "incident_evidence_required",
+      "answerability": "needs_incident_evidence",
+      "expected_disposition": "insufficient_evidence",
+      "incident_evidence_available": ["服务启动时报ModuleNotFoundError: No module named pandas", "开发者称曾执行pip install pandas"],
+      "relevant_chunk_ids": ["chunk-903deb07956bf0237614d3ee1a17897549e8b819cb30621df29ca72019e8672d", "chunk-71932a62ad052249ddaab4b2d598793a902e1c0cb88bb6c2bba73f8fbf4abd14", "chunk-375570a9e825e12363e501411ad53cfaf207bfec46a179f572fa4fbc2ba9bbf7"],
+      "required_chunk_ids": ["chunk-903deb07956bf0237614d3ee1a17897549e8b819cb30621df29ca72019e8672d"],
+      "review_criteria": ["输出insufficient_evidence", "将解释器环境错配仅列为待验证假设", "请求服务实际sys.executable和同一解释器下的pip show结果", "不得把知识手册当作本次运行时证据"]
+    },
+    {
+      "case_id": "out-of-corpus-react-hydration",
+      "query": "React hydration failed服务端与客户端DOM不一致怎么修",
+      "scenario": "no_applicable_knowledge",
+      "answerability": "no_applicable_knowledge",
+      "expected_disposition": "no_supported_knowledge_answer",
+      "incident_evidence_available": ["用户报告React hydration failed"],
+      "relevant_chunk_ids": [],
+      "required_chunk_ids": [],
+      "review_criteria": ["不得将无关手册拼成解决方案", "说明当前知识库没有适用资料", "不伪造知识引用"]
+    },
+    {
+      "case_id": "java-version-scope-not-represented",
+      "query": "Java 21虚拟线程下这个OOM的线程和堆配置是否匹配",
+      "scenario": "applicability_mismatch",
+      "answerability": "not_represented_in_corpus",
+      "expected_disposition": "insufficient_evidence",
+      "incident_evidence_available": ["用户提及Java 21虚拟线程和OOM"],
+      "relevant_chunk_ids": [],
+      "required_chunk_ids": [],
+      "review_criteria": ["当前Java手册只覆盖堆内存不足，不包含Java 21虚拟线程适用范围", "即使召回Java堆资料也不能声称其适用于该版本问题", "请求完整错误与运行时版本信息"]
+    },
+    {
+      "case_id": "postgres-version-conflict-not-represented",
+      "query": "PostgreSQL 17的pgvector HNSW行为与PostgreSQL 15是否完全相同",
+      "scenario": "version_conflict",
+      "answerability": "not_represented_in_corpus",
+      "expected_disposition": "insufficient_evidence",
+      "incident_evidence_available": ["用户询问PostgreSQL 15与17的版本差异"],
+      "relevant_chunk_ids": [],
+      "required_chunk_ids": [],
+      "review_criteria": ["当前知识库没有经核实的PostgreSQL 15/17与pgvector版本对照资料", "不得根据通用PostgreSQL连接手册回答索引兼容性", "要求核对具体PostgreSQL与pgvector版本和官方兼容说明"]
+    }
+  ]
+}

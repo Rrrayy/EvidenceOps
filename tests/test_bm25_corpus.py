@@ -48,3 +48,48 @@ def test_frozen_corpus_lexical_comparison():
 					for key in ('precision_at_k','recall_at_k','reciprocal_rank')},
 				'required_passes':sum(value['required_hit'] for value in positive),'failed_required':failed,
 				'negative':negative,'local_seconds':perf_counter()-started},ensure_ascii=False))
+
+
+def test_answerability_scenarios_have_explicit_retrieval_and_review_expectations():
+	root=Path(__file__).resolve().parents[1]/'samples'/'knowledge'
+	manifest=read_manifest(root/'manifest.json')
+	ingestion=DocumentIngestionService(LocalDocumentLoader(root))
+	chunks=tuple(chunk for item in manifest['documents'] for chunk in ingestion.ingest(
+		KnowledgeDocument(item['document_id'],item['title'],item['path']),item['path']).chunks)
+	identities={chunk.chunk_id for chunk in chunks}
+	cases=json.loads((root/'answerability_cases.json').read_text(encoding='utf-8-sig'))['cases']
+	assert len(cases)==5
+	assert len({case['case_id'] for case in cases})==len(cases)
+	by_scenario={}
+	for case in cases:
+		relevant=set(case['relevant_chunk_ids'])
+		required=set(case['required_chunk_ids'])
+		assert required<=relevant<=identities
+		assert case['incident_evidence_available'] is not None
+		assert case['review_criteria']
+		by_scenario[case['scenario']]=by_scenario.get(case['scenario'],0)+1
+	assert by_scenario=={
+		'knowledge_answerable':1,
+		'incident_evidence_required':1,
+		'no_applicable_knowledge':1,
+		'applicability_mismatch':1,
+		'version_conflict':1,
+	}
+	retriever=BM25KnowledgeRetriever()
+	results=[]
+	for case in cases:
+		matches=retriever.search(chunks,case['query'],3)
+		metric=fragment_metrics(tuple(match.chunk.chunk_id for match in matches),
+			frozenset(case['relevant_chunk_ids']),frozenset(case['required_chunk_ids']),3)
+		results.append({'case_id':case['case_id'],'scenario':case['scenario'],
+			'expected_disposition':case['expected_disposition'],'retrieved_ids':[match.chunk.chunk_id for match in matches],
+			'required_hit':metric['required_hit'],'retrieved_count':len(matches),
+			'answerability_evaluated':False})
+	scenario_summary={}
+	for scenario in sorted({case['scenario'] for case in cases}):
+		group=[result for result in results if result['scenario']==scenario]
+		scenario_summary[scenario]={'cases':len(group),'nonempty_cases':sum(item['retrieved_count']>0 for item in group),
+			'required_hits':sum(item['required_hit'] is True for item in group if item['required_hit'] is not None),
+			'required_cases':sum(item['required_hit'] is not None for item in group)}
+	print(json.dumps({'method':'bm25-v1','scenario_summary':scenario_summary,'answerability_cases':results,
+		'limitations':'BM25排名测试不评估报告是否遵守expected_disposition；版本冲突与适用范围案例当前未被语料覆盖，标注为不可代表的回归压力输入。'},ensure_ascii=False))
