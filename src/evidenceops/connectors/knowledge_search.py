@@ -34,7 +34,7 @@ def build_knowledge_search_tool(search,budget:float=8)->ToolSpec:
 			raise TimeoutError("知识检索超时") from error
 		except Exception as error:
 			# 不向模型、SSE或历史响应暴露供应商响应、连接串和密钥。
-			raise RuntimeError("知识检索失败，请检查集合和Embedding服务") from error
+			raise RuntimeError("知识检索失败，请检查已发布集合和检索配置") from error
 	return ToolSpec("search_knowledge",True,validate,invoke,{
 		"type":"object","properties":{
 			"query":{"type":"string","minLength":1,"maxLength":2000,"description":"检索排障方法；资料不能证明本次故障根因"},

@@ -1,6 +1,7 @@
 from dataclasses import replace
 import math
 import pytest
+from sqlalchemy import delete
 
 from evidenceops.application.hybrid_knowledge import fuse_rankings,keyword_ranking
 from evidenceops.application.bm25_knowledge import BM25KnowledgeRetriever,bm25_ranking,tokenize
@@ -10,6 +11,8 @@ from evidenceops.application.knowledge_evidence import matches_to_evidence
 from evidenceops.application.vector_knowledge import VectorKnowledgeService
 from evidenceops.domain.knowledge_vectors import EncodingConfig
 from evidenceops.domain.knowledge import KnowledgeChunk,ChunkSet,SplitterConfig
+from evidenceops.infrastructure import knowledge_tools
+from evidenceops.infrastructure.database.models import KnowledgeVectorRow
 from test_knowledge_evidence import corpus
 from test_vector_knowledge import factory,setup_document,TestEncoder
 
@@ -158,3 +161,41 @@ def test_shared_published_snapshot_filter_and_comparison(factory):
 	before=encoder.calls
 	with pytest.raises(ValueError): compare_cases(factory,(document.document_id,),encoder,[case,{**case,'case_id':'invalid','query':' '}])
 	assert encoder.calls==before
+
+
+def test_bm25_tool_runs_without_embedding_configuration_or_vectors(factory,monkeypatch):
+	document,chunk_set,chunks=setup_document(factory)
+	config=EncodingConfig('test','test:local','test-v1',2)
+	encoder=TestEncoder(config)
+	service=VectorKnowledgeService(factory)
+	set_id=service.build(document.document_id,chunk_set.chunk_set_id,config,encoder)
+	service.publish(document.document_id,set_id,None)
+	with factory.begin() as session:
+		session.execute(delete(KnowledgeVectorRow).where(KnowledgeVectorRow.embedding_set_id==set_id))
+	encoder.calls=0
+	monkeypatch.setenv('EVIDENCEOPS_KNOWLEDGE_ENABLED','true')
+	monkeypatch.setenv('EVIDENCEOPS_KNOWLEDGE_DOCUMENT_IDS',document.document_id)
+	monkeypatch.setenv('EVIDENCEOPS_KNOWLEDGE_RETRIEVAL','bm25')
+	for name in ('EMBEDDING_PROVIDER','EMBEDDING_ENDPOINT','EMBEDDING_MODEL','EMBEDDING_DIMENSIONS','EMBEDDING_API_KEY','DASHSCOPE_API_KEY'):
+		monkeypatch.delenv(name,raising=False)
+	monkeypatch.setattr(knowledge_tools,'configured_embedding_provider',lambda:pytest.fail('BM25不得创建Embedding Provider'))
+	persistence=type('Persistence',(),{'_session_factory':factory})()
+	tool=knowledge_tools.configured_knowledge_tools(persistence)[0]
+	result=tool.handler(tool.validate_arguments({'query':'RPC'}))
+	assert result and result[0].chunk in chunks
+	assert result[0].embedding_set_id==set_id
+	assert result[0].retrieval_method=='bm25-v1'
+	assert encoder.calls==0
+
+
+def test_vector_modes_require_embedding_provider(factory):
+	document,chunk_set,chunks=setup_document(factory)
+	config=EncodingConfig('test','test:local','test-v1',2)
+	encoder=TestEncoder(config)
+	service=VectorKnowledgeService(factory)
+	set_id=service.build(document.document_id,chunk_set.chunk_set_id,config,encoder)
+	service.publish(document.document_id,set_id,None)
+	with pytest.raises(ValueError,match='Embedding Provider'):
+		service.search_many((document.document_id,),'RPC',None,method='cosine')
+	with pytest.raises(ValueError,match='Embedding Provider'):
+		service.search_many((document.document_id,),'RPC',None,method='hybrid_bm25')
