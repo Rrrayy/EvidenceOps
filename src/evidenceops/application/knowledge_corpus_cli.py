@@ -29,7 +29,7 @@ def read_manifest(path:Path)->dict:
 	return manifest
 
 
-def prepare_corpus(factory,manifest_path:Path,provider,publish:bool=False)->list[dict]:
+def prepare_corpus(factory,manifest_path:Path,provider=None,publish:bool=False)->list[dict]:
 	manifest=read_manifest(manifest_path)
 	ingestion=DocumentIngestionService(LocalDocumentLoader(manifest_path.resolve().parent))
 	# 先验证所有输入再调用供应商，坏文件不会留下部分摄取结果。
@@ -40,14 +40,20 @@ def prepare_corpus(factory,manifest_path:Path,provider,publish:bool=False)->list
 		with factory.begin() as session:
 			SqlAlchemyKnowledgeRepository(session).save_ingestion(data.document,data.version,data.chunk_set,data.chunks)
 		with factory() as session:
-			previous=VectorRepository(session).active(data.document.document_id)
-			active=session.get(KnowledgeEmbeddingSetRow,previous) if previous else None
-			unchanged=bool(active and active.status=="ready" and active.chunk_set_id==data.chunk_set.chunk_set_id
-				and active.config_fingerprint==provider.config.fingerprint)
-		set_id=previous if unchanged else service.build(data.document.document_id,data.chunk_set.chunk_set_id,provider.config,provider)
-		if publish and not unchanged: service.publish(data.document.document_id,set_id,previous)
-		results.append({"document_id":data.document.document_id,"chunk_count":len(data.chunks),"embedding_set_id":set_id,
-			"published":publish or unchanged,"reused":unchanged})
+			previous=VectorRepository(session).active_publication(data.document.document_id)
+			active=session.get(KnowledgeEmbeddingSetRow,previous.embedding_set_id) if previous and previous.embedding_set_id else None
+			unchanged=bool(previous and previous.chunk_set_id==data.chunk_set.chunk_set_id and (
+				provider is None or (active and active.status=="ready" and active.config_fingerprint==provider.config.fingerprint)))
+		if unchanged:
+			set_id=previous.embedding_set_id
+		elif provider is None:
+			set_id=None
+			if publish: service.publish_chunk_set(data.document.document_id,data.chunk_set.chunk_set_id,None,previous)
+		else:
+			set_id=service.build(data.document.document_id,data.chunk_set.chunk_set_id,provider.config,provider)
+			if publish: service.publish_chunk_set(data.document.document_id,data.chunk_set.chunk_set_id,set_id,previous)
+		results.append({"document_id":data.document.document_id,"chunk_set_id":data.chunk_set.chunk_set_id,
+			"chunk_count":len(data.chunks),"embedding_set_id":set_id,"published":publish or unchanged,"reused":unchanged})
 	return results
 
 
@@ -56,10 +62,12 @@ def main():
 	parser.add_argument("command",choices=("prepare","evaluate"))
 	parser.add_argument("manifest",type=Path)
 	parser.add_argument("--publish",action="store_true",help="显式切换各文档默认指针；不是整库原子发布")
+	parser.add_argument("--lexical-only",action="store_true",help="只发布文本片段，不调用Embedding服务")
 	parser.add_argument("--cases",type=Path)
 	args=parser.parse_args()
 	manifest=read_manifest(args.manifest)
-	provider=configured_embedding_provider()
+	if args.command=="evaluate" and args.lexical_only: parser.error("evaluate需要Embedding，不能使用--lexical-only")
+	provider=None if args.command=="prepare" and args.lexical_only else configured_embedding_provider()
 	engine=create_database_engine(DatabaseSettings.from_environment())
 	try:
 		factory=create_session_factory(engine)

@@ -143,7 +143,8 @@ class KnowledgeVectorRow(Base):
 class KnowledgePublicationRow(Base):
 	__tablename__="knowledge_publications"
 	document_id:Mapped[str]=mapped_column(Text,ForeignKey("knowledge_documents.document_id"),primary_key=True)
-	embedding_set_id:Mapped[str]=mapped_column(Text,ForeignKey("knowledge_embedding_sets.embedding_set_id"),nullable=False)
+	chunk_set_id:Mapped[str]=mapped_column(Text,ForeignKey("knowledge_chunk_sets.chunk_set_id"),nullable=False)
+	embedding_set_id:Mapped[str|None]=mapped_column(Text,ForeignKey("knowledge_embedding_sets.embedding_set_id"),nullable=True)
 
 
 class DiagnosisReportRow(Base):

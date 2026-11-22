@@ -30,6 +30,11 @@ def main()->None:
 	publish.add_argument("document_id")
 	publish.add_argument("embedding_set_id")
 	publish.add_argument("--expected-active",default=None)
+	publish_chunks=commands.add_parser("publish-chunks")
+	publish_chunks.add_argument("document_id")
+	publish_chunks.add_argument("chunk_set_id")
+	publish_chunks.add_argument("--expected-active-chunk-set",default=None)
+	publish_chunks.add_argument("--expected-active-embedding-set",default=None)
 	search=commands.add_parser("search")
 	search.add_argument("document_id")
 	search.add_argument("query")
@@ -47,6 +52,12 @@ def main()->None:
 		elif args.command=="publish":
 			service.publish(args.document_id,args.embedding_set_id,args.expected_active)
 			output={"published":args.embedding_set_id}
+		elif args.command=="publish-chunks":
+			if args.expected_active_embedding_set and not args.expected_active_chunk_set:
+				parser.error("--expected-active-embedding-set需要--expected-active-chunk-set")
+			expected=(args.expected_active_chunk_set,args.expected_active_embedding_set) if args.expected_active_chunk_set else None
+			service.publish_chunk_set(args.document_id,args.chunk_set_id,None,expected)
+			output={"published_chunk_set_id":args.chunk_set_id,"embedding_set_id":None}
 		else:
 			# 编码用途默认相同，模型需要前缀时显式设置并纳入指纹；不能自动猜测供应商规则。
 			config=EncodingConfig(provider=os.environ["EMBEDDING_PROVIDER"],deployment=os.environ["EMBEDDING_ENDPOINT"],model=os.environ["EMBEDDING_MODEL"],dimensions=int(os.environ["EMBEDDING_DIMENSIONS"]),revision=os.getenv("EMBEDDING_REVISION","unknown"),document_mode="default",query_mode="default",document_prefix=os.getenv("EMBEDDING_DOCUMENT_PREFIX",""),query_prefix=os.getenv("EMBEDDING_QUERY_PREFIX",""))

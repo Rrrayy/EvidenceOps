@@ -75,6 +75,19 @@ def test_insufficient_sse_and_http_history(persistence):
 		assert history["error_detail"]==result["error_detail"] and history["report"] is None
 
 
+def test_prepare_corpus_publishes_lexical_chunks_without_embedding(factory,tmp_path):
+	(root:=tmp_path/"knowledge").mkdir()
+	(root/"rpc.md").write_text("# RPC\n\nRPC超时要检查下游延迟。",encoding="utf-8")
+	manifest_path=root/"manifest.json"
+	manifest_path.write_text(json.dumps({"documents":[{"document_id":"lexical-only","path":"rpc.md","title":"RPC"}]}),encoding="utf-8")
+	result=prepare_corpus(factory,manifest_path,None,publish=True)
+	assert len(result)==1
+	assert result[0]["document_id"]=="lexical-only" and result[0]["chunk_count"]==1
+	assert result[0]["embedding_set_id"] is None and result[0]["published"] and not result[0]["reused"]
+	matches=VectorKnowledgeService(factory).search_many(("lexical-only",),"RPC",method="bm25")
+	assert matches and matches[0].embedding_set_id is None and matches[0].retrieval_method=="bm25-v1"
+
+
 def test_multi_document_query_once_global_ranking_filter_and_limits(factory):
 	first,set_one,chunks_one=setup_document(factory)
 	second,set_two,chunks_two=setup_document(factory)

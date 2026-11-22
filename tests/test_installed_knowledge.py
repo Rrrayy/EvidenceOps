@@ -8,6 +8,7 @@ from uuid import uuid4
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import event,text,select
+from sqlalchemy.orm import sessionmaker
 
 from evidenceops.api.agent_diagnosis import create_app
 from evidenceops.api.installed_app import Installation,StorageFailure,create_installed_app
@@ -40,7 +41,7 @@ def signed(payload):
 	return {"payload":payload,"sha256":hashlib.sha256(canonical(payload)).hexdigest()}
 
 
-@pytest.mark.parametrize("revision",["0001","0002","0003","0004","0005","0006","0007","0008","0009"])
+@pytest.mark.parametrize("revision",["0001","0002","0003","0004","0005","0006","0007","0008","0009","0010","0011"])
 def test_old_archive_normalizes_and_restores_without_inventing_snapshots(tmp_path,revision):
 	engine=sqlite_engine(tmp_path/(revision+".sqlite"))
 	target=LocalPersistence(tmp_path/"target.sqlite")
@@ -62,6 +63,42 @@ def test_old_archive_normalizes_and_restores_without_inventing_snapshots(tmp_pat
 			assert connection.scalar(select(RunRow.model_config).where(RunRow.run_id==identity)) is None
 	finally:
 		target.close();engine.dispose()
+
+
+def test_publication_upgrade_backfills_chunk_set_and_legacy_archive(tmp_path):
+	engine=sqlite_engine(tmp_path/"publication.sqlite")
+	migrate(engine,"0010")
+	factory=sessionmaker(bind=engine,expire_on_commit=False)
+	document,chunk_set,chunks=setup_document(factory)
+	config=EncodingConfig("test","test:local","test-v1",2)
+	service=VectorKnowledgeService(factory)
+	set_id=service.build(document.document_id,chunk_set.chunk_set_id,config,TestEncoder(config))
+	with factory.begin() as session:
+		session.execute(KnowledgePublicationRow.__table__.insert().values(document_id=document.document_id,embedding_set_id=set_id))
+	connections=ConnectionStore(tmp_path/"connections")
+	try:
+		legacy=export_archive(engine,connections)
+		old_publication=legacy["payload"]["tables"]["knowledge_publications"][0]
+		assert "chunk_set_id" not in old_publication
+		upgraded,_=validate_archive(legacy)
+		assert upgraded["tables"]["knowledge_publications"][0]["chunk_set_id"]==chunk_set.chunk_set_id
+		target=sqlite_engine(tmp_path/"restored.sqlite")
+		try:
+			migrate(target)
+			import_tables(target,upgraded)
+			with sessionmaker(bind=target,expire_on_commit=False)() as session:
+				restored=session.get(KnowledgePublicationRow,document.document_id)
+				assert restored.chunk_set_id==chunk_set.chunk_set_id
+				assert restored.embedding_set_id==set_id
+		finally: target.dispose()
+		migrate(engine)
+		with factory() as session:
+			publication=session.get(KnowledgePublicationRow,document.document_id)
+			assert publication.chunk_set_id==chunk_set.chunk_set_id
+			assert publication.embedding_set_id==set_id
+		assert service.search_many((document.document_id,),"RPC",method="bm25")
+		assert service.search(document.document_id,"RPC",TestEncoder(config))
+	finally: engine.dispose()
 
 
 def test_sqlite_upgrade_backup_once_and_unknown_version_refused(tmp_path):
@@ -184,8 +221,13 @@ def test_installed_postgres_upgrade_current_and_unknown_revision(tmp_path,monkey
 	try:
 		with admin.begin() as connection: connection.execute(text('CREATE SCHEMA "'+schema+'"'))
 		initial=engine_for_test({})
-		migrate(initial._engine,"0005")
+		migrate(initial._engine,"0010")
 		identity=seed_run(initial._engine)
+		document,chunk_set,chunks=setup_document(initial._session_factory)
+		config=EncodingConfig("test","test:local","test-v1",2)
+		set_id=VectorKnowledgeService(initial._session_factory).build(document.document_id,chunk_set.chunk_set_id,config,TestEncoder(config))
+		with initial._session_factory.begin() as session:
+			session.execute(KnowledgePublicationRow.__table__.insert().values(document_id=document.document_id,embedding_set_id=set_id))
 		initial.close()
 		with pytest.raises(StorageFailure) as caught: installation.prepare({"mode":"postgres"})
 		assert caught.value.state=="needs_upgrade"
@@ -194,6 +236,9 @@ def test_installed_postgres_upgrade_current_and_unknown_revision(tmp_path,monkey
 			with prepared._engine.connect() as connection:
 				assert database_schema(connection)==current_schema()
 				assert connection.scalar(select(RunRow.run_id))==identity
+				publication=connection.execute(select(KnowledgePublicationRow.__table__)).mappings().one()
+				assert publication["chunk_set_id"]==chunk_set.chunk_set_id
+				assert publication["embedding_set_id"]==set_id
 		finally: prepared.close()
 		assert len(installation.backups)==1
 		prepared=installation.prepare({"mode":"postgres"})

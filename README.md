@@ -224,20 +224,20 @@ Python Adapter 对输入大小、进程时间、stdout/stderr、事件数量和�
 
 知识层将参考资料与故障观测分开处理。逻辑文档拥有按内容生成身份的版本；同一版本可以有多套绑定切分算法和配置的片段集合。片段保留原文范围、标题路径和内容哈希。本地加载必须明确指定知识用途，只读取配置目录和字节限制内的 UTF-8 Markdown/TXT。
 
-SQLAlchemy 仓储保存文档、不可变版本、切分集合、编码配置和向量。每份文档通过默认发布指针选择 ready 状态的 EmbeddingSet；精确 cosine 检索先过滤候选再评分，并拒绝不兼容编码器。关键词检索和检索指标提供确定性基线。摄取、构建、发布通过内部 CLI 操作，没有知识管理 HTTP 接口或工作台操作入口。
+SQLAlchemy 仓储保存文档、不可变版本、切分集合、编码配置和向量。每份文档的发布指针必须选择一个 ChunkSet，并可选关联完整且 ready 的 EmbeddingSet。BM25 和关键词检索直接读取已发布文本，不需要向量或 Embedding 凭据；cosine 与混合检索需要匹配该 ChunkSet 的向量集合。发布在短事务中校验整个指针，Embedding 构建失败不会切换旧发布。摄取、构建、发布通过内部 CLI 操作，没有知识管理 HTTP 接口或工作台操作入口。
 
-独立的 OpenAI 兼容 Embedding 适配器支持真实编码。显式启用 `search_knowledge` 后，Agent 可检索服务端配置的至多 16 份文档白名单，要求编码配置兼容，只编码一次查询，共享候选预算并统一排序；每个片段在下一轮模型请求前绑定独立 Evidence ID。本次可见正文、哈希、来源版本、片段身份、分数和编码集合身份一起归档，并进入诊断及历史响应，失败 Run 同样保留。零命中不生成 Evidence；检索故障沿用终止诊断的工具失败策略。默认 Mock 场景不会自动调用知识工具。
+独立的 OpenAI 兼容 Embedding 适配器支持真实编码。显式启用 `search_knowledge` 后，Agent 可检索服务端配置的至多 16 份文档白名单；BM25/关键词直接查发布文本，cosine/混合模式校验编码配置并只编码一次查询，各路共享候选预算并统一排序。每个片段在下一轮模型请求前绑定独立 Evidence ID。本次可见正文、哈希、来源版本、片段身份、分数和检索配置身份一起归档，并进入诊断及历史响应，失败 Run 同样保留。零命中不生成 Evidence；检索故障沿用终止诊断的工具失败策略。默认 Mock 场景不会自动调用知识工具。
 
-配置项：`EVIDENCEOPS_KNOWLEDGE_ENABLED=true`、`EVIDENCEOPS_KNOWLEDGE_DOCUMENT_IDS`（逗号分隔，兼容旧单数配置 `EVIDENCEOPS_KNOWLEDGE_DOCUMENT_ID`）、`EMBEDDING_PROVIDER`、`EMBEDDING_ENDPOINT`（完整 HTTPS `/embeddings` 地址）、`EMBEDDING_MODEL`、`EMBEDDING_DIMENSIONS`、`EMBEDDING_API_KEY`（或 `DASHSCOPE_API_KEY`）。可选模型修订和文档/查询前缀必须与已发布编码配置一致。启用前执行 `alembic upgrade head`；诊断模型凭据独立配置。`scripts/verify_knowledge_agent.py` 使用真实 Embedding、PostgreSQL 和确定性生成替身验证引用及失败保留。
+配置项：`EVIDENCEOPS_KNOWLEDGE_ENABLED=true`、`EVIDENCEOPS_KNOWLEDGE_DOCUMENT_IDS`（逗号分隔，兼容旧单数配置 `EVIDENCEOPS_KNOWLEDGE_DOCUMENT_ID`）。仅 cosine/混合检索需要 `EMBEDDING_PROVIDER`、`EMBEDDING_ENDPOINT`（完整 HTTPS `/embeddings` 地址）、`EMBEDDING_MODEL`、`EMBEDDING_DIMENSIONS`、`EMBEDDING_API_KEY`（或 `DASHSCOPE_API_KEY`）；BM25/关键词检索无需 Embedding 凭据。可选模型修订和文档/查询前缀必须与已发布编码配置一致。启用前执行 `alembic upgrade head`；诊断模型凭据独立配置。`scripts/verify_knowledge_agent.py` 使用真实 Embedding、PostgreSQL 和确定性生成替身验证引用及失败保留。
 
-练习语料清单位于 `samples/knowledge/manifest.json`，覆盖 RPC 超时、Python 导入、PostgreSQL 连接、SQLAlchemy 连接池、Java 堆内存、Go 数据竞争和 Rust panic。资料为引用官方文档的原创摘要，不能视为现场观测或完整的多语言支持承诺。配置数据库与 Embedding 后执行：
+练习语料清单位于 `samples/knowledge/manifest.json`，覆盖 RPC 超时、Python 导入、PostgreSQL 连接、SQLAlchemy 连接池、Java 堆内存、Go 数据竞争和 Rust panic。资料为引用官方文档的原创摘要，不能视为现场观测或完整的多语言支持承诺。向量/混合检索需要 Embedding 配置；只准备词法检索时，可在内部 CLI 使用 `--lexical-only` 发布文本片段，不调用 Embedding 服务。
 
 ```powershell
 python -m evidenceops.application.knowledge_corpus_cli prepare samples/knowledge/manifest.json --publish
 python -m evidenceops.application.knowledge_corpus_cli evaluate samples/knowledge/manifest.json
 ```
 
-发布以单份文档为原子单位，不是整库原子切换；重复构建未变化且已发布的资料会复用编码集合。检索支持精确 cosine、旧关键词、BM25、关键词-RRF 和 BM25-RRF。通过 `EVIDENCEOPS_KNOWLEDGE_RETRIEVAL=bm25` 或 `hybrid_bm25` 可选择 BM25 实验模式，默认仍为 cosine；BM25 使用固定英文词/中文单字分词及 `k1=1.2,b=0.75`，旧 `hybrid` 模式继续保留。各路共享发布候选与编码配置；BM25 与 RRF 分数不是余弦相似度，分路排名和参数随检索元数据归档。
+发布以单份文档为原子单位，不是整库原子切换；重复构建未变化且已发布的资料会复用已有集合。检索支持精确 cosine、旧关键词、BM25、关键词-RRF 和 BM25-RRF。通过 `EVIDENCEOPS_KNOWLEDGE_RETRIEVAL=bm25` 或 `hybrid_bm25` 可选择 BM25 实验模式，默认仍为 cosine；BM25 使用固定英文词/中文单字分词及 `k1=1.2,b=0.75`，旧 `hybrid` 模式继续保留。BM25 只依赖 ChunkSet 文本；混合检索要求发布指针同时关联该 ChunkSet 的 ready EmbeddingSet。BM25 与 RRF 分数不是余弦相似度，分路排名和参数随检索元数据归档。
 
 #### 当前检索对照结论
 

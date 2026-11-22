@@ -77,6 +77,32 @@ def test_build_publish_search_and_failed_rebuild(factory):
 	assert service.search(document.document_id,"RPC",encoder,threshold=0.5)==result
 
 
+def test_text_publication_is_independent_and_embedding_attach_is_atomic(factory):
+	document,chunk_set,chunks=setup_document(factory)
+	service=VectorKnowledgeService(factory)
+	service.publish_chunk_set(document.document_id,chunk_set.chunk_set_id)
+	with factory() as session:
+		previous=VectorRepository(session).active_publication(document.document_id)
+	assert previous==(chunk_set.chunk_set_id,None)
+	text_matches=service.search_many((document.document_id,),"RPC",method="bm25")
+	assert text_matches and text_matches[0].chunk in chunks
+	assert text_matches[0].embedding_set_id is None
+	with pytest.raises(ValueError,match="没有可用EmbeddingSet"):
+		service.search_many((document.document_id,),"RPC",TestEncoder(EncodingConfig("test","test:local","test-v1",2)))
+	config=EncodingConfig("test","test:local","test-v1",2)
+	with pytest.raises(RuntimeError):
+		service.build(document.document_id,chunk_set.chunk_set_id,config,TestEncoder(config,1))
+	with factory() as session:
+		assert VectorRepository(session).active_publication(document.document_id)==previous
+	assert service.search_many((document.document_id,),"RPC",method="bm25")
+	set_id=service.build(document.document_id,chunk_set.chunk_set_id,config,TestEncoder(config))
+	service.publish_chunk_set(document.document_id,chunk_set.chunk_set_id,set_id,previous)
+	with factory() as session:
+		assert VectorRepository(session).active_publication(document.document_id)==(chunk_set.chunk_set_id,set_id)
+	assert service.search_many((document.document_id,),"RPC",TestEncoder(config),threshold=0.5)
+	assert service.search_many((document.document_id,),"RPC",method="bm25")
+
+
 def test_embedding_http_reorders_and_rejects_duplicate_indices():
 	config=EncodingConfig("test","https://embedding.example/v1/embeddings","test",2,document_mode="default",query_mode="default")
 	def response(request):

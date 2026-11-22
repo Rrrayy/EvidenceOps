@@ -83,6 +83,10 @@ def validate_archive(archive,password=None,allow_locked=False):
 	# 旧安装版曾把完整新表备份错标为0005；仅兼容完整当前结构，不接受任意缺表。
 	current={table.name:{column.name for column in table.columns} for table in Base.metadata.sorted_tables}
 	if payload["schema"]=="0005" and set(payload["tables"])==set(current): shape=current
+	if payload["schema"]=="0005" and set(payload["tables"])==set(current):
+		publications=payload["tables"].get("knowledge_publications",[])
+		if publications and all(set(row)==current["knowledge_publications"]-{"chunk_set_id"} for row in publications):
+			shape["knowledge_publications"].discard("chunk_set_id")
 	if set(payload["tables"])!=set(shape): raise ValueError("备份数据表不完整")
 	for name,columns in shape.items():
 		if not isinstance(payload["tables"][name],list): raise ValueError("备份记录格式无效")
@@ -104,10 +108,15 @@ def validate_archive(archive,password=None,allow_locked=False):
 	if any(not isinstance(identity,str) or not isinstance(snapshot,dict) for identity,snapshot in snapshots.items()): raise ValueError("运行模型快照格式无效")
 	# 校验和先针对原件验证，再复制升级恢复输入；不改写用户备份或伪造旧证据正文。
 	normalized={}
+	embedding_chunk_sets={row["embedding_set_id"]:row["chunk_set_id"] for row in payload["tables"].get("knowledge_embedding_sets",[])}
 	for table in Base.metadata.sorted_tables:
 		normalized[table.name]=[]
 		for source in payload["tables"].get(table.name,[]):
 			row=dict(source)
+			if table.name=="knowledge_publications" and "chunk_set_id" not in row:
+				chunk_set_id=embedding_chunk_sets.get(row.get("embedding_set_id"))
+				if chunk_set_id is None: raise ValueError("旧发布记录无法关联EmbeddingSet与ChunkSet")
+				row["chunk_set_id"]=chunk_set_id
 			for column in table.columns:
 				if column.name not in row:
 					if not column.nullable: raise ValueError("旧备份缺少必填字段，无法转换")

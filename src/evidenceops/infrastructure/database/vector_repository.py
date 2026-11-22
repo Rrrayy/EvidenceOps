@@ -1,13 +1,19 @@
 from dataclasses import asdict
-from sqlalchemy import select
+from typing import NamedTuple
+from sqlalchemy import func,select
 
 from evidenceops.domain.knowledge_vectors import EncodingConfig,validate_vectors
-from evidenceops.infrastructure.database.models import KnowledgeDocumentRow,KnowledgeEmbeddingSetRow,KnowledgePublicationRow,KnowledgeVectorRow,KnowledgeChunkSetRow,KnowledgeVersionRow
+from evidenceops.infrastructure.database.models import KnowledgeChunkRow,KnowledgeDocumentRow,KnowledgeEmbeddingSetRow,KnowledgePublicationRow,KnowledgeVectorRow,KnowledgeChunkSetRow,KnowledgeVersionRow
 from evidenceops.infrastructure.database.knowledge_repository import SqlAlchemyKnowledgeRepository
 
 
 class PublicationConflict(RuntimeError):
 	pass
+
+
+class PublicationPointer(NamedTuple):
+	chunk_set_id:str
+	embedding_set_id:str|None
 
 
 class VectorRepository:
@@ -40,19 +46,36 @@ class VectorRepository:
 		self.transition(set_id,"building","ready")
 
 	def active(self,document_id:str)->str|None:
-		row=self.session.get(KnowledgePublicationRow,document_id)
-		return row.embedding_set_id if row else None
+		pointer=self.active_publication(document_id)
+		return pointer.embedding_set_id if pointer else None
 
-	def publish(self,document_id:str,set_id:str,expected_active:str|None)->None:
-		# 锁逻辑文档而非可空指针，首次发布也能串行化；调用方必须在短事务内使用。
+	def active_publication(self,document_id:str)->PublicationPointer|None:
+		row=self.session.get(KnowledgePublicationRow,document_id)
+		return PublicationPointer(row.chunk_set_id,row.embedding_set_id) if row else None
+
+	def publish(self,document_id:str,chunk_set_id:str,embedding_set_id:str|None,expected_active:PublicationPointer|None)->None:
+		# 锁逻辑文档行并比较完整指针，首次发布和同ChunkSet更换Embedding都可串行化。
 		document=self.session.scalar(select(KnowledgeDocumentRow).where(KnowledgeDocumentRow.document_id==document_id).with_for_update())
 		if document is None: raise ValueError("文档不存在")
 		row=self.session.get(KnowledgePublicationRow,document_id,populate_existing=True)
-		if (row.embedding_set_id if row else None)!=expected_active: raise PublicationConflict("发布指针已变化，请重新验收后发布")
-		building=self.session.get(KnowledgeEmbeddingSetRow,set_id)
-		if building is None or building.status!="ready": raise ValueError("仅ready集合可发布")
-		chunk_set=self.session.get(KnowledgeChunkSetRow,building.chunk_set_id)
+		current=PublicationPointer(row.chunk_set_id,row.embedding_set_id) if row else None
+		if current!=expected_active: raise PublicationConflict("发布指针已变化，请重新验收后发布")
+		chunk_set=self.session.get(KnowledgeChunkSetRow,chunk_set_id)
+		if chunk_set is None: raise ValueError("ChunkSet不存在")
 		version=self.session.get(KnowledgeVersionRow,chunk_set.version_id)
-		if version.document_id!=document_id: raise ValueError("集合不属于文档")
-		if row: row.embedding_set_id=set_id
-		else: self.session.add(KnowledgePublicationRow(document_id=document_id,embedding_set_id=set_id))
+		if version is None or version.document_id!=document_id: raise ValueError("集合不属于文档")
+		chunk_count=self.session.scalar(select(func.count()).select_from(KnowledgeChunkRow).where(KnowledgeChunkRow.chunk_set_id==chunk_set_id))
+		if not chunk_count: raise ValueError("空ChunkSet不能发布")
+		if embedding_set_id is not None:
+			encoding=self.session.get(KnowledgeEmbeddingSetRow,embedding_set_id)
+			if encoding is None or encoding.status!="ready": raise ValueError("仅ready向量集合可发布")
+			if encoding.chunk_set_id!=chunk_set_id: raise ValueError("EmbeddingSet与ChunkSet不匹配")
+			vector_count=self.session.scalar(select(func.count()).select_from(KnowledgeVectorRow).where(KnowledgeVectorRow.embedding_set_id==embedding_set_id))
+			matched_count=self.session.scalar(select(func.count()).select_from(KnowledgeVectorRow).join(KnowledgeChunkRow,KnowledgeChunkRow.chunk_id==KnowledgeVectorRow.chunk_id)
+				.where(KnowledgeVectorRow.embedding_set_id==embedding_set_id,KnowledgeChunkRow.chunk_set_id==chunk_set_id))
+			if vector_count!=chunk_count or matched_count!=chunk_count: raise ValueError("EmbeddingSet未完整覆盖指定ChunkSet")
+		if row:
+			row.chunk_set_id=chunk_set_id
+			row.embedding_set_id=embedding_set_id
+		else:
+			self.session.add(KnowledgePublicationRow(document_id=document_id,chunk_set_id=chunk_set_id,embedding_set_id=embedding_set_id))

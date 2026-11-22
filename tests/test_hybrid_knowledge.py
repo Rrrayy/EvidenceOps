@@ -1,7 +1,6 @@
 from dataclasses import replace
 import math
 import pytest
-from sqlalchemy import delete
 
 from evidenceops.application.hybrid_knowledge import fuse_rankings,keyword_ranking
 from evidenceops.application.bm25_knowledge import BM25KnowledgeRetriever,bm25_ranking,tokenize
@@ -12,7 +11,6 @@ from evidenceops.application.vector_knowledge import VectorKnowledgeService
 from evidenceops.domain.knowledge_vectors import EncodingConfig
 from evidenceops.domain.knowledge import KnowledgeChunk,ChunkSet,SplitterConfig
 from evidenceops.infrastructure import knowledge_tools
-from evidenceops.infrastructure.database.models import KnowledgeVectorRow
 from test_knowledge_evidence import corpus
 from test_vector_knowledge import factory,setup_document,TestEncoder
 
@@ -165,14 +163,8 @@ def test_shared_published_snapshot_filter_and_comparison(factory):
 
 def test_bm25_tool_runs_without_embedding_configuration_or_vectors(factory,monkeypatch):
 	document,chunk_set,chunks=setup_document(factory)
-	config=EncodingConfig('test','test:local','test-v1',2)
-	encoder=TestEncoder(config)
 	service=VectorKnowledgeService(factory)
-	set_id=service.build(document.document_id,chunk_set.chunk_set_id,config,encoder)
-	service.publish(document.document_id,set_id,None)
-	with factory.begin() as session:
-		session.execute(delete(KnowledgeVectorRow).where(KnowledgeVectorRow.embedding_set_id==set_id))
-	encoder.calls=0
+	service.publish_chunk_set(document.document_id,chunk_set.chunk_set_id)
 	monkeypatch.setenv('EVIDENCEOPS_KNOWLEDGE_ENABLED','true')
 	monkeypatch.setenv('EVIDENCEOPS_KNOWLEDGE_DOCUMENT_IDS',document.document_id)
 	monkeypatch.setenv('EVIDENCEOPS_KNOWLEDGE_RETRIEVAL','bm25')
@@ -183,9 +175,8 @@ def test_bm25_tool_runs_without_embedding_configuration_or_vectors(factory,monke
 	tool=knowledge_tools.configured_knowledge_tools(persistence)[0]
 	result=tool.handler(tool.validate_arguments({'query':'RPC'}))
 	assert result and result[0].chunk in chunks
-	assert result[0].embedding_set_id==set_id
+	assert result[0].embedding_set_id is None
 	assert result[0].retrieval_method=='bm25-v1'
-	assert encoder.calls==0
 
 
 def test_vector_modes_require_embedding_provider(factory):

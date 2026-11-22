@@ -11,7 +11,7 @@ from evidenceops.application.bm25_knowledge import bm25_ranking
 from evidenceops.domain.knowledge_vectors import EncodingConfig,validate_vectors
 from evidenceops.infrastructure.database.knowledge_repository import SqlAlchemyKnowledgeRepository
 from evidenceops.infrastructure.database.models import KnowledgeEmbeddingSetRow,KnowledgeVectorRow,KnowledgeVersionRow
-from evidenceops.infrastructure.database.vector_repository import VectorRepository
+from evidenceops.infrastructure.database.vector_repository import PublicationConflict,PublicationPointer,VectorRepository
 
 
 class VectorKnowledgeService:
@@ -49,8 +49,20 @@ class VectorKnowledgeService:
 			raise
 		return set_id
 
+	def publish_chunk_set(self,document_id:str,chunk_set_id:str,embedding_set_id:str|None=None,
+		expected_active:PublicationPointer|None=None)->None:
+		with self.factory.begin() as session:
+			VectorRepository(session).publish(document_id,chunk_set_id,embedding_set_id,expected_active)
+
 	def publish(self,document_id:str,set_id:str,expected_active:str|None)->None:
-		with self.factory.begin() as session: VectorRepository(session).publish(document_id,set_id,expected_active)
+		with self.factory() as session:
+			encoding=session.get(KnowledgeEmbeddingSetRow,set_id)
+			if encoding is None: raise ValueError("EmbeddingSet不存在")
+			repository=VectorRepository(session)
+			current=repository.active_publication(document_id)
+			if (current.embedding_set_id if current else None)!=expected_active:
+				raise PublicationConflict("发布指针已变化，请重新验收后发布")
+		self.publish_chunk_set(document_id,encoding.chunk_set_id,set_id,current)
 
 	def search(self,document_id:str,query:str,provider=None,top_k:int=5,threshold:float|None=None,chunk_ids:frozenset[str]|None=None,budget:float=10)->tuple[KnowledgeMatch,...]:
 		return self.search_many((document_id,),query,provider,top_k,threshold,chunk_ids,budget)
@@ -79,21 +91,24 @@ class VectorKnowledgeService:
 		limit=self.max_candidates if lexical_only else min(self.max_candidates,self.max_values//config.dimensions)
 		with self.factory() as session:
 			for document_id in sorted(document_ids):
-				set_id=VectorRepository(session).active(document_id)
-				if set_id is None:
+				publication=VectorRepository(session).active_publication(document_id)
+				if publication is None:
 					if len(document_ids)==1: return ()
 					raise ValueError("配置的知识文档尚未发布："+document_id)
-				row=session.get(KnowledgeEmbeddingSetRow,set_id)
-				if row is None or row.status!="ready": raise ValueError("发布集合不是ready")
+				set_id=publication.embedding_set_id
 				remaining_limit=limit-len(candidates)
 				if lexical_only:
-					chunks=SqlAlchemyKnowledgeRepository(session).load_chunks(document_id,row.chunk_set_id,chunk_ids,remaining_limit+1)
+					chunks=SqlAlchemyKnowledgeRepository(session).load_chunks(document_id,publication.chunk_set_id,chunk_ids,remaining_limit+1)
 					if len(chunks)>remaining_limit: raise ValueError("查询超过候选预算")
 					if not chunks: continue
 					version=session.get(KnowledgeVersionRow,chunks[0].chunk_set.version_id)
 					if version is None: raise ValueError("发布片段缺少文档版本")
-					candidates.extend((chunk,None,set_id,row.config_fingerprint,document_id,version.source_ref) for chunk in chunks)
+					candidates.extend((chunk,None,None,None,document_id,version.source_ref) for chunk in chunks)
 					continue
+				if set_id is None: raise ValueError("发布ChunkSet没有可用EmbeddingSet")
+				row=session.get(KnowledgeEmbeddingSetRow,set_id)
+				if row is None or row.status!="ready": raise ValueError("发布向量集合不是ready")
+				if row.chunk_set_id!=publication.chunk_set_id: raise ValueError("发布EmbeddingSet与ChunkSet不匹配")
 				stored_config=EncodingConfig(**row.config)
 				if config.fingerprint!=stored_config.fingerprint: raise ValueError("查询编码器与发布集合不兼容")
 				if row.config_fingerprint!=stored_config.fingerprint: raise ValueError("持久化配置指纹损坏")
@@ -103,7 +118,7 @@ class VectorKnowledgeService:
 				rows=session.scalars(statement.order_by(KnowledgeVectorRow.chunk_id).limit(remaining_limit+1)).all()
 				if len(rows)>remaining_limit: raise ValueError("查询超过候选或向量内存预算")
 				if not rows: continue
-				chunks=SqlAlchemyKnowledgeRepository(session).load_chunks(document_id,row.chunk_set_id,frozenset(item.chunk_id for item in rows),limit=len(rows)+1)
+				chunks=SqlAlchemyKnowledgeRepository(session).load_chunks(document_id,publication.chunk_set_id,frozenset(item.chunk_id for item in rows),limit=len(rows)+1)
 				by_id={chunk.chunk_id:chunk for chunk in chunks}
 				version=session.get(KnowledgeVersionRow,chunks[0].chunk_set.version_id)
 				candidates.extend((by_id[item.chunk_id],tuple(item.vector),set_id,row.config_fingerprint,document_id,version.source_ref) for item in rows)
