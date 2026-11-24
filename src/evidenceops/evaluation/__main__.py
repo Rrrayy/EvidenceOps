@@ -4,7 +4,6 @@ import os
 import sys
 from contextlib import contextmanager
 from copy import deepcopy
-from dataclasses import replace
 from hashlib import sha256
 from pathlib import Path
 from threading import Lock
@@ -88,25 +87,30 @@ def case_service(case:EvalCase,mode:str):
 	tools=(build_local_log_tool(),build_local_metric_tool(),build_local_config_tool())
 	calls_seen=[]
 	calls_lock=Lock()
-	observed_tools=[]
-	for spec in tools:
-		# Eval捕获校验前的实际参数，不扩展线上执行记录中的敏感字段白名单。
-		def validate(arguments,spec=spec):
-			with calls_lock:
-				calls_seen.append({"tool_name":spec.name,"arguments":deepcopy(arguments)})
-			return spec.validate_arguments(arguments)
-		observed_tools.append(replace(spec,validate_arguments=validate))
-	tools=tuple(observed_tools)
 	if mode=="mock":
-		calls=tuple(ToolCall(f"eval-call-{index}",item["tool_name"],item["arguments"]) for index,item in enumerate(case.tool_calls))
-		provider=MockProvider((ToolCallBatch(calls),mock_answer))
+		rounds=[]
+		for index,item in enumerate(case.tool_calls):
+			dependencies=item.get("depends_on",[])
+			round_index=max((rounds[dependency] for dependency in dependencies),default=-1)+1
+			rounds.append(round_index)
+		batches=tuple(ToolCallBatch(tuple(ToolCall(f"eval-call-{index}",item["tool_name"],item["arguments"])
+			for index,item in enumerate(case.tool_calls) if rounds[index]==round_index)) for round_index in range(max(rounds,default=-1)+1))
+		provider=MockProvider(batches+(mock_answer,))
 		model="eval-mock"
 	else:
 		model=os.environ["EVIDENCEOPS_MODEL_NAME"]
 		provider=OpenAICompatibleProvider(os.environ["EVIDENCEOPS_MODEL_BASE_URL"],os.environ["EVIDENCEOPS_MODEL_API_KEY"])
 	assembly=None
 	try:
-		assembly=build_agent_diagnosis_assembly(provider,mode,tools,"order-service",model=model,model_timeout_seconds=60,max_steps=5)
+		assembly=build_agent_diagnosis_assembly(provider,mode,tools,"order-service",model=model,model_timeout_seconds=60,max_steps=5,
+			model_config={"model_id":model})
+		execute_tool=assembly.runtime.execute
+		def observe_tool(tool_name,arguments,tool_call_id=None,**options):
+			# 仅在评测内存中记录完整参数，按调用ID关联运行时执行记录。
+			with calls_lock:
+				calls_seen.append({"tool_name":tool_name,"arguments":deepcopy(arguments),"tool_call_id":tool_call_id})
+			return execute_tool(tool_name,arguments,tool_call_id,**options)
+		assembly.runtime.execute=observe_tool
 		yield EvaluationService(assembly.diagnosis_service,calls_seen,calls_lock)
 	finally:
 		# 构造失败也要释放 Provider，组装成功时由 assembly 统一关闭。
@@ -138,13 +142,15 @@ def main(argv:list[str]|None=None)->int:
 	parser.add_argument("--mode",choices=("mock","real"),default="mock")
 	parser.add_argument("--cases",type=Path,default=PROJECT_ROOT/"samples"/"evaluation"/"cases.json")
 	parser.add_argument("--output",type=Path,help="直接以UTF-8保存结果，避免PowerShell管道编码转换")
+	parser.add_argument("--pricing",type=Path,help="模型价格JSON文件，含model、currency、version和每百万输入/输出Token单价")
 	args=parser.parse_args(arguments)
 	if args.mode=="real":
 		missing=[name for name in ("EVIDENCEOPS_MODEL_BASE_URL","EVIDENCEOPS_MODEL_API_KEY","EVIDENCEOPS_MODEL_NAME") if not os.getenv(name," ").strip()]
 		if missing:
 			parser.error("缺少配置："+",".join(missing))
 	cases=load_cases(args.cases)
-	report=run_suite(cases,lambda case:case_service(case,args.mode),args.mode)
+	pricing=json.loads(args.pricing.read_text(encoding="utf-8")) if args.pricing else None
+	report=run_suite(cases,lambda case:case_service(case,args.mode),args.mode,pricing)
 	if args.output is not None:
 		try:
 			save_result(args.output,report)

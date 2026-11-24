@@ -316,3 +316,14 @@ def test_provider_rejects_invalid_structured_content()->None:
 		build_provider(client).complete(build_request("json_object"))
 
 	assert error_info.value.error_code=="MODEL_PROTOCOL_ERROR"
+
+
+def test_invalid_structured_content_reports_metadata_without_content()->None:
+	client=FakeClient(FakeResponse(200,{"choices":[{"finish_reason":"length","message":{"content":"secret invalid"}}]}))
+	with pytest.raises(ModelProviderError) as error_info:
+		build_provider(client).complete(build_request("json_object"))
+	message=str(error_info.value)
+	assert "位置=0" in message
+	assert "长度=14" in message
+	assert "结束原因=length" in message
+	assert "secret" not in message

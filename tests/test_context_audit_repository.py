@@ -25,6 +25,7 @@ from evidenceops.infrastructure.database.models import ModelContextAuditRow
 from evidenceops.infrastructure.database.run_repository import SqlAlchemyRunRepository
 from evidenceops.infrastructure.local_storage import migrate
 from evidenceops.infrastructure.providers.mock_provider import MockProvider
+from evidenceops.evaluation.core import EvalCase,check_execution
 from test_knowledge_evidence import corpus
 
 
@@ -158,6 +159,14 @@ def test_diagnosis_persists_each_round_on_success_and_failure(audit_store,monkey
 		assert result.run.error_code==expected_error
 		assert result.run.status.value==("succeeded" if outcome=="success" else "cancelled" if outcome=="cancelled" else "failed")
 		assert (result.report is not None)==(outcome=="success")
+		if outcome in ("success","timeout","budget","cancelled","insufficient"):
+			case=EvalCase(case_id="integration-"+outcome,description="查询排障参考",
+				expected_status=result.run.status.value,expected_error_code=expected_error,
+				tool_calls=({"tool_name":"search_knowledge","arguments":{"query":"线程池 重试"}},),
+				required_sources=("knowledge",),review_criteria=("检查引用",),fixture_hashes={"fixture":"test"},
+				expected_failure_stage="run")
+			checks=check_execution(case,result)
+			assert all(item["passed"] for item in checks),checks
 		with factory() as session:
 			rows=session.scalars(select(ModelContextAuditRow).where(ModelContextAuditRow.run_id==result.run.run_id).order_by(ModelContextAuditRow.model_round)).all()
 			assert len(rows)==2

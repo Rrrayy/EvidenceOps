@@ -176,7 +176,11 @@ class OpenAICompatibleProvider:
 		try:
 			data=json.loads(content)
 		except json.JSONDecodeError as error:
-			raise ModelProviderError("MODEL_PROTOCOL_ERROR","模型结构化输出不是合法JSON") from error
+			choice=payload.get("choices",[{}])[0]
+			finish_reason=choice.get("finish_reason") if isinstance(choice,dict) else None
+			if finish_reason not in ("stop","length","content_filter","tool_calls"):
+				finish_reason="unknown"
+			raise ModelProviderError("MODEL_PROTOCOL_ERROR",f"模型结构化输出不是合法JSON，位置={error.pos}，长度={len(content)}，结束原因={finish_reason}") from error
 
 		if not isinstance(data,dict):
 			raise ModelProviderError("MODEL_PROTOCOL_ERROR","模型结构化输出必须是JSON对象")
