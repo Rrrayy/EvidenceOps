@@ -87,6 +87,9 @@ def validate_archive(archive,password=None,allow_locked=False):
 		publications=payload["tables"].get("knowledge_publications",[])
 		if publications and all(set(row)==current["knowledge_publications"]-{"chunk_set_id"} for row in publications):
 			shape["knowledge_publications"].discard("chunk_set_id")
+		vectors=payload["tables"].get("knowledge_chunk_vectors",[])
+		if vectors and all(set(row)==current["knowledge_chunk_vectors"]-{"dimensions","config_fingerprint","embedding"} for row in vectors):
+			shape["knowledge_chunk_vectors"]-={"dimensions","config_fingerprint","embedding"}
 	if set(payload["tables"])!=set(shape): raise ValueError("备份数据表不完整")
 	for name,columns in shape.items():
 		if not isinstance(payload["tables"][name],list): raise ValueError("备份记录格式无效")
@@ -109,10 +112,23 @@ def validate_archive(archive,password=None,allow_locked=False):
 	# 校验和先针对原件验证，再复制升级恢复输入；不改写用户备份或伪造旧证据正文。
 	normalized={}
 	embedding_chunk_sets={row["embedding_set_id"]:row["chunk_set_id"] for row in payload["tables"].get("knowledge_embedding_sets",[])}
+	embedding_fingerprints={row["embedding_set_id"]:row["config_fingerprint"] for row in payload["tables"].get("knowledge_embedding_sets",[])}
 	for table in Base.metadata.sorted_tables:
 		normalized[table.name]=[]
 		for source in payload["tables"].get(table.name,[]):
 			row=dict(source)
+			if table.name=="knowledge_chunk_vectors" and "dimensions" not in row:
+				vector=row.get("vector")
+				if not isinstance(vector,list) or not vector: raise ValueError("旧向量备份缺少有效维度")
+				row["dimensions"]=len(vector)
+			if table.name=="knowledge_chunk_vectors" and "config_fingerprint" not in row:
+				fingerprint=embedding_fingerprints.get(row.get("embedding_set_id"))
+				if not isinstance(fingerprint,str) or not fingerprint: raise ValueError("旧向量备份缺少编码配置指纹")
+				row["config_fingerprint"]=fingerprint
+			if table.name=="knowledge_chunk_vectors" and "embedding" not in row:
+				legacy=row.get("vector")
+				if not isinstance(legacy,list) or not legacy: raise ValueError("旧向量备份缺少可回填向量")
+				row["embedding"]=legacy
 			if table.name=="knowledge_publications" and "chunk_set_id" not in row:
 				chunk_set_id=embedding_chunk_sets.get(row.get("embedding_set_id"))
 				if chunk_set_id is None: raise ValueError("旧发布记录无法关联EmbeddingSet与ChunkSet")

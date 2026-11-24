@@ -10,12 +10,14 @@ from evidenceops.connectors.local_document import LocalDocumentLoader
 from evidenceops.domain.knowledge import KnowledgeDocument
 from evidenceops.domain.knowledge_vectors import EncodingConfig
 from evidenceops.infrastructure.database.knowledge_repository import SqlAlchemyKnowledgeRepository
+from evidenceops.infrastructure.database.models import KnowledgeEmbeddingSetRow
 from evidenceops.infrastructure.database.session import DatabaseSettings,create_database_engine,create_session_factory
+from evidenceops.infrastructure.database.vector_repository import VectorRepository
 from evidenceops.infrastructure.providers.embedding_provider import HttpEmbeddingProvider
 
 
 def main()->None:
-	parser=argparse.ArgumentParser(description="内部知识向量构建、显式发布和精确检索")
+	parser=argparse.ArgumentParser(description="内部知识向量构建、发布、索引和检索")
 	commands=parser.add_subparsers(dest="command",required=True)
 	ingest=commands.add_parser("ingest")
 	ingest.add_argument("root",type=Path)
@@ -40,11 +42,14 @@ def main()->None:
 	search.add_argument("query")
 	search.add_argument("--top-k",type=int,default=5)
 	search.add_argument("--threshold",type=float,default=None)
+	search.add_argument("--mode",choices=("json_exact","exact","hnsw"),default="exact")
+	index=commands.add_parser("ensure-index")
+	index.add_argument("embedding_set_id")
 	args=parser.parse_args()
 	engine=create_database_engine(DatabaseSettings.from_environment())
 	try:
 		factory=create_session_factory(engine)
-		service=VectorKnowledgeService(factory)
+		service=VectorKnowledgeService(factory,vector_search_mode=getattr(args,"mode","exact"))
 		if args.command=="ingest":
 			result=DocumentIngestionService(LocalDocumentLoader(args.root)).ingest(KnowledgeDocument(args.document_id,args.title,args.relative_path),args.relative_path)
 			with factory.begin() as session: SqlAlchemyKnowledgeRepository(session).save_ingestion(result.document,result.version,result.chunk_set,result.chunks)
@@ -58,6 +63,13 @@ def main()->None:
 			expected=(args.expected_active_chunk_set,args.expected_active_embedding_set) if args.expected_active_chunk_set else None
 			service.publish_chunk_set(args.document_id,args.chunk_set_id,None,expected)
 			output={"published_chunk_set_id":args.chunk_set_id,"embedding_set_id":None}
+		elif args.command=="ensure-index":
+			with factory() as session:
+				row=session.get(KnowledgeEmbeddingSetRow,args.embedding_set_id)
+				if row is None or row.status!="ready": raise ValueError("EmbeddingSet不存在或未ready")
+				config=EncodingConfig(**row.config)
+			output={"index_name":VectorRepository.ensure_hnsw_dimension_index(engine,config.dimensions,config.fingerprint),
+				"dimensions":config.dimensions,"config_fingerprint":config.fingerprint}
 		else:
 			# 编码用途默认相同，模型需要前缀时显式设置并纳入指纹；不能自动猜测供应商规则。
 			config=EncodingConfig(provider=os.environ["EMBEDDING_PROVIDER"],deployment=os.environ["EMBEDDING_ENDPOINT"],model=os.environ["EMBEDDING_MODEL"],dimensions=int(os.environ["EMBEDDING_DIMENSIONS"]),revision=os.getenv("EMBEDDING_REVISION","unknown"),document_mode="default",query_mode="default",document_prefix=os.getenv("EMBEDDING_DOCUMENT_PREFIX",""),query_prefix=os.getenv("EMBEDDING_QUERY_PREFIX",""))

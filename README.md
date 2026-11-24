@@ -224,7 +224,7 @@ Python Adapter 对输入大小、进程时间、stdout/stderr、事件数量和�
 
 知识层将参考资料与故障观测分开处理。逻辑文档拥有按内容生成身份的版本；同一版本可以有多套绑定切分算法和配置的片段集合。片段保留原文范围、标题路径和内容哈希。本地加载必须明确指定知识用途，只读取配置目录和字节限制内的 UTF-8 Markdown/TXT。
 
-SQLAlchemy 仓储保存文档、不可变版本、切分集合、编码配置和向量。每份文档的发布指针必须选择一个 ChunkSet，并可选关联完整且 ready 的 EmbeddingSet。BM25 和关键词检索直接读取已发布文本，不需要向量或 Embedding 凭据；cosine 与混合检索需要匹配该 ChunkSet 的向量集合。发布在短事务中校验整个指针，Embedding 构建失败不会切换旧发布。摄取、构建、发布通过内部 CLI 操作，没有知识管理 HTTP 接口或工作台操作入口。
+SQLAlchemy 仓储保存文档、不可变版本、切分集合、编码配置和向量。每份文档的发布指针必须选择一个 ChunkSet，并可选关联完整且 ready 的 EmbeddingSet。BM25 和关键词检索直接读取已发布文本，不需要向量或 Embedding 凭据；cosine 与混合检索需要匹配该 ChunkSet 的向量集合。PostgreSQL 将 Embedding 保存为 pgvector 原生向量列，数据库执行 cosine 查询；按向量维度与编码配置指纹隔离的 HNSW 索引提供近似检索。旧 JSON 向量在迁移后保留作精确对照与回滚数据。发布在短事务中校验整个指针，Embedding 构建失败不会切换旧发布。摄取、构建、发布通过内部 CLI 操作，没有知识管理 HTTP 接口或工作台操作入口。
 
 独立的 OpenAI 兼容 Embedding 适配器支持真实编码。显式启用 `search_knowledge` 后，Agent 可检索服务端配置的至多 16 份文档白名单；BM25/关键词直接查发布文本，cosine/混合模式校验编码配置并只编码一次查询，各路共享候选预算并统一排序。每个片段在下一轮模型请求前绑定独立 Evidence ID。本次可见正文、哈希、来源版本、片段身份、分数和检索配置身份一起归档，并进入诊断及历史响应，失败 Run 同样保留。零命中不生成 Evidence；检索故障沿用终止诊断的工具失败策略。默认 Mock 场景不会自动调用知识工具。
 
@@ -237,7 +237,7 @@ python -m evidenceops.application.knowledge_corpus_cli prepare samples/knowledge
 python -m evidenceops.application.knowledge_corpus_cli evaluate samples/knowledge/manifest.json
 ```
 
-发布以单份文档为原子单位，不是整库原子切换；重复构建未变化且已发布的资料会复用已有集合。检索支持精确 cosine、旧关键词、BM25、关键词-RRF 和 BM25-RRF。通过 `EVIDENCEOPS_KNOWLEDGE_RETRIEVAL=bm25` 或 `hybrid_bm25` 可选择 BM25 实验模式，默认仍为 cosine；BM25 使用固定英文词/中文单字分词及 `k1=1.2,b=0.75`，旧 `hybrid` 模式继续保留。BM25 只依赖 ChunkSet 文本；混合检索要求发布指针同时关联该 ChunkSet 的 ready EmbeddingSet。BM25 与 RRF 分数不是余弦相似度，分路排名和参数随检索元数据归档。
+发布以单份文档为原子单位，不是整库原子切换；重复构建未变化且已发布的资料会复用已有集合。检索支持 PostgreSQL 精确 cosine、PostgreSQL HNSW cosine、旧关键词、BM25、关键词-RRF 和 BM25-RRF。`EVIDENCEOPS_KNOWLEDGE_VECTOR_SEARCH=auto` 在 PostgreSQL 上使用 HNSW，在 SQLite 上使用精确路径；可显式设为 `exact` 做同库基准。HNSW 当前只为不超过 2000 维的配置建索引，且每个索引按维度和配置指纹隔离；超出范围会要求显式切换到精确模式，不降维或混搜。`EVIDENCEOPS_KNOWLEDGE_RETRIEVAL=bm25` 或 `hybrid_bm25` 可选择词法实验模式，默认仍为 cosine；BM25 使用固定英文词/中文单字分词及 `k1=1.2,b=0.75`，旧 `hybrid` 模式继续保留。BM25 只依赖 ChunkSet 文本；混合检索要求发布指针同时关联该 ChunkSet 的 ready EmbeddingSet。BM25 与 RRF 分数不是余弦相似度，分路排名和参数随检索元数据归档。
 
 #### 当前检索对照结论
 
@@ -256,7 +256,7 @@ python -m evidenceops.application.knowledge_corpus_cli evaluate samples/knowledg
 
 资料不足以支持诊断时，模型可返回独立的 `insufficient_evidence` 结果。系统将其保存为 `failed / EVIDENCE_INSUFFICIENT`，`report=null`，保留已有观测，并通过 `error_detail` 返回不足原因及 `missing_information`。诊断响应、终止 SSE 和历史查询均可读取说明。格式错误仍为 `MODEL_PROTOCOL_ERROR`；正常报告仍须引用有效证据，引用存在不等于语义支持成立。
 
-每次检索最多五个片段、总正文最多 16,000 字符。默认不设相似度阈值，无关问题仍可能返回 Top-K；空结果处理不等于自动识别无答案。资料属于不可信数据，不能证明本次故障因果；引用存在性检查和提示约束不保证语义正确，也不能完全防止提示注入。pgvector/近似索引、重排、父子片段检索及 MMR 尚未实现。取消会停止等待并拒绝晚到结果，已经运行的同步 Embedding HTTP 请求不会被强制终止。
+每次检索最多五个片段、总正文最多 16,000 字符。默认不设相似度阈值，无关问题仍可能返回 Top-K；空结果处理不等于自动识别无答案。HNSW 是近似索引，已保留 pgvector 精确查询与旧 JSON 精确 cosine 作对照；候选数和过滤结果仍受查询预算限制。资料属于不可信数据，不能证明本次故障因果；引用存在性检查和提示约束不保证语义正确，也不能完全防止提示注入。重排、父子片段检索及 MMR 尚未实现。取消会停止等待并拒绝晚到结果，已经运行的同步 Embedding HTTP 请求不会被强制终止。
 
 | 目录 | 职责 |
 | --- | --- |

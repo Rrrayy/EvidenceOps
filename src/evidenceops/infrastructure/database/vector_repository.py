@@ -1,6 +1,8 @@
 from dataclasses import asdict
 from typing import NamedTuple
-from sqlalchemy import func,select
+from sqlalchemy import cast,func,literal_column,select,text
+from sqlalchemy.engine import Engine
+from pgvector.sqlalchemy import Vector
 
 from evidenceops.domain.knowledge_vectors import EncodingConfig,validate_vectors
 from evidenceops.infrastructure.database.models import KnowledgeChunkRow,KnowledgeDocumentRow,KnowledgeEmbeddingSetRow,KnowledgePublicationRow,KnowledgeVectorRow,KnowledgeChunkSetRow,KnowledgeVersionRow
@@ -19,6 +21,10 @@ class PublicationPointer(NamedTuple):
 class VectorRepository:
 	def __init__(self,session)->None:
 		self.session=session
+
+	@staticmethod
+	def _index_name(dimensions:int,config_fingerprint:str)->str:
+		return f"ix_kcv_hnsw_{dimensions}_{config_fingerprint[:24]}"
 
 	def create(self,set_id:str,chunk_set_id:str,config:EncodingConfig)->None:
 		self.session.add(KnowledgeEmbeddingSetRow(embedding_set_id=set_id,chunk_set_id=chunk_set_id,config=asdict(config),config_fingerprint=config.fingerprint,status="pending"))
@@ -41,9 +47,72 @@ class VectorRepository:
 		expected=SqlAlchemyKnowledgeRepository(self.session).load_chunks(version.document_id,row.chunk_set_id)
 		if tuple(chunk.chunk_id for chunk in chunks)!=tuple(chunk.chunk_id for chunk in expected): raise ValueError("向量必须完整覆盖指定ChunkSet")
 		for chunk,vector in zip(chunks,validated):
-			self.session.add(KnowledgeVectorRow(embedding_set_id=set_id,chunk_id=chunk.chunk_id,vector=list(vector)))
+			self.session.add(KnowledgeVectorRow(embedding_set_id=set_id,chunk_id=chunk.chunk_id,
+				dimensions=config.dimensions,config_fingerprint=config.fingerprint,vector=list(vector),embedding=list(vector)))
 		self.session.flush()
 		self.transition(set_id,"building","ready")
+
+	@staticmethod
+	def ensure_hnsw_dimension_index(engine:Engine,dimensions:int,config_fingerprint:str)->str:
+		if type(dimensions) is not int or not 1<=dimensions<=2000:
+			raise ValueError("pgvector HNSW vector索引仅支持1到2000维；请使用精确检索")
+		if not isinstance(config_fingerprint,str) or len(config_fingerprint)!=64 or any(character not in "0123456789abcdef" for character in config_fingerprint):
+			raise ValueError("config_fingerprint必须是64位小写SHA-256")
+		if engine.dialect.name!="postgresql": raise ValueError("HNSW索引只支持PostgreSQL")
+		name=VectorRepository._index_name(dimensions,config_fingerprint)
+		with engine.connect() as connection:
+			connection=connection.execution_options(isolation_level="AUTOCOMMIT")
+			connection.execute(text("SELECT pg_advisory_lock(hashtext('evidenceops.hnsw.dimension'),:dimensions)"),
+				{"dimensions":dimensions})
+			try:
+				valid=connection.scalar(text(
+					"SELECT i.indisvalid FROM pg_index i JOIN pg_class c ON c.oid=i.indexrelid "
+					"JOIN pg_namespace n ON n.oid=c.relnamespace "
+					"WHERE n.nspname=current_schema() AND c.relname=:name"),{"name":name})
+				if valid is False:
+					connection.execute(text(f"DROP INDEX CONCURRENTLY IF EXISTS {name}"))
+				connection.execute(text(
+					f"CREATE INDEX CONCURRENTLY IF NOT EXISTS {name} ON knowledge_chunk_vectors "
+					f"USING hnsw ((embedding::vector({dimensions})) vector_cosine_ops) WITH (m=16,ef_construction=64) "
+					f"WHERE dimensions={dimensions} AND config_fingerprint='{config_fingerprint}'"))
+				valid=connection.scalar(text(
+					"SELECT i.indisvalid FROM pg_index i JOIN pg_class c ON c.oid=i.indexrelid "
+					"JOIN pg_namespace n ON n.oid=c.relnamespace "
+					"WHERE n.nspname=current_schema() AND c.relname=:name"),{"name":name})
+				if not valid: raise RuntimeError("HNSW索引构建未完成")
+			finally:
+				connection.execute(text("SELECT pg_advisory_unlock(hashtext('evidenceops.hnsw.dimension'),:dimensions)"),
+					{"dimensions":dimensions})
+		return name
+
+	def search(self,embedding_set_ids:tuple[str,...],dimensions:int,config_fingerprint:str,query_vector:tuple[float,...],limit:int,
+		chunk_ids:frozenset[str]|None=None,mode:str="exact")->tuple[tuple[str,str,float],...]:
+		if mode not in ("exact","hnsw"): raise ValueError("向量检索模式无效")
+		if not embedding_set_ids or type(limit) is not int or limit<1: raise ValueError("向量检索参数无效")
+		if len(query_vector)!=dimensions: raise ValueError("查询向量维度不匹配")
+		if not isinstance(config_fingerprint,str) or len(config_fingerprint)!=64 or any(character not in "0123456789abcdef" for character in config_fingerprint):
+			raise ValueError("config_fingerprint必须是64位小写SHA-256")
+		if mode=="hnsw":
+			if dimensions>2000: raise ValueError("当前维度不支持HNSW，请使用精确检索")
+			index_name=self._index_name(dimensions,config_fingerprint)
+			valid=self.session.scalar(text(
+				"SELECT i.indisvalid FROM pg_index i JOIN pg_class c ON c.oid=i.indexrelid "
+				"JOIN pg_namespace n ON n.oid=c.relnamespace "
+				"WHERE n.nspname=current_schema() AND c.relname=:name"),{"name":index_name})
+			if not valid: raise ValueError("缺少有效HNSW索引，请先构建该维度索引")
+			self.session.execute(text("SET LOCAL hnsw.iterative_scan='strict_order'"))
+		else:
+			self.session.execute(text("SET LOCAL enable_indexscan=off"))
+			self.session.execute(text("SET LOCAL enable_bitmapscan=off"))
+		distance=cast(KnowledgeVectorRow.embedding,Vector(dimensions)).cosine_distance(list(query_vector))
+		statement=select(KnowledgeVectorRow.embedding_set_id,KnowledgeVectorRow.chunk_id,(1-distance).label("score")).where(
+			KnowledgeVectorRow.embedding_set_id.in_(embedding_set_ids),
+			KnowledgeVectorRow.dimensions==literal_column(str(dimensions)),
+			KnowledgeVectorRow.config_fingerprint==literal_column(f"'{config_fingerprint}'"))
+		if chunk_ids is not None: statement=statement.where(KnowledgeVectorRow.chunk_id.in_(chunk_ids))
+		ordering=(distance,) if mode=="hnsw" else (distance,KnowledgeVectorRow.chunk_id)
+		rows=self.session.execute(statement.order_by(*ordering).limit(limit)).all()
+		return tuple((row.embedding_set_id,row.chunk_id,max(-1.0,min(1.0,float(row.score)))) for row in rows)
 
 	def active(self,document_id:str)->str|None:
 		pointer=self.active_publication(document_id)

@@ -22,10 +22,13 @@ def configured_knowledge_tools(persistence)->tuple:
 	document_ids=tuple(identity.strip() for identity in os.getenv("EVIDENCEOPS_KNOWLEDGE_DOCUMENT_IDS",os.getenv("EVIDENCEOPS_KNOWLEDGE_DOCUMENT_ID","")).split(","))
 	if not 1<=len(document_ids)<=16 or any(not identity for identity in document_ids) or len(set(document_ids))!=len(document_ids):
 		raise ValueError("知识文档清单必须包含1到16个不同非空身份")
-	service=VectorKnowledgeService(persistence._session_factory)
 	method=os.getenv("EVIDENCEOPS_KNOWLEDGE_RETRIEVAL","cosine").strip().lower()
+	vector_search_mode=os.getenv("EVIDENCEOPS_KNOWLEDGE_VECTOR_SEARCH","auto").strip().lower()
 	candidate_k=int(os.getenv("EVIDENCEOPS_KNOWLEDGE_CANDIDATE_K","10"))
-	if method not in ("cosine","keyword","bm25","hybrid","hybrid_bm25") or not 5<=candidate_k<=50: raise ValueError("检索模式或候选数无效，候选数应在5到50之间")
+	if method not in ("cosine","keyword","bm25","hybrid","hybrid_bm25") or not 5<=candidate_k<=50:
+		raise ValueError("检索模式或候选数无效，候选数应在5到50之间")
+	if vector_search_mode not in ("auto","exact","hnsw","json_exact"): raise ValueError("EVIDENCEOPS_KNOWLEDGE_VECTOR_SEARCH无效")
+	service=VectorKnowledgeService(persistence._session_factory,vector_search_mode=vector_search_mode)
 	provider=None if method in ("keyword","bm25") else configured_embedding_provider()
 	def search(query,top_k,budget):
 		return service.search_many(document_ids,query,provider,top_k=top_k,budget=budget,method=method,candidate_k=candidate_k)

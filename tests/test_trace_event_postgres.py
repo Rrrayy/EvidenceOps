@@ -25,7 +25,7 @@ def test_postgres_migrations_and_jsonb_terminal_transaction():
 				# 随机schema和外层事务隔离实验；最终回滚，不迁移用户public表。
 				schema=f"evidenceops_event_test_{uuid4().hex}"
 				connection.execute(text(f'CREATE SCHEMA "{schema}"'))
-				connection.execute(text(f'SET LOCAL search_path TO "{schema}"'))
+				connection.execute(text(f'SET LOCAL search_path TO "{schema}",public'))
 				context=MigrationContext.configure(connection)
 				with Operations.context(context):
 					for path in sorted((Path(__file__).parents[1]/"alembic"/"versions").glob("*.py")):

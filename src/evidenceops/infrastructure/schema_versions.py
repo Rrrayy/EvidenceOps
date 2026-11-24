@@ -46,7 +46,7 @@ def database_schema(connection)->str|None:
 def archive_shape(version:str)->dict[str,set[str]]:
 	from evidenceops.infrastructure.database.models import Base
 	# 迁移链决定可升级性；档案兼容则逐版本明确哪些表和字段当时存在。
-	revisions=("0001","0002","0003","0004","0005","0006","0007","0008","0009","0010","0011")
+	revisions=("0001","0002","0003","0004","0005","0006","0007","0008","0009","0010","0011","0012")
 	if version not in revisions: raise UnsupportedSchema("备份版本不受支持")
 	index=revisions.index(version)
 	introduced={"diagnosis_runs":"0001","evidences":"0002","diagnosis_reports":"0003",
@@ -65,4 +65,6 @@ def archive_shape(version:str)->dict[str,set[str]]:
 		shape["evidences"]-={"content_snapshot","source_metadata"}
 	if "knowledge_publications" in shape and index<revisions.index("0011"):
 		shape["knowledge_publications"].discard("chunk_set_id")
+	if "knowledge_chunk_vectors" in shape and index<revisions.index("0012"):
+		shape["knowledge_chunk_vectors"]-={"dimensions","config_fingerprint","embedding"}
 	return shape

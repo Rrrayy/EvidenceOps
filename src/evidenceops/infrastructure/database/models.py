@@ -5,6 +5,7 @@ from sqlalchemy.types import TypeDecorator
 from sqlalchemy import BigInteger,CheckConstraint,DateTime,ForeignKey,Index,JSON,Text,UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase,Mapped,mapped_column
+from pgvector.sqlalchemy import Vector
 
 
 class Base(DeclarativeBase):
@@ -137,7 +138,10 @@ class KnowledgeVectorRow(Base):
 	__tablename__="knowledge_chunk_vectors"
 	embedding_set_id:Mapped[str]=mapped_column(Text,ForeignKey("knowledge_embedding_sets.embedding_set_id"),primary_key=True)
 	chunk_id:Mapped[str]=mapped_column(Text,ForeignKey("knowledge_chunks.chunk_id"),primary_key=True)
+	dimensions:Mapped[int]=mapped_column(nullable=False)
+	config_fingerprint:Mapped[str]=mapped_column(Text,nullable=False)
 	vector:Mapped[list]=mapped_column(JSON().with_variant(JSONB(),"postgresql"),nullable=False)
+	embedding:Mapped[list]=mapped_column(Vector().with_variant(JSON(),"sqlite"),nullable=False)
 
 
 class KnowledgePublicationRow(Base):
