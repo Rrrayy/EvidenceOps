@@ -4,7 +4,7 @@ from dataclasses import replace
 
 from evidenceops.domain.diagnosis_report import DiagnosisClaim
 from evidenceops.evaluation.__main__ import PROJECT_ROOT,case_service,verify_fixtures
-from evidenceops.evaluation.core import calculate_cost,check_execution,load_cases,match_calls,match_dependencies,run_suite,summarize_usage
+from evidenceops.evaluation.core import calculate_cost,check_execution,evaluation_metrics,load_cases,match_calls,match_dependencies,run_suite,summarize_usage
 
 
 class EvaluationTests(unittest.TestCase):
@@ -54,6 +54,42 @@ class EvaluationTests(unittest.TestCase):
 		changed=({**calls[0],"arguments":{**calls[0]["arguments"],"unexpected":True}},)
 		checks={item["name"]:item["passed"] for item in check_execution(case,result,changed)}
 		self.assertFalse(checks["tool_calls_one_to_one"])
+
+	def test_knowledge_query_allows_rewrite_but_requires_core_terms_and_top_k(self):
+		expected=({"tool_name":"search_knowledge","arguments":{"query":"Python找不到pandas","top_k":3},
+			"query_contains":["ModuleNotFoundError","pandas","Python","pip"]},)
+		rewritten=({"tool_name":"search_knowledge","arguments":{"query":"ModuleNotFoundError pandas 核对Python解释器和pip环境","top_k":3}},)
+		self.assertTrue(match_calls(expected,rewritten))
+		self.assertFalse(match_calls(expected,({**rewritten[0],"arguments":{"query":"ModuleNotFoundError pandas 核对Python解释器","top_k":3}},)))
+		self.assertFalse(match_calls(expected,({**rewritten[0],"arguments":{"query":"ModuleNotFoundError pandas 核对Python解释器和pip环境","top_k":2}},)))
+		self.assertFalse(match_calls(expected,rewritten+(rewritten[0],)))
+
+	def test_knowledge_query_contract_is_loaded_from_case_file(self):
+		cases=load_cases(PROJECT_ROOT/"samples"/"evaluation"/"knowledge_cases.json")
+		self.assertEqual(cases[0].tool_calls[0]["query_contains"],["ModuleNotFoundError","pandas","Python","pip"])
+
+	def test_retrieval_metrics_distinguish_unattempted_from_empty_results(self):
+		case=replace(self.cases[0],required_chunk_ids=("chunk-required",),
+			retrieval_expectations={"relevant_chunk_ids":["chunk-required"]})
+		metrics=evaluation_metrics(case,self.execution,None)
+		self.assertEqual(metrics["retrieval_status"],"not_attempted")
+		self.assertIsNone(metrics["required_chunk_recall"])
+		self.assertIsNone(metrics["relevant_chunk_recall"])
+		self.assertIsNone(metrics["context_recall"])
+		tool=next(item for item in self.execution.execution_records if item.kind=="tool")
+		records=tuple(replace(item,tool_name="search_knowledge",query_arguments={"query":"query","top_k":3})
+			if item is tool else item for item in self.execution.execution_records)
+		searched=replace(self.execution,execution_records=records,evidences=())
+		metrics=evaluation_metrics(case,searched,None)
+		self.assertEqual(metrics["retrieval_status"],"complete")
+		self.assertEqual(metrics["required_chunk_recall"],0)
+		self.assertEqual(metrics["relevant_chunk_recall"],0)
+		search_tool=next(item for item in records if item.kind=="tool")
+		failed_records=tuple(replace(item,status="failed") if item is search_tool else item for item in records)
+		failed=replace(self.execution,execution_records=failed_records,evidences=())
+		metrics=evaluation_metrics(case,failed,None)
+		self.assertEqual(metrics["retrieval_status"],"failed")
+		self.assertIsNone(metrics["required_chunk_recall"])
 
 	def test_wrong_terminal_status_and_tool_status_are_detected(self):
 		from copy import copy
@@ -195,6 +231,21 @@ class EvaluationTests(unittest.TestCase):
 		checks={item["name"]:item["passed"] for item in check_execution(case,result)}
 		self.assertTrue(checks["required_chunks_retrieved"])
 		self.assertFalse(checks["required_chunks_visible"])
+
+	def test_latest_failed_model_request_still_counts_as_context_visibility(self):
+		from types import SimpleNamespace
+		from evidenceops.domain.evidence import EvidenceSource
+		evidence=replace(self.execution.evidences[0],source=EvidenceSource.KNOWLEDGE,source_metadata={"chunk_id":"chunk-required"})
+		case=replace(self.cases[0],required_chunk_ids=("chunk-required",))
+		model=next(item for item in reversed(self.execution.execution_records) if item.kind=="model")
+		records=tuple(replace(item,status="failed",error_code="MODEL_TIMEOUT") if item is model else item
+			for item in self.execution.execution_records)
+		audit=SimpleNamespace(model_round=model.model_round,model_request_id=model.model_request_id,
+			assembly=SimpleNamespace(visible_evidence_ids=(evidence.evidence_id,),messages=()))
+		result=replace(self.execution,evidences=(evidence,*self.execution.evidences[1:]),
+			execution_records=records,context_audits=(audit,))
+		checks={item["name"]:item["passed"] for item in check_execution(case,result)}
+		self.assertTrue(checks["required_chunks_visible"])
 		checks={item["name"]:item["passed"] for item in check_execution(case,replace(result,context_audits=()))}
 		self.assertFalse(checks["required_chunks_visible"])
 

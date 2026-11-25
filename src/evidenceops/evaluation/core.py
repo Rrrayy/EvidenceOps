@@ -1,4 +1,5 @@
 import json
+import re
 from decimal import Decimal,InvalidOperation
 from dataclasses import dataclass,field
 from hashlib import sha256
@@ -78,6 +79,12 @@ def load_cases(path:Path)->tuple[EvalCase,...]:
 			dependencies=call.get("depends_on",[])
 			if type(call.get("strict_arguments",False)) is not bool:
 				raise ValueError("strict_arguments必须为布尔值")
+			query_terms=call.get("query_contains")
+			if query_terms is not None and (call["tool_name"]!="search_knowledge" or "query" not in call["arguments"]
+				or not isinstance(query_terms,list) or not 1<=len(query_terms)<=16
+				or any(not isinstance(value,str) or not value.strip() or len(value)>100 for value in query_terms)
+				or len({value.casefold() for value in query_terms})!=len(query_terms)):
+				raise ValueError("query_contains只能为search_knowledge声明不重复的核心词数组")
 			if not isinstance(dependencies,list) or any(type(value) is not int or value<0 or value>=index for value in dependencies) or len(set(dependencies))!=len(dependencies):
 				raise ValueError("depends_on必须引用不重复的前置调用下标")
 		if not 0<=len(case.tool_calls)<=16:
@@ -114,21 +121,37 @@ def matching_value(expected,actual)->bool:
 	return expected==actual
 
 
+def contains_query_terms(query:str,terms:list[str])->bool:
+	if not isinstance(query,str):
+		return False
+	return all(re.search(r"(?<![A-Za-z0-9_])"+re.escape(term)+r"(?![A-Za-z0-9_])",query,re.IGNORECASE) is not None for term in terms)
+
+
+def matches_tool_call(expected:dict,actual:dict)->bool:
+	if expected.get("tool_name")!=actual.get("tool_name"):
+		return False
+	arguments=actual.get("arguments")
+	if not isinstance(arguments,dict):
+		return False
+	query_terms=expected.get("query_contains")
+	if expected.get("strict_arguments",False) and set(arguments)!=set(expected["arguments"]):
+		return False
+	for key,value in expected["arguments"].items():
+		if key=="query" and query_terms is not None:
+			if not contains_query_terms(arguments.get(key),query_terms):
+				return False
+		elif key not in arguments or not matching_value(value,arguments[key]):
+			return False
+	return True
+
+
 def matched_call_count(expected:tuple[dict,...],actual:tuple[dict,...])->int:
 	# 匹配使用增广路径，避免宽泛预期抢占只能匹配特定预期的调用。
 	matched={}
 	def assign(index:int,visited:set[int])->bool:
 		call=expected[index]
 		for position,item in enumerate(actual):
-			if position in visited or item.get("tool_name")!=call["tool_name"]:
-				continue
-			arguments=item.get("arguments")
-			if call.get("strict_arguments",False) and isinstance(arguments,dict) and set(arguments)!=set(call["arguments"]):
-				continue
-			if not isinstance(arguments,dict) or not all(
-				key in arguments and matching_value(value,arguments[key])
-				for key,value in call["arguments"].items()
-			):
+			if position in visited or not matches_tool_call(call,item):
 				continue
 			visited.add(position)
 			if position not in matched or assign(matched[position],visited):
@@ -153,7 +176,7 @@ def match_dependencies(expected:tuple[dict,...],actual:tuple[dict,...])->bool:
 			return True
 		call=expected[index]
 		for position,item in enumerate(actual):
-			if position in used or not match_calls((call,),(item,)):
+			if position in used or not matches_tool_call(call,item):
 				continue
 			round_number=item.get("model_round")
 			dependencies=call.get("depends_on",[])
@@ -171,7 +194,7 @@ def match_dependencies(expected:tuple[dict,...],actual:tuple[dict,...])->bool:
 
 
 def final_context_audit(result:DiagnosisExecution):
-	models=[item for item in result.execution_records if item.kind=="model" and item.status=="succeeded"]
+	models=[item for item in result.execution_records if item.kind=="model"]
 	if not models:
 		return None
 	last=models[-1]
@@ -275,12 +298,8 @@ def check_execution(case:EvalCase,result:DiagnosisExecution,observed_calls:tuple
 		matching=[item.query_arguments for item in result.execution_records if item.kind=="tool" and item.tool_name==expected["tool_name"]]
 		if observed_calls is not None:
 			matching=[item.get("arguments") for item in actual if item.get("tool_name")==expected["tool_name"]]
-		check(f"tool_parameters_{index}",any(
-			item is not None and all(
-				key in item and matching_value(value,item[key])
-				for key,value in expected["arguments"].items()
-			) for item in matching
-		))
+		check(f"tool_parameters_{index}",any(item is not None and matches_tool_call(expected,
+			{"tool_name":expected["tool_name"],"arguments":item}) for item in matching))
 	for index,expected in enumerate(case.evidence_checks):
 		check(f"evidence_content_{index}",any(item.source.value==expected["source"]
 			and all(fragment in item.summary for fragment in expected["summary_contains"]) for item in result.evidences))
@@ -324,6 +343,10 @@ def summarize_results(results:list[dict])->dict:
 
 def evaluation_metrics(case:EvalCase,execution:DiagnosisExecution,observed_calls:tuple[dict,...]|None)->dict:
 	tools=[item for item in execution.execution_records if item.kind=="tool"]
+	search_calls=[item for item in tools if item.tool_name=="search_knowledge"]
+	successful_searches=[item for item in search_calls if item.status=="succeeded"]
+	retrieval_status="not_attempted" if not search_calls else "failed" if not successful_searches else (
+		"complete" if len(successful_searches)==len(search_calls) else "partial")
 	by_id={item.get("tool_call_id"):item for item in observed_calls or ()}
 	actual=tuple({"tool_name":item.tool_name,"arguments":by_id.get(item.tool_call_id,{}).get("arguments",item.query_arguments),
 		"model_round":item.model_round} for item in tools)
@@ -350,9 +373,10 @@ def evaluation_metrics(case:EvalCase,execution:DiagnosisExecution,observed_calls
 		"extra_calls":max(0,len(actual)-matched),"missing_calls":max(0,len(case.tool_calls)-matched),
 		"duplicate_call_ids":len(tools)-len({item.tool_call_id for item in tools}),
 		"dependency_order_valid":match_dependencies(case.tool_calls,actual) if any(item.get("depends_on") for item in case.tool_calls) else None,
-		"required_chunk_recall":len(required&chunks)/len(required) if required else None,
-		"relevant_chunk_recall":len(set(case.retrieval_expectations.get("relevant_chunk_ids",[]))&chunks)/len(case.retrieval_expectations["relevant_chunk_ids"]) if case.retrieval_expectations.get("relevant_chunk_ids") else None,
-		"context_recall":len(required&visible_chunks)/len(required) if required and visible is not None else None,
+		"retrieval_status":retrieval_status,
+		"required_chunk_recall":len(required&chunks)/len(required) if required and successful_searches else None,
+		"relevant_chunk_recall":len(set(case.retrieval_expectations.get("relevant_chunk_ids",[]))&chunks)/len(case.retrieval_expectations["relevant_chunk_ids"]) if case.retrieval_expectations.get("relevant_chunk_ids") and successful_searches else None,
+		"context_recall":len(required&visible_chunks)/len(required) if required and successful_searches and visible is not None else None,
 		"reference_count":len(references),"valid_reference_count":sum(identity in valid_ids for identity in references),
 		"visible_reference_count":sum(identity in visible for identity in references) if visible is not None else None,
 		"token_relative_errors":errors}
@@ -371,6 +395,8 @@ def aggregate_metrics(results:list[dict])->dict:
 	errors=[value for item in metrics for value in item["token_relative_errors"]]
 	return {"cases_with_metrics":len(metrics),"mean_tool_precision":average("tool_precision"),
 		"mean_tool_recall":average("tool_recall"),"mean_tool_f1":average("tool_f1"),
+		"retrieval_status_counts":{status:sum(item.get("retrieval_status")==status for item in metrics)
+			for status in ("not_attempted","failed","partial","complete")},
 		"extra_call_cases":sum(item["extra_calls"]>0 for item in metrics),
 		"extra_call_rate":sum(item["extra_calls"]>0 for item in metrics)/len(metrics) if metrics else None,
 		"duplicate_id_cases":sum(item["duplicate_call_ids"]>0 for item in metrics),
