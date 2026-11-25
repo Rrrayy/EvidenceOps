@@ -1,6 +1,8 @@
 import json
 from decimal import Decimal,InvalidOperation
-from dataclasses import dataclass
+from dataclasses import dataclass,field
+from hashlib import sha256
+from math import ceil
 from pathlib import Path
 from time import perf_counter
 from typing import Callable
@@ -24,6 +26,9 @@ class EvalCase:
 	expected_failure_stage:str="tool"
 	evidence_checks:tuple[dict,...]=()
 	expected_error_detail_code:str|None=None
+	required_chunk_ids:tuple[str,...]=()
+	retrieval_expectations:dict=field(default_factory=dict)
+	review_context:dict=field(default_factory=dict)
 
 
 def load_cases(path:Path)->tuple[EvalCase,...]:
@@ -37,13 +42,30 @@ def load_cases(path:Path)->tuple[EvalCase,...]:
 	cases=[]
 	seen=set()
 	for item in items:
+		if not isinstance(item.get("required_chunk_ids",[]),list):
+			raise ValueError("必需片段ID必须为数组")
 		case=EvalCase(**{**item,"tool_calls":tuple(item["tool_calls"]),
 			"required_sources":tuple(item["required_sources"]),"review_criteria":tuple(item["review_criteria"]),
-			"evidence_checks":tuple(item.get("evidence_checks",[]))})
+			"evidence_checks":tuple(item.get("evidence_checks",[])),"required_chunk_ids":tuple(item.get("required_chunk_ids",[]))})
 		if not isinstance(case.case_id,str) or not case.case_id.strip() or case.case_id in seen:
 			raise ValueError("case_id不能为空或重复")
 		if not isinstance(case.description,str) or not case.description.strip():
 			raise ValueError("description不能为空")
+		if any(not isinstance(value,str) or not value.strip() for value in case.required_chunk_ids) or len(set(case.required_chunk_ids))!=len(case.required_chunk_ids):
+			raise ValueError("必需片段ID必须非空且不重复")
+		if not isinstance(case.retrieval_expectations,dict) or not isinstance(case.review_context,dict):
+			raise ValueError("检索预期和审核背景必须为对象")
+		expected=case.retrieval_expectations
+		if set(expected)-{"top_k","relevant_chunk_ids","document_ids","source_versions","chunk_set_ids","embedding_set_ids"}:
+			raise ValueError("未知检索预期字段")
+		if "top_k" in expected and (type(expected["top_k"]) is not int or not 1<=expected["top_k"]<=5):
+			raise ValueError("评测top_k必须在1到5之间")
+		for key in ("relevant_chunk_ids","document_ids","source_versions","chunk_set_ids","embedding_set_ids"):
+			values=expected.get(key,[])
+			if not isinstance(values,list) or any(not isinstance(value,str) or not value.strip() for value in values) or len(values)!=len(set(values)):
+				raise ValueError("检索预期身份必须为不重复的字符串数组")
+		if "relevant_chunk_ids" in expected and not set(case.required_chunk_ids)<=set(expected["relevant_chunk_ids"]):
+			raise ValueError("必需片段必须属于相关片段")
 		if case.expected_status not in ("succeeded","failed","cancelled"):
 			raise ValueError("评测案例必须声明有效终态")
 		if (case.expected_status=="failed")!=(isinstance(case.expected_error_code,str) and bool(case.expected_error_code.strip())):
@@ -60,7 +82,7 @@ def load_cases(path:Path)->tuple[EvalCase,...]:
 				raise ValueError("depends_on必须引用不重复的前置调用下标")
 		if not 0<=len(case.tool_calls)<=16:
 			raise ValueError("案例最多包含16个预期工具调用")
-		if any(value not in ("log","metric","config") for value in case.required_sources):
+		if any(value not in ("log","metric","config","knowledge") for value in case.required_sources):
 			raise ValueError("未知证据来源")
 		if not case.review_criteria or any(not isinstance(value,str) or not value.strip() for value in case.review_criteria):
 			raise ValueError("案例必须包含人工审核标准")
@@ -72,7 +94,7 @@ def load_cases(path:Path)->tuple[EvalCase,...]:
 			or not case.expected_error_detail_code.strip() or case.expected_status not in ("failed","cancelled")):
 			raise ValueError("内层错误码只能在失败案例声明")
 		for expected in case.evidence_checks:
-			if not isinstance(expected,dict) or expected.get("source") not in ("log","metric","config"):
+			if not isinstance(expected,dict) or expected.get("source") not in ("log","metric","config","knowledge"):
 				raise ValueError("证据检查必须声明有效source")
 			fragments=expected.get("summary_contains")
 			if not isinstance(fragments,list) or not fragments or any(not isinstance(value,str) or not value for value in fragments):
@@ -92,7 +114,7 @@ def matching_value(expected,actual)->bool:
 	return expected==actual
 
 
-def match_calls(expected:tuple[dict,...],actual:tuple[dict,...])->bool:
+def matched_call_count(expected:tuple[dict,...],actual:tuple[dict,...])->int:
 	# 匹配使用增广路径，避免宽泛预期抢占只能匹配特定预期的调用。
 	matched={}
 	def assign(index:int,visited:set[int])->bool:
@@ -113,7 +135,13 @@ def match_calls(expected:tuple[dict,...],actual:tuple[dict,...])->bool:
 				matched[position]=index
 				return True
 		return False
-	return len(expected)==len(actual) and all(assign(index,set()) for index in range(len(expected)))
+	for index in range(len(expected)):
+		assign(index,set())
+	return len(matched)
+
+
+def match_calls(expected:tuple[dict,...],actual:tuple[dict,...])->bool:
+	return len(expected)==len(actual) and matched_call_count(expected,actual)==len(expected)
 
 
 def match_dependencies(expected:tuple[dict,...],actual:tuple[dict,...])->bool:
@@ -142,6 +170,32 @@ def match_dependencies(expected:tuple[dict,...],actual:tuple[dict,...])->bool:
 	return assign(0,set())
 
 
+def final_context_audit(result:DiagnosisExecution):
+	models=[item for item in result.execution_records if item.kind=="model" and item.status=="succeeded"]
+	if not models:
+		return None
+	last=models[-1]
+	matches=[audit for audit in result.context_audits if audit.model_request_id==last.model_request_id and audit.model_round==last.model_round]
+	return matches[0] if len(matches)==1 else None
+
+
+def visible_snapshots(audit)->dict[str,str]:
+	visible={}
+	def collect(value):
+		if isinstance(value,dict):
+			if isinstance(value.get("evidence_id"),str) and isinstance(value.get("content"),str):
+				visible[value["evidence_id"]]=value["content"]
+			for child in value.values(): collect(child)
+		elif isinstance(value,list):
+			for child in value: collect(child)
+	for message in audit.assembly.messages:
+		try:
+			collect(json.loads(message.get("content","")))
+		except (TypeError,ValueError):
+			continue
+	return visible
+
+
 def check_execution(case:EvalCase,result:DiagnosisExecution,observed_calls:tuple[dict,...]|None=None)->list[dict]:
 	checks=[]
 	def check(name:str,passed:bool)->None:
@@ -154,6 +208,36 @@ def check_execution(case:EvalCase,result:DiagnosisExecution,observed_calls:tuple
 	check("evidence_sources",set(case.required_sources).issubset({item.source.value for item in result.evidences}))
 	check("evidence_ownership",all(item.run_id==result.run.run_id for item in result.evidences))
 	check("evidence_unique",len({item.evidence_id for item in result.evidences})==len(result.evidences))
+	check("evidence_content_hash",all(item.content_snapshot is None or sha256(item.content_snapshot.encode("utf-8")).hexdigest()==item.content_hash for item in result.evidences))
+	audit=final_context_audit(result) if result.context_audits else None
+	knowledge=[item for item in result.evidences if item.source.value=="knowledge"]
+	tools=[item for item in result.execution_records if item.kind=="tool"]
+	knowledge_calls=[item for item in tools if item.tool_name=="search_knowledge" and item.tool_call_id]
+	check("knowledge_evidence_linked",all(any(item.evidence_id.startswith(f"{result.run.run_id}-{call.tool_call_id}-") for call in knowledge_calls) for item in knowledge))
+	check("knowledge_evidence_source",all(item.source.value=="knowledge" for item in result.evidences
+		if any(item.evidence_id.startswith(f"{result.run.run_id}-{call.tool_call_id}-") for call in knowledge_calls)))
+	check("knowledge_evidence_metadata",all(item.content_snapshot is not None and item.source_version is not None
+		and isinstance(item.source_metadata,dict) and all(item.source_metadata.get(key) is not None for key in
+		("document_id","chunk_id","chunk_set_id","start_offset","end_offset","rank","retrieval_method")) for item in knowledge))
+	if audit is not None:
+		snapshots=visible_snapshots(audit)
+		check("visible_evidence_snapshots",all(item.content_snapshot is None or snapshots.get(item.evidence_id)==item.content_snapshot
+			for item in result.evidences if item.evidence_id in audit.assembly.visible_evidence_ids))
+	for field,attribute in (("document_ids","document_id"),("chunk_set_ids","chunk_set_id"),("embedding_set_ids","embedding_set_id")):
+		if field in case.retrieval_expectations:
+			allowed=set(case.retrieval_expectations[field])
+			check("retrieval_"+field,all(isinstance(item.source_metadata,dict) and item.source_metadata.get(attribute) in allowed for item in knowledge))
+	if "source_versions" in case.retrieval_expectations:
+		check("retrieval_source_versions",all(item.source_version in case.retrieval_expectations["source_versions"] for item in knowledge))
+	if case.required_chunk_ids:
+		top_k=case.retrieval_expectations.get("top_k")
+		chunks={item.source_metadata.get("chunk_id") for item in knowledge
+			if isinstance(item.source_metadata,dict) and (top_k is None or (type(item.source_metadata.get("rank")) is int and 1<=item.source_metadata["rank"]<=top_k))}
+		check("required_chunks_retrieved",set(case.required_chunk_ids).issubset(chunks))
+		visible=set(audit.assembly.visible_evidence_ids) if audit is not None else set()
+		visible_chunks={item.source_metadata.get("chunk_id") for item in knowledge
+			if item.evidence_id in visible and isinstance(item.source_metadata,dict) and item.source_metadata.get("chunk_id") in chunks}
+		check("required_chunks_visible",audit is not None and set(case.required_chunk_ids).issubset(visible_chunks))
 	check("record_ownership",all(item.run_id==result.run.run_id for item in result.execution_records))
 	check("records_present",bool(result.execution_records) or not case.tool_calls)
 	check("tool_allowlist",all(item.tool_name in {call["tool_name"] for call in case.tool_calls}
@@ -207,6 +291,10 @@ def check_execution(case:EvalCase,result:DiagnosisExecution,observed_calls:tuple
 		except (ValueError,TypeError):
 			valid=False
 		check("report_references",valid)
+		if result.context_audits or case.required_chunk_ids:
+			visible=set(audit.assembly.visible_evidence_ids) if audit is not None else set()
+			claims=(result.report.root_cause,)+tuple(result.report.recommendations)
+			check("report_references_visible",audit is not None and all(set(claim.evidence_ids).issubset(visible) for claim in claims))
 	return checks
 
 
@@ -218,7 +306,7 @@ def summarize_results(results:list[dict])->dict:
 		if not isinstance(item,dict) or type(item.get("rule_passed")) is not bool:
 			raise ValueError("案例必须包含布尔类型的rule_passed")
 		review=item.get("semantic_review")
-		if not isinstance(review,dict) or review.get("status") not in ("pending","passed","failed"):
+		if not isinstance(review,dict) or review.get("status") not in ("pending","passed","failed","disputed"):
 			raise ValueError("人工审核状态无效")
 	count=len(results)
 	rule_count=sum(item["rule_passed"] for item in results)
@@ -230,7 +318,89 @@ def summarize_results(results:list[dict])->dict:
 		"final_passed_count":final_count,"final_pass_rate":final_count/count,
 		"execution_error_count":sum(item.get("execution_error") is not None for item in results),
 		"semantic_review_pending":sum(item["semantic_review"]["status"]=="pending" for item in results),
+		"semantic_review_disputed":sum(item["semantic_review"]["status"]=="disputed" for item in results),
 	}
+
+
+def evaluation_metrics(case:EvalCase,execution:DiagnosisExecution,observed_calls:tuple[dict,...]|None)->dict:
+	tools=[item for item in execution.execution_records if item.kind=="tool"]
+	by_id={item.get("tool_call_id"):item for item in observed_calls or ()}
+	actual=tuple({"tool_name":item.tool_name,"arguments":by_id.get(item.tool_call_id,{}).get("arguments",item.query_arguments),
+		"model_round":item.model_round} for item in tools)
+	matched=matched_call_count(case.tool_calls,actual)
+	precision=matched/len(actual) if actual else None
+	recall=matched/len(case.tool_calls) if case.tool_calls else None
+	f1=2*precision*recall/(precision+recall) if precision is not None and recall is not None and precision+recall else (0.0 if precision is not None and recall is not None else None)
+	knowledge=[item for item in execution.evidences if item.source.value=="knowledge" and isinstance(item.source_metadata,dict)]
+	top_k=case.retrieval_expectations.get("top_k")
+	chunks={item.source_metadata.get("chunk_id") for item in knowledge if top_k is None or
+		(type(item.source_metadata.get("rank")) is int and 1<=item.source_metadata["rank"]<=top_k)}
+	required=set(case.required_chunk_ids)
+	audit=final_context_audit(execution) if execution.context_audits else None
+	visible=set(audit.assembly.visible_evidence_ids) if audit is not None else None
+	visible_chunks={item.source_metadata.get("chunk_id") for item in knowledge if visible is not None and item.evidence_id in visible}
+	claims=() if execution.report is None else (execution.report.root_cause,)+tuple(execution.report.recommendations)
+	references=[identity for claim in claims for identity in claim.evidence_ids]
+	valid_ids={item.evidence_id for item in execution.evidences if item.run_id==execution.run.run_id}
+	models=[item for item in execution.execution_records if item.kind=="model"]
+	errors=[abs(item.estimated_input_tokens-item.reported_input_tokens)/item.reported_input_tokens for item in models
+		if type(item.estimated_input_tokens) is int and type(item.reported_input_tokens) is int and item.reported_input_tokens>0 and item.usage_status=="complete"]
+	return {"tool_matched":matched,"tool_expected":len(case.tool_calls),"tool_actual":len(actual),
+		"tool_precision":precision,"tool_recall":recall,"tool_f1":f1,
+		"extra_calls":max(0,len(actual)-matched),"missing_calls":max(0,len(case.tool_calls)-matched),
+		"duplicate_call_ids":len(tools)-len({item.tool_call_id for item in tools}),
+		"dependency_order_valid":match_dependencies(case.tool_calls,actual) if any(item.get("depends_on") for item in case.tool_calls) else None,
+		"required_chunk_recall":len(required&chunks)/len(required) if required else None,
+		"relevant_chunk_recall":len(set(case.retrieval_expectations.get("relevant_chunk_ids",[]))&chunks)/len(case.retrieval_expectations["relevant_chunk_ids"]) if case.retrieval_expectations.get("relevant_chunk_ids") else None,
+		"context_recall":len(required&visible_chunks)/len(required) if required and visible is not None else None,
+		"reference_count":len(references),"valid_reference_count":sum(identity in valid_ids for identity in references),
+		"visible_reference_count":sum(identity in visible for identity in references) if visible is not None else None,
+		"token_relative_errors":errors}
+
+
+def aggregate_metrics(results:list[dict])->dict:
+	metrics=[item["metrics"] for item in results if item.get("metrics") is not None]
+	def average(name):
+		values=[item[name] for item in metrics if item.get(name) is not None]
+		return sum(values)/len(values) if values else None
+	durations=sorted(item["wall_duration_ms"] for item in results)
+	def percentile(fraction):
+		return durations[max(0,ceil(fraction*len(durations))-1)] if durations else None
+	references=sum(item["reference_count"] for item in metrics)
+	visible=[item for item in metrics if item["visible_reference_count"] is not None]
+	errors=[value for item in metrics for value in item["token_relative_errors"]]
+	return {"cases_with_metrics":len(metrics),"mean_tool_precision":average("tool_precision"),
+		"mean_tool_recall":average("tool_recall"),"mean_tool_f1":average("tool_f1"),
+		"extra_call_cases":sum(item["extra_calls"]>0 for item in metrics),
+		"extra_call_rate":sum(item["extra_calls"]>0 for item in metrics)/len(metrics) if metrics else None,
+		"duplicate_id_cases":sum(item["duplicate_call_ids"]>0 for item in metrics),
+		"duplicate_id_rate":sum(item["duplicate_call_ids"]>0 for item in metrics)/len(metrics) if metrics else None,
+		"order_violations":sum(item["dependency_order_valid"] is False for item in metrics),
+		"parameter_match_rate":sum(item["tool_matched"] for item in metrics)/sum(item["tool_expected"] for item in metrics) if sum(item["tool_expected"] for item in metrics) else None,
+		"invalid_references":sum(item["reference_count"]-item["valid_reference_count"] for item in metrics),
+		"required_chunk_recall":average("required_chunk_recall"),"relevant_chunk_recall":average("relevant_chunk_recall"),"context_recall":average("context_recall"),
+		"valid_reference_rate":sum(item["valid_reference_count"] for item in metrics)/references if references else None,
+		"visible_reference_rate":sum(item["visible_reference_count"] for item in visible)/sum(item["reference_count"] for item in visible) if sum(item["reference_count"] for item in visible) else None,
+		"mean_token_relative_error":sum(errors)/len(errors) if errors else None,
+		"latency_ms_p50":percentile(.5),"latency_ms_p95":percentile(.95),"latency_ms_p99":percentile(.99)}
+
+
+def attach_retrieval_comparison(report:dict,comparison:dict)->None:
+	if not isinstance(comparison,dict) or not isinstance(comparison.get("results"),list) or not isinstance(comparison.get("snapshot"),list):
+		raise ValueError("检索对照结果缺少案例或集合快照")
+	snapshot={tuple(item) for item in comparison["snapshot"] if isinstance(item,list) and len(item)==4}
+	for item in report["results"]:
+		matches=[entry for entry in comparison["results"] if entry.get("query")==item["input"]]
+		if len(matches)!=1:
+			item["retrieval_comparison"]={"status":"unavailable","reason":"查询无法唯一匹配"}
+			continue
+		identities={(entry["source_metadata"].get("chunk_id"),entry["source_metadata"].get("embedding_set_id"),
+			entry["source_metadata"].get("config_fingerprint"),entry["content_hash"]) for entry in item["knowledge_evidence"]}
+		if not identities or not identities<=snapshot or comparison.get("top_k")!=item["retrieval_expectations"].get("top_k"):
+			item["retrieval_comparison"]={"status":"unavailable","reason":"没有检索结果或集合、Top-K 不一致"}
+			continue
+		item["retrieval_comparison"]={"status":"available","modes":matches[0].get("modes",{}),
+			"experiment":comparison.get("experiment"),"top_k":comparison["top_k"]}
 
 
 def summarize_usage(records:tuple)->dict:
@@ -294,6 +464,9 @@ def run_suite(cases:tuple[EvalCase,...],factory:Callable,mode:str,pricing:dict|N
 		checks=[]
 		response=None
 		usage=None
+		context_audits=[]
+		knowledge_evidence=[]
+		metrics=None
 		error=None
 		try:
 			with factory(case) as service:
@@ -301,6 +474,16 @@ def run_suite(cases:tuple[EvalCase,...],factory:Callable,mode:str,pricing:dict|N
 				checks=check_execution(case,execution,getattr(service,"observed_calls",None))
 				response=to_response(execution)
 				usage=summarize_usage(execution.execution_records)
+				metrics=evaluation_metrics(case,execution,getattr(service,"observed_calls",None))
+				context_audits=[{"model_round":audit.model_round,"model_request_id":audit.model_request_id,
+					"visible_evidence_ids":list(audit.assembly.visible_evidence_ids),
+					"messages":list(audit.assembly.messages),
+					"estimated_input_tokens":audit.assembly.estimated_input_tokens,
+					"estimator_id":audit.assembly.estimator_id,"omissions":list(audit.assembly.omissions)}
+					for audit in execution.context_audits]
+				knowledge_evidence=[{"evidence_id":item.evidence_id,"source_version":item.source_version,
+					"content_hash":item.content_hash,"content_snapshot":item.content_snapshot,
+					"source_metadata":item.source_metadata} for item in execution.evidences if item.source.value=="knowledge"]
 		except Exception as exception:
 			# 不输出原始异常以免泄露凭据；异常案例仍保留在通过率分母中。
 			error=type(exception).__name__
@@ -311,11 +494,14 @@ def run_suite(cases:tuple[EvalCase,...],factory:Callable,mode:str,pricing:dict|N
 			"rule_passed":error is None and bool(checks) and all(item["passed"] for item in checks),
 			"wall_duration_ms":(perf_counter()-started)*1000,
 			"semantic_review":{"status":"pending","criteria":list(case.review_criteria)},
+			"review_context":case.review_context,"retrieval_expectations":case.retrieval_expectations,
+			"context_audits":context_audits,"knowledge_evidence":knowledge_evidence,"metrics":metrics,
 			"token_usage":usage,"cost":calculate_cost(usage,pricing) if pricing is not None and response is not None
 				and (execution.model_config or {}).get("model_id")==pricing.get("model") else None,"response":response,
 		})
 	return {
 		"schema_version":1,"batch_id":batch_id,"mode":mode,
 		"summary":summarize_results(results),
+		"metrics":aggregate_metrics(results),
 		"results":results,
 	}

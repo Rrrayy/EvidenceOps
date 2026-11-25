@@ -179,6 +179,25 @@ class EvaluationTests(unittest.TestCase):
 		checks=check_execution(self.cases[0],replace(self.execution,report=report))
 		self.assertFalse(next(item["passed"] for item in checks if item["name"]=="report_references"))
 
+	def test_required_chunk_must_be_retrieved_and_visible(self):
+		from types import SimpleNamespace
+		from evidenceops.domain.evidence import EvidenceSource
+		evidence=replace(self.execution.evidences[0],source=EvidenceSource.KNOWLEDGE,source_metadata={"chunk_id":"chunk-required"})
+		case=replace(self.cases[0],required_chunk_ids=("chunk-required",))
+		model=next(item for item in reversed(self.execution.execution_records) if item.kind=="model" and item.status=="succeeded")
+		audit=SimpleNamespace(model_round=model.model_round,model_request_id=model.model_request_id,assembly=SimpleNamespace(visible_evidence_ids=(evidence.evidence_id,),messages=()))
+		result=replace(self.execution,evidences=(evidence,*self.execution.evidences[1:]),context_audits=(audit,))
+		checks={item["name"]:item["passed"] for item in check_execution(case,result)}
+		self.assertTrue(checks["required_chunks_retrieved"])
+		self.assertTrue(checks["required_chunks_visible"])
+		self.assertFalse(checks["report_references_visible"])
+		audit.assembly.visible_evidence_ids=()
+		checks={item["name"]:item["passed"] for item in check_execution(case,result)}
+		self.assertTrue(checks["required_chunks_retrieved"])
+		self.assertFalse(checks["required_chunks_visible"])
+		checks={item["name"]:item["passed"] for item in check_execution(case,replace(result,context_audits=()))}
+		self.assertFalse(checks["required_chunks_visible"])
+
 	def test_cross_run_evidence_is_detected(self):
 		evidences=(replace(self.execution.evidences[0],run_id="another-run"),*self.execution.evidences[1:])
 		checks=check_execution(self.cases[0],replace(self.execution,evidences=evidences))

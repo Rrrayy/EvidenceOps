@@ -1,4 +1,5 @@
 import json
+from dataclasses import replace
 from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier
 from unittest.mock import Mock
@@ -134,7 +135,7 @@ def test_actual_estimator_identity_is_persisted(audit_store):
 	("forged","INVALID_REPORT_EVIDENCE"),("insufficient","EVIDENCE_INSUFFICIENT")])
 def test_diagnosis_persists_each_round_on_success_and_failure(audit_store,monkeypatch,outcome,expected_error):
 	factory,store=audit_store
-	found=KeywordKnowledgeRetriever().search(corpus(),"线程池 重试",5)
+	found=tuple(replace(item,document_id="test-manual",source_ref="test-manual") for item in KeywordKnowledgeRetriever().search(corpus(),"线程池 重试",5))
 	tool=build_knowledge_search_tool(lambda query,**options:found)
 	def final(request):
 		if outcome=="protocol": raise ModelProviderError("MODEL_PROTOCOL_ERROR","模拟协议错误")

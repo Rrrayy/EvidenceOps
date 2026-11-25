@@ -1,0 +1,18 @@
+{
+	"schema_version": 1,
+	"cases": [
+		{
+			"case_id": "python-runtime-knowledge",
+			"description": "服务启动时 Python 找不到 pandas，应该先比较哪个解释器和 pip",
+			"expected_status": "succeeded",
+			"expected_error_code": null,
+			"tool_calls": [{"tool_name": "search_knowledge", "arguments": {"query": "服务启动时 Python 找不到 pandas，应该先比较哪个解释器和 pip", "top_k": 3}}],
+			"required_sources": ["knowledge"],
+			"required_chunk_ids": ["chunk-903deb07956bf0237614d3ee1a17897549e8b819cb30621df29ca72019e8672d"],
+			"retrieval_expectations": {"top_k": 3, "relevant_chunk_ids": ["chunk-903deb07956bf0237614d3ee1a17897549e8b819cb30621df29ca72019e8672d", "chunk-375570a9e825e12363e501411ad53cfaf207bfec46a179f572fa4fbc2ba9bbf7"]},
+			"review_criteria": ["区分排障参考和现场事实", "建议核对服务实际解释器及对应 pip", "没有运行时证据时不确定根因"],
+			"review_context": {"reference_facts": ["ModuleNotFoundError 表示当前解释器导入失败"], "required_conclusions": ["核对服务运行解释器和绑定的 pip"], "acceptable_conclusions": ["环境不一致是待验证假设"], "prohibited_inferences": ["仅根据手册断定本次根因"]},
+			"fixture_hashes": {"samples/knowledge/python_import.md": "7b5565a8a307dbab333c4bfd09b60e1dffc8a0fc3d42175ac9cc14f808007d31"}
+		}
+	]
+}

@@ -10,11 +10,12 @@ from threading import Lock
 
 from evidenceops.application.agent_diagnosis_factory import build_agent_diagnosis_assembly
 from evidenceops.application.model_protocol import ModelRequest,StructuredFinalAnswer,ToolCall,ToolCallBatch
+from evidenceops.application.token_budget import ContextConfig
 from evidenceops.connectors.local_config import build_local_config_tool
 from evidenceops.connectors.local_log import build_local_log_tool
 from evidenceops.connectors.local_metric import build_local_metric_tool
-from evidenceops.evaluation.core import EvalCase,load_cases,run_suite
-from evidenceops.evaluation.review import review_result,save_result
+from evidenceops.evaluation.core import EvalCase,attach_retrieval_comparison,load_cases,run_suite
+from evidenceops.evaluation.review import import_reviews,review_result,save_result
 from evidenceops.infrastructure.providers.mock_provider import MockProvider
 from evidenceops.infrastructure.providers.openai_compatible_provider import OpenAICompatibleProvider
 
@@ -44,6 +45,10 @@ def mock_answer(request:ModelRequest)->StructuredFinalAnswer:
 	for message in request.messages:
 		if message.get("role")=="tool":
 			observation=json.loads(message["content"])
+			if observation.get("ok") and observation.get("evidence_id") is None and "matches" in (observation.get("data") or {}):
+				matches=observation.get("data",{}).get("matches",[])
+				ids.extend(item["evidence_id"] for item in matches if item.get("evidence_id"))
+				facts.append("知识资料仅供排查参考，不能证明现场根因" if matches else "未检索到知识资料")
 			if observation.get("ok") and observation.get("evidence_id"):
 				ids.append(observation["evidence_id"])
 				data=observation["data"]
@@ -85,6 +90,20 @@ def verify_fixtures(case:EvalCase)->None:
 def case_service(case:EvalCase,mode:str):
 	verify_fixtures(case)
 	tools=(build_local_log_tool(),build_local_metric_tool(),build_local_config_tool())
+	engine=None
+	if any(call["tool_name"]=="search_knowledge" for call in case.tool_calls):
+		from evidenceops.infrastructure.database.session import DatabaseSettings,create_database_engine,create_session_factory
+		from evidenceops.infrastructure.database.diagnosis_persistence import SqlAlchemyDiagnosisPersistence
+		from evidenceops.infrastructure.knowledge_tools import configured_knowledge_tools
+		engine=create_database_engine(DatabaseSettings.from_environment())
+		try:
+			knowledge_tools=configured_knowledge_tools(SqlAlchemyDiagnosisPersistence(create_session_factory(engine)))
+			if not knowledge_tools:
+				raise ValueError("知识评测需要启用知识检索")
+			tools+=knowledge_tools
+		except Exception:
+			engine.dispose()
+			raise
 	calls_seen=[]
 	calls_lock=Lock()
 	if mode=="mock":
@@ -103,7 +122,7 @@ def case_service(case:EvalCase,mode:str):
 	assembly=None
 	try:
 		assembly=build_agent_diagnosis_assembly(provider,mode,tools,"order-service",model=model,model_timeout_seconds=60,max_steps=5,
-			model_config={"model_id":model})
+			model_config={"model_id":model},context_config=ContextConfig() if any(call["tool_name"]=="search_knowledge" for call in case.tool_calls) or case.required_chunk_ids else None)
 		execute_tool=assembly.runtime.execute
 		def observe_tool(tool_name,arguments,tool_call_id=None,**options):
 			# 仅在评测内存中记录完整参数，按调用ID关联运行时执行记录。
@@ -120,10 +139,23 @@ def case_service(case:EvalCase,mode:str):
 			close=getattr(provider,"close",None)
 			if callable(close):
 				close()
+		if engine is not None:
+			engine.dispose()
 
 
 def main(argv:list[str]|None=None)->int:
 	arguments=list(sys.argv[1:] if argv is None else argv)
+	if arguments and arguments[0]=="review-import":
+		parser=argparse.ArgumentParser(description="导入带证据判断的人工审核记录")
+		parser.add_argument("result",type=Path)
+		parser.add_argument("reviews",type=Path)
+		args=parser.parse_args(arguments[1:])
+		try:
+			import_reviews(args.result,args.reviews)
+		except (OSError,ValueError) as error:
+			print(f"审核导入失败：{error}",file=sys.stderr)
+			return 2
+		return 0
 	if arguments and arguments[0]=="review":
 		parser=argparse.ArgumentParser(description="人工审核Eval结果，不调用模型")
 		parser.add_argument("result",type=Path,help="eval_result.json文件路径")
@@ -143,6 +175,7 @@ def main(argv:list[str]|None=None)->int:
 	parser.add_argument("--cases",type=Path,default=PROJECT_ROOT/"samples"/"evaluation"/"cases.json")
 	parser.add_argument("--output",type=Path,help="直接以UTF-8保存结果，避免PowerShell管道编码转换")
 	parser.add_argument("--pricing",type=Path,help="模型价格JSON文件，含model、currency、version和每百万输入/输出Token单价")
+	parser.add_argument("--retrieval-comparison",type=Path,help="关联已有同查询和同快照的检索对照结果")
 	args=parser.parse_args(arguments)
 	if args.mode=="real":
 		missing=[name for name in ("EVIDENCEOPS_MODEL_BASE_URL","EVIDENCEOPS_MODEL_API_KEY","EVIDENCEOPS_MODEL_NAME") if not os.getenv(name," ").strip()]
@@ -151,6 +184,8 @@ def main(argv:list[str]|None=None)->int:
 	cases=load_cases(args.cases)
 	pricing=json.loads(args.pricing.read_text(encoding="utf-8")) if args.pricing else None
 	report=run_suite(cases,lambda case:case_service(case,args.mode),args.mode,pricing)
+	if args.retrieval_comparison:
+		attach_retrieval_comparison(report,json.loads(args.retrieval_comparison.read_text(encoding="utf-8-sig")))
 	if args.output is not None:
 		try:
 			save_result(args.output,report)

@@ -4,10 +4,43 @@ import re
 import tempfile
 import shutil
 import unicodedata
+from datetime import datetime,timezone
 from pathlib import Path
 from typing import Callable
 
 from evidenceops.evaluation.core import summarize_results
+
+
+def import_reviews(result_path:Path,review_path:Path)->dict:
+	payload=load_result(result_path)
+	data=json.loads(review_path.read_text(encoding="utf-8-sig"))
+	if not isinstance(data,dict) or not isinstance(data.get("reviews"),list):
+		raise ValueError("审核文件必须包含reviews数组")
+	by_id={item["case_id"]:item for item in payload["results"]}
+	seen=set()
+	for review in data["reviews"]:
+		if not isinstance(review,dict): raise ValueError("审核记录必须为对象")
+		identity=review.get("case_id")
+		if identity not in by_id or identity in seen: raise ValueError("审核案例不存在或重复")
+		seen.add(identity)
+		if review.get("status") not in ("passed","failed","disputed"): raise ValueError("审核状态无效")
+		for key in ("reviewer","reason","model_version","prompt_version","corpus_hash"):
+			if not isinstance(review.get(key),str) or not review[key].strip(): raise ValueError("审核记录缺少"+key)
+		claims=review.get("claims")
+		if not isinstance(claims,list): raise ValueError("审核记录必须包含claims数组")
+		for claim in claims:
+			if not isinstance(claim,dict) or not isinstance(claim.get("text"),str) or not claim["text"].strip(): raise ValueError("审核结论缺少正文")
+			if claim.get("status") not in ("supported","unsupported","disputed"): raise ValueError("结论支持状态无效")
+			if not isinstance(claim.get("evidence_ids"),list) or any(not isinstance(value,str) or not value.strip() for value in claim["evidence_ids"]): raise ValueError("结论证据ID无效")
+			if not isinstance(claim.get("reason"),str) or not claim["reason"].strip(): raise ValueError("结论审核理由不能为空")
+		visible={item["evidence_id"] for item in (by_id[identity].get("response") or {}).get("evidences",[])}
+		if any(not set(claim["evidence_ids"])<=visible for claim in claims): raise ValueError("结论包含未知证据ID")
+	for review in data["reviews"]:
+		item=by_id[review["case_id"]]
+		item["semantic_review"]={**item["semantic_review"],**review,"reviewed_at":datetime.now(timezone.utc).isoformat()}
+	payload["summary"]={**payload.get("summary",{}),**summarize_results(payload["results"])}
+	save_result(result_path,payload)
+	return payload
 
 
 def load_result(path:Path)->dict:

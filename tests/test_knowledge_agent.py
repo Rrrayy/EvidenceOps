@@ -40,6 +40,65 @@ def matches():
 		for match in KeywordKnowledgeRetriever().search(corpus(),"线程池 重试",5))
 
 
+def test_evaluation_entrypoint_search_and_context(monkeypatch):
+	from evidenceops.evaluation import __main__ as evaluation
+	from evidenceops.evaluation.core import EvalCase,run_suite
+	from evidenceops.infrastructure import knowledge_tools
+	from evidenceops.infrastructure.database import session
+	from types import SimpleNamespace
+	found=matches()
+	tool=build_knowledge_search_tool(lambda query,**options:found[:options["top_k"]])
+	engine=SimpleNamespace(dispose=lambda:None)
+	monkeypatch.setattr(evaluation,"verify_fixtures",lambda case:None)
+	monkeypatch.setattr(session.DatabaseSettings,"from_environment",lambda:None)
+	monkeypatch.setattr(session,"create_database_engine",lambda settings:engine)
+	monkeypatch.setattr(session,"create_session_factory",lambda value:None)
+	monkeypatch.setattr(knowledge_tools,"configured_knowledge_tools",lambda persistence:(tool,))
+	chunk=found[0].chunk.chunk_id
+	case=EvalCase(case_id="knowledge-eval",description="查询线程池重试",expected_status="succeeded",expected_error_code=None,
+		tool_calls=({"tool_name":"search_knowledge","arguments":{"query":"线程池 重试","top_k":3}},),
+		required_sources=("knowledge",),review_criteria=("知识只是参考",),fixture_hashes={"fixture":"hash"},
+		required_chunk_ids=(chunk,),retrieval_expectations={"top_k":3,"relevant_chunk_ids":[chunk]})
+	report=run_suite((case,),lambda item:evaluation.case_service(item,"mock"),"mock")
+	result=report["results"][0]
+	assert result["execution_error"] is None
+	assert result["rule_passed"],result["checks"]
+	assert result["metrics"]["required_chunk_recall"]==1
+	assert result["metrics"]["context_recall"]==1
+	assert result["context_audits"][-1]["visible_evidence_ids"]
+	assert result["knowledge_evidence"][0]["source_metadata"]["chunk_id"]==chunk
+
+
+def test_evaluation_detects_wrong_version_snapshot_and_round():
+	from evidenceops.application.token_budget import ContextConfig
+	from evidenceops.evaluation.core import EvalCase,check_execution
+	found=matches()[:3]
+	def answer(request):
+		items=json.loads(request.messages[-1]["content"])["data"]["matches"]
+		return draft([item["evidence_id"] for item in items])
+	assembly=build_agent_diagnosis_assembly(MockProvider((ToolCall("search","search_knowledge",{"query":"线程池 重试"}),answer)),
+		"mock",(build_knowledge_search_tool(lambda query,**options:found),),"order-service",context_config=ContextConfig())
+	try:
+		result=assembly.diagnosis_service.execute("eval-negative","查询线程池")
+		case=EvalCase(case_id="negative",description="查询线程池",expected_status="succeeded",expected_error_code=None,
+			tool_calls=({"tool_name":"search_knowledge","arguments":{"query":"线程池 重试"}},),required_sources=("knowledge",),
+			review_criteria=("引用正确",),fixture_hashes={"fixture":"hash"},required_chunk_ids=(found[0].chunk.chunk_id,),
+			retrieval_expectations={"top_k":3,"source_versions":[result.evidences[0].source_version]})
+		assert all(item["passed"] for item in check_execution(case,result))
+		wrong=replace(case,retrieval_expectations={"source_versions":["wrong-version"]})
+		checks={item["name"]:item["passed"] for item in check_execution(wrong,result)}
+		assert not checks["retrieval_source_versions"]
+		audit=replace(result.context_audits[-1],model_request_id="wrong-request")
+		checks={item["name"]:item["passed"] for item in check_execution(case,replace(result,context_audits=(audit,)))}
+		assert not checks["required_chunks_visible"]
+		altered=replace(result.context_audits[-1].assembly,messages=())
+		audit=replace(result.context_audits[-1],assembly=altered)
+		checks={item["name"]:item["passed"] for item in check_execution(case,replace(result,context_audits=(audit,)))}
+		assert not checks["visible_evidence_snapshots"]
+	finally:
+		assembly.close()
+
+
 def draft(ids):
 	return StructuredFinalAnswer({"root_cause":{"text":"资料不足以确认本次故障根因","evidence_ids":ids},
 		"recommendations":[{"text":"依据手册补查线程池与重试记录","evidence_ids":ids}],
