@@ -156,10 +156,19 @@ class EvaluationTests(unittest.TestCase):
 			for item in report["results"] if not item["rule_passed"]}
 		self.assertEqual(failures,{})
 		self.assertEqual(report["summary"]["rule_passed_count"],20)
-		self.assertEqual(report["summary"]["semantic_review_pending"],20)
-		self.assertEqual(report["summary"]["semantic_pass_rate"],0)
+		self.assertEqual(report["summary"]["semantic_review_pending"],14)
+		self.assertEqual(report["summary"]["semantic_review_execution_only"],6)
+		self.assertEqual(report["semantic_quality"]["report_eligible_cases"],14)
 		self.assertEqual(len({item["response"]["run_id"] for item in report["results"]}),20)
 		self.assertTrue(all(item["token_usage"]["unknown_calls"]>0 for item in report["results"]))
+		reported=next(item for item in report["results"] if item["response"]["report"] is not None)
+		last_model=next(record for record in reversed(reported["response"]["execution_records"]) if record["kind"]=="model")
+		final_request=next(request for request in reported["model_requests"] if request["request_id"]==last_model["model_request_id"])
+		citations=set(reported["response"]["report"]["root_cause"]["evidence_ids"])
+		citations.update(identity for claim in reported["response"]["report"]["recommendations"] for identity in claim["evidence_ids"])
+		self.assertTrue(citations<=set(final_request["visible_evidence_ids"]))
+		self.assertTrue(citations<=set(final_request["visible_evidence_snapshots"]))
+		self.assertTrue(final_request["request_payload_sha256"])
 
 	def test_usage_aggregation_distinguishes_reported_and_unknown(self):
 		model=next(item for item in self.execution.execution_records if item.kind=="model")

@@ -418,22 +418,30 @@ curl.exe -i -X POST "http://127.0.0.1:8000/api/v1/agent/runs/$run_id/cancel"
 
 ## 评测
 
-20 案例复用诊断运行时，不依赖 HTTP/PostgreSQL。自动规则检查工具参数、预期结果、证据和引用，CLI 审核检查报告语义。
+20 道诊断案例复用诊断运行时。自动规则检查工具轨迹、参数、Evidence 身份和报告引用。人工语义审核单独检查报告中的根因与每条建议，并逐项标注所引用证据。
 
 ```powershell
 .\.venv\Scripts\python.exe -X utf8 -m evidenceops.evaluation --mode mock --output eval_result_mock.json
-.\.venv\Scripts\python.exe -X utf8 -m evidenceops.evaluation review eval_result_mock.json
+.\.venv\Scripts\python.exe -X utf8 -m evidenceops.evaluation review-freeze `
+  eval_result_real.json --cases samples/evaluation/cases.json `
+  --references samples/evaluation/semantic_references.json --output eval_review_batch.json
+.\.venv\Scripts\python.exe -X utf8 -m evidenceops.evaluation review `
+  eval_review_batch.json --reviewer reviewer-a
 ```
 
-配置模型变量后，使用 `--mode real` 评测真实模型。审核输入 y/n 及可选评论，每条保存，重启后继续待审案例。
+配置模型变量后，使用 `--mode real` 评测真实模型。真实评测会记录模型请求消息和可见 Evidence ID。历史结果若未保存实际请求，会将模型可见范围标记为未知。冻结批次会绑定案例、参考标准、Run、模型配置、Prompt 指纹、样本与Evidence快照。历史批次无法证明原始 Prompt 指纹时，会标记为未验证。
 
 | 指标 | 定义 |
 | --- | --- |
 | `rule_pass_rate` | 规则通过数 / 全部案例 |
-| `semantic_pass_rate` | 人工通过数 / 全部案例 |
-| `final_pass_rate` | 两者均通过数 / 全部案例 |
+| `semantic_quality.root_cause_support_rate` | 经裁决或当前可用审核记录中，根因标为完全支持的比例 |
+| `semantic_quality.recommendation_evidence_support_rate` | 建议标为完全有证据支持的比例 |
+| `semantic_quality.required_fact_coverage_rate` | 已覆盖的适用必需事实比例 |
+| `semantic_quality.evidence_insufficient_correct_refusal_rate` | 证据不足案例中，审核者认为回答行为合适的比例 |
 
-待审核和执行异常保留在分母。按预期拒绝非法请求也可以评测通过。Mock 验证工程行为，不能代表真实模型准确率。
+报告 Claim 缺失的 Run 仅参与执行契约评测，不进入Claim质量分母。双评审分歧单独统计，仲裁前不进入质量指标。只有一名评审时明确报告单人审核，不计算评审一致性。无真实冲突观测的场景列为覆盖缺口，不用合成结果代替。导出与导入 JSON 审核模板可用于异步评审，导入时会校验批次绑定、Run、Claim、Evidence、参考事实和理由。
+
+完整的评审与JSON导入流程见 [docs/evaluation-human-review-v1.md](docs/evaluation-human-review-v1.md)。Mock 验证工程行为，不能代表真实模型准确率。
 
 ## 测试
 

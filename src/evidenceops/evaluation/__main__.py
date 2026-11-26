@@ -5,6 +5,8 @@ import sys
 from contextlib import contextmanager
 from copy import deepcopy
 from hashlib import sha256
+import inspect
+import subprocess
 from pathlib import Path
 from threading import Lock
 
@@ -15,7 +17,8 @@ from evidenceops.connectors.local_config import build_local_config_tool
 from evidenceops.connectors.local_log import build_local_log_tool
 from evidenceops.connectors.local_metric import build_local_metric_tool
 from evidenceops.evaluation.core import EvalCase,attach_retrieval_comparison,load_cases,run_suite
-from evidenceops.evaluation.review import import_reviews,review_result,save_result
+from evidenceops.evaluation.review import (attach_review_batch_metadata,freeze_review_batch,import_reviews,
+	load_reference_standards,review_result,save_result,write_review_template)
 from evidenceops.infrastructure.providers.mock_provider import MockProvider
 from evidenceops.infrastructure.providers.openai_compatible_provider import OpenAICompatibleProvider
 
@@ -24,9 +27,10 @@ PROJECT_ROOT=Path(__file__).resolve().parents[3]
 
 
 class EvaluationService:
-	def __init__(self,service,calls:list[dict],lock:Lock)->None:
+	def __init__(self,service,calls:list[dict],requests:list[dict],lock:Lock)->None:
 		self._service=service
 		self._calls=calls
+		self._requests=requests
 		self._lock=lock
 
 	@property
@@ -34,8 +38,59 @@ class EvaluationService:
 		with self._lock:
 			return tuple(deepcopy(self._calls))
 
+	@property
+	def observed_model_requests(self)->tuple[dict,...]:
+		with self._lock:
+			return tuple(deepcopy(self._requests))
+
 	def execute(self,request_id:str,description:str):
 		return self._service.execute(request_id,description)
+
+
+class RecordingProvider:
+	def __init__(self,provider,requests:list[dict],lock:Lock)->None:
+		self._provider=provider
+		self._requests=requests
+		self._lock=lock
+
+	def complete(self,request:ModelRequest):
+		payload={"request_id":request.request_id,"run_id":request.run_id,"model":request.model,
+			"response_format":request.response_format,"max_output_tokens":request.max_output_tokens,
+			"context_window_tokens":request.context_window_tokens,"estimated_input_tokens":request.estimated_input_tokens,
+			"messages":deepcopy(request.messages),"tools":deepcopy(request.tools)}
+		canonical=json.dumps(payload,ensure_ascii=False,sort_keys=True,separators=(",",":"),allow_nan=False)
+		record={**payload,"request_payload_sha256":sha256(canonical.encode("utf-8")).hexdigest(),
+			"evidence_id_mentions":tuple(extract_evidence_id_mentions(request.messages)),"provider_status":"pending"}
+		with self._lock:
+			self._requests.append(record)
+		try:
+			response=self._provider.complete(request)
+		except Exception:
+			record["provider_status"]="failed"
+			raise
+		record["provider_status"]="completed"
+		return response
+
+	def close(self)->None:
+		close=getattr(self._provider,"close",None)
+		if callable(close): close()
+
+
+def extract_evidence_id_mentions(messages:tuple[dict,...])->list[str]:
+	identities=[]
+	def collect(value):
+		if isinstance(value,dict):
+			identity=value.get("evidence_id")
+			if isinstance(identity,str) and identity not in identities: identities.append(identity)
+			for child in value.values(): collect(child)
+		elif isinstance(value,list):
+			for child in value: collect(child)
+	for message in messages:
+		content=message.get("content")
+		if not isinstance(content,str): continue
+		try: collect(json.loads(content))
+		except (ValueError,TypeError): continue
+	return identities
 
 
 def mock_answer(request:ModelRequest)->StructuredFinalAnswer:
@@ -105,6 +160,7 @@ def case_service(case:EvalCase,mode:str):
 			engine.dispose()
 			raise
 	calls_seen=[]
+	model_requests=[]
 	calls_lock=Lock()
 	if mode=="mock":
 		rounds=[]
@@ -119,6 +175,7 @@ def case_service(case:EvalCase,mode:str):
 	else:
 		model=os.environ["EVIDENCEOPS_MODEL_NAME"]
 		provider=OpenAICompatibleProvider(os.environ["EVIDENCEOPS_MODEL_BASE_URL"],os.environ["EVIDENCEOPS_MODEL_API_KEY"])
+	provider=RecordingProvider(provider,model_requests,calls_lock)
 	assembly=None
 	try:
 		assembly=build_agent_diagnosis_assembly(provider,mode,tools,"order-service",model=model,model_timeout_seconds=60,max_steps=5,
@@ -130,7 +187,7 @@ def case_service(case:EvalCase,mode:str):
 				calls_seen.append({"tool_name":tool_name,"arguments":deepcopy(arguments),"tool_call_id":tool_call_id})
 			return execute_tool(tool_name,arguments,tool_call_id,**options)
 		assembly.runtime.execute=observe_tool
-		yield EvaluationService(assembly.diagnosis_service,calls_seen,calls_lock)
+		yield EvaluationService(assembly.diagnosis_service,calls_seen,model_requests,calls_lock)
 	finally:
 		# 构造失败也要释放 Provider，组装成功时由 assembly 统一关闭。
 		if assembly is not None:
@@ -145,6 +202,34 @@ def case_service(case:EvalCase,mode:str):
 
 def main(argv:list[str]|None=None)->int:
 	arguments=list(sys.argv[1:] if argv is None else argv)
+	if arguments and arguments[0]=="review-freeze":
+		parser=argparse.ArgumentParser(description="冻结人工语义评测批次与可追溯快照")
+		parser.add_argument("result",type=Path)
+		parser.add_argument("--cases",type=Path,required=True)
+		parser.add_argument("--references",type=Path,required=True)
+		parser.add_argument("--output",type=Path,required=True)
+		args=parser.parse_args(arguments[1:])
+		try:
+			freeze_review_batch(args.result,args.cases,args.references,args.output)
+		except (OSError,ValueError) as error:
+			print(f"冻结失败：{error}",file=sys.stderr)
+			return 2
+		print(f"人工语义评测批次已冻结：{args.output}")
+		return 0
+	if arguments and arguments[0]=="review-template":
+		parser=argparse.ArgumentParser(description="导出可校验的逐Claim人工审核JSON模板")
+		parser.add_argument("result",type=Path)
+		parser.add_argument("--reviewer",required=True)
+		parser.add_argument("--role",choices=("independent","adjudicator"),default="independent")
+		parser.add_argument("--output",type=Path,required=True)
+		args=parser.parse_args(arguments[1:])
+		try:
+			write_review_template(args.result,args.output,args.reviewer,args.role)
+		except (OSError,ValueError) as error:
+			print(f"审核模板导出失败：{error}",file=sys.stderr)
+			return 2
+		print(f"审核模板已生成：{args.output}")
+		return 0
 	if arguments and arguments[0]=="review-import":
 		parser=argparse.ArgumentParser(description="导入带证据判断的人工审核记录")
 		parser.add_argument("result",type=Path)
@@ -159,9 +244,12 @@ def main(argv:list[str]|None=None)->int:
 	if arguments and arguments[0]=="review":
 		parser=argparse.ArgumentParser(description="人工审核Eval结果，不调用模型")
 		parser.add_argument("result",type=Path,help="eval_result.json文件路径")
+		parser.add_argument("--reviewer",help="唯一评审者标识")
+		parser.add_argument("--role",choices=("independent","adjudicator"),default="independent")
 		args=parser.parse_args(arguments[1:])
 		try:
-			review_result(args.result)
+			if args.reviewer is None and args.role=="independent": review_result(args.result)
+			else: review_result(args.result,reviewer=args.reviewer,role=args.role)
 		except (KeyboardInterrupt,EOFError):
 			print("\n审核已中断，已完成案例已保存；重运行命令可继续。",file=sys.stderr)
 			return 130
@@ -176,14 +264,28 @@ def main(argv:list[str]|None=None)->int:
 	parser.add_argument("--output",type=Path,help="直接以UTF-8保存结果，避免PowerShell管道编码转换")
 	parser.add_argument("--pricing",type=Path,help="模型价格JSON文件，含model、currency、version和每百万输入/输出Token单价")
 	parser.add_argument("--retrieval-comparison",type=Path,help="关联已有同查询和同快照的检索对照结果")
+	parser.add_argument("--references",type=Path,default=PROJECT_ROOT/"samples"/"evaluation"/"semantic_references.json")
 	args=parser.parse_args(arguments)
 	if args.mode=="real":
 		missing=[name for name in ("EVIDENCEOPS_MODEL_BASE_URL","EVIDENCEOPS_MODEL_API_KEY","EVIDENCEOPS_MODEL_NAME") if not os.getenv(name," ").strip()]
 		if missing:
 			parser.error("缺少配置："+",".join(missing))
 	cases=load_cases(args.cases)
+	references=load_reference_standards(args.references)
+	missing_references=[case.case_id for case in cases if case.case_id not in references]
+	if missing_references: parser.error("缺少人工参考标准："+",".join(missing_references))
 	pricing=json.loads(args.pricing.read_text(encoding="utf-8")) if args.pricing else None
-	report=run_suite(cases,lambda case:case_service(case,args.mode),args.mode,pricing)
+	report=run_suite(cases,lambda case:case_service(case,args.mode),args.mode,pricing,references)
+	try:
+		prompt_source=inspect.getsource(__import__("evidenceops.application.agent_loop",fromlist=["AgentLoop"]).AgentLoop._build_history)
+		prompt_fingerprint=sha256(prompt_source.encode("utf-8")).hexdigest()
+	except (OSError,TypeError):
+		prompt_fingerprint=None
+	try:
+		revision=subprocess.run(["git","rev-parse","HEAD"],cwd=PROJECT_ROOT,capture_output=True,text=True,check=True).stdout.strip()
+	except (OSError,subprocess.CalledProcessError):
+		revision=None
+	attach_review_batch_metadata(report,args.cases,args.references,prompt_fingerprint,revision)
 	if args.retrieval_comparison:
 		attach_retrieval_comparison(report,json.loads(args.retrieval_comparison.read_text(encoding="utf-8-sig")))
 	if args.output is not None:

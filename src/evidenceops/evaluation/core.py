@@ -1,5 +1,6 @@
 import json
 import re
+from copy import deepcopy
 from decimal import Decimal,InvalidOperation
 from dataclasses import dataclass,field
 from hashlib import sha256
@@ -119,6 +120,29 @@ def matching_value(expected,actual)->bool:
 	if isinstance(expected,list):
 		return len(expected)==len(actual) and all(matching_value(left,right) for left,right in zip(expected,actual))
 	return expected==actual
+
+
+def extract_visible_evidence_snapshots(messages:tuple[dict,...]|list[dict])->dict[str,str]:
+	snapshots={}
+	def collect(value):
+		if isinstance(value,dict):
+			identity=value.get("evidence_id")
+			content=value.get("content")
+			if isinstance(identity,str) and isinstance(content,str): snapshots[identity]=content
+			for child in value.values(): collect(child)
+		elif isinstance(value,list):
+			for child in value: collect(child)
+	for message in messages:
+		content=message.get("content")
+		if not isinstance(content,str): continue
+		try:
+			payload=json.loads(content)
+			if message.get("role")=="tool" and isinstance(payload,dict):
+				identity=payload.get("evidence_id")
+				if isinstance(identity,str): snapshots[identity]=content
+			collect(payload)
+		except (ValueError,TypeError): continue
+	return snapshots
 
 
 def contains_query_terms(query:str,terms:list[str])->bool:
@@ -318,26 +342,27 @@ def check_execution(case:EvalCase,result:DiagnosisExecution,observed_calls:tuple
 
 
 def summarize_results(results:list[dict])->dict:
-	# pending 仍留在总分母中，避免只审核容易案例就抬高通过率。
+	# 自动契约结果与报告语义审核分开统计，不合成单一通过率。
 	if not isinstance(results,list) or not results:
 		raise ValueError("评测结果不能为空")
 	for item in results:
 		if not isinstance(item,dict) or type(item.get("rule_passed")) is not bool:
 			raise ValueError("案例必须包含布尔类型的rule_passed")
-		review=item.get("semantic_review")
-		if not isinstance(review,dict) or review.get("status") not in ("pending","passed","failed","disputed"):
-			raise ValueError("人工审核状态无效")
 	count=len(results)
 	rule_count=sum(item["rule_passed"] for item in results)
-	semantic_count=sum(item["semantic_review"]["status"]=="passed" for item in results)
-	final_count=sum(item["rule_passed"] and item["semantic_review"]["status"]=="passed" for item in results)
+	semantic_reviews=[item.get("semantic_review",{}) for item in results]
+	for review in semantic_reviews:
+		if not isinstance(review,dict) or review.get("status","pending") not in ("pending","passed","failed","disputed"):
+			raise ValueError("兼容性审核状态无效")
+		workflow=review.get("workflow_status")
+		if workflow is not None and workflow not in ("execution_only","pending","single_reviewer","consensus","disputed","adjudicated"):
+			raise ValueError("语义审核工作流状态无效")
 	return {
 		"case_count":count,"rule_passed_count":rule_count,"rule_pass_rate":rule_count/count,
-		"semantic_passed_count":semantic_count,"semantic_pass_rate":semantic_count/count,
-		"final_passed_count":final_count,"final_pass_rate":final_count/count,
 		"execution_error_count":sum(item.get("execution_error") is not None for item in results),
-		"semantic_review_pending":sum(item["semantic_review"]["status"]=="pending" for item in results),
-		"semantic_review_disputed":sum(item["semantic_review"]["status"]=="disputed" for item in results),
+		"semantic_review_pending":sum(review.get("workflow_status",review.get("status","pending"))=="pending" for review in semantic_reviews),
+		"semantic_review_disputed":sum(review.get("workflow_status")=="disputed" for review in semantic_reviews),
+		"semantic_review_execution_only":sum(review.get("workflow_status")=="execution_only" for review in semantic_reviews),
 	}
 
 
@@ -477,7 +502,7 @@ def calculate_cost(usage:dict|None,pricing:dict|None)->dict|None:
 		"model":pricing["model"],"kind":"estimate_from_reported_tokens"}
 
 
-def run_suite(cases:tuple[EvalCase,...],factory:Callable,mode:str,pricing:dict|None=None)->dict:
+def run_suite(cases:tuple[EvalCase,...],factory:Callable,mode:str,pricing:dict|None=None,references:dict|None=None)->dict:
 	# 每个案例独立创建资源，避免 Mock 游标和运行状态污染后续案例。
 	if not cases or mode not in ("mock","real"):
 		raise ValueError("需要非空案例及mock/real模式")
@@ -491,6 +516,7 @@ def run_suite(cases:tuple[EvalCase,...],factory:Callable,mode:str,pricing:dict|N
 		response=None
 		usage=None
 		context_audits=[]
+		model_requests=[]
 		knowledge_evidence=[]
 		metrics=None
 		error=None
@@ -501,6 +527,12 @@ def run_suite(cases:tuple[EvalCase,...],factory:Callable,mode:str,pricing:dict|N
 				response=to_response(execution)
 				usage=summarize_usage(execution.execution_records)
 				metrics=evaluation_metrics(case,execution,getattr(service,"observed_calls",None))
+				model_requests=[deepcopy(item) for item in getattr(service,"observed_model_requests",())]
+				known_evidence_ids={item["evidence_id"] for item in response["evidences"]}
+				for request in model_requests:
+					request["visible_evidence_ids"]=[identity for identity in request.pop("evidence_id_mentions",()) if identity in known_evidence_ids]
+					request["visible_evidence_snapshots"]={identity:content for identity,content in
+						extract_visible_evidence_snapshots(request["messages"]).items() if identity in known_evidence_ids}
 				context_audits=[{"model_round":audit.model_round,"model_request_id":audit.model_request_id,
 					"visible_evidence_ids":list(audit.assembly.visible_evidence_ids),
 					"messages":list(audit.assembly.messages),
@@ -514,20 +546,30 @@ def run_suite(cases:tuple[EvalCase,...],factory:Callable,mode:str,pricing:dict|N
 			# 不输出原始异常以免泄露凭据；异常案例仍保留在通过率分母中。
 			error=type(exception).__name__
 		# 规则通过不等于语义正确；审核保留 pending，未知 usage 不填零。
+		semantic_review={"status":"pending","criteria":list(case.review_criteria),"reviews":[]}
+		if response is None or response.get("report") is None:
+			semantic_review["workflow_status"]="execution_only"
+		else:
+			semantic_review["workflow_status"]="pending"
+		if references is not None and case.case_id in references:
+			semantic_review["reference_standard"]=references[case.case_id]
 		results.append({
 			"case_id":case.case_id,"checks":checks,"execution_error":error,
 			"input":case.description,"fixture_hashes":case.fixture_hashes,
 			"rule_passed":error is None and bool(checks) and all(item["passed"] for item in checks),
 			"wall_duration_ms":(perf_counter()-started)*1000,
-			"semantic_review":{"status":"pending","criteria":list(case.review_criteria)},
+			"semantic_review":semantic_review,
 			"review_context":case.review_context,"retrieval_expectations":case.retrieval_expectations,
-			"context_audits":context_audits,"knowledge_evidence":knowledge_evidence,"metrics":metrics,
+			"context_audits":context_audits,"model_requests":model_requests,
+			"knowledge_evidence":knowledge_evidence,"metrics":metrics,
 			"token_usage":usage,"cost":calculate_cost(usage,pricing) if pricing is not None and response is not None
 				and (execution.model_config or {}).get("model_id")==pricing.get("model") else None,"response":response,
 		})
+	from evidenceops.evaluation.review import summarize_semantic_reviews
 	return {
 		"schema_version":1,"batch_id":batch_id,"mode":mode,
 		"summary":summarize_results(results),
+		"semantic_quality":summarize_semantic_reviews(results),
 		"metrics":aggregate_metrics(results),
 		"results":results,
 	}

@@ -1,0 +1,225 @@
+{
+	"schema_version": 1,
+	"cases": [
+		{
+			"case_id": "correlated-timeout",
+			"scenario": "跨数据源相关性",
+			"expected_action": "answer",
+			"required_facts": [
+				{"fact_id": "coincident_timeout", "text": "RPC超时与线程池饱和出现在同一组采样时刻。"},
+				{"fact_id": "queue_growth", "text": "所选指标中的pending_tasks从0增加到12和15。"},
+				{"fact_id": "retry_is_configuration", "text": "配置允许重试不能证明运行时实际发生了重试。"}
+			],
+			"acceptable_conclusions": ["这些观察存在相关性，可能表明容量级联。"],
+			"prohibited_inferences": ["断言inventory-service已被证明是根因。", "仅凭配置断言实际发生过重试。", "把相关性说成已经证明因果方向。"]
+		},
+		{
+			"case_id": "missing-config",
+			"scenario": "资料不足",
+			"expected_action": "abstain",
+			"required_facts": [{"fact_id": "no_config", "text": "请求时刻没有生效的配置版本。"}],
+			"acceptable_conclusions": ["说明请求时刻没有可用配置。"],
+			"prohibited_inferences": ["编造配置或擅自替换查询时刻。", "假装存在配置证据并生成诊断报告。"]
+		},
+		{
+			"case_id": "invalid-time",
+			"scenario": "执行契约与参数校验",
+			"expected_action": "abstain",
+			"required_facts": [{"fact_id": "invalid_time_rejected", "text": "格式错误的时间被输入校验拒绝。"}],
+			"acceptable_conclusions": ["说明参数校验失败并保留原始参数。"],
+			"prohibited_inferences": ["静默修正时间。", "把请求描述为查询成功。"]
+		},
+		{
+			"case_id": "logs-only",
+			"scenario": "单一数据源可回答",
+			"expected_action": "answer",
+			"required_facts": [
+				{"fact_id": "timeout_target", "text": "匹配的超时日志将inventory-service列为调用目标。"},
+				{"fact_id": "thread_fields_are_log_fields", "text": "线程池数值来自返回的日志字段，不是独立指标。"}
+			],
+			"acceptable_conclusions": ["只描述本次选定的超时日志观察。"],
+			"prohibited_inferences": ["声称有独立指标佐证。", "断言inventory-service已被证明是根因。"]
+		},
+		{
+			"case_id": "metrics-only",
+			"scenario": "单一数据源可回答",
+			"expected_action": "answer",
+			"required_facts": [
+				{"fact_id": "active_growth", "text": "active_threads从40/64变化到64/64。"},
+				{"fact_id": "queue_growth", "text": "pending_tasks从0变化到12和15。"}
+			],
+			"acceptable_conclusions": ["所选采样显示线程池饱和且队列增长。"],
+			"prohibited_inferences": ["声称查询过RPC超时日志。", "声称inventory-service发生故障。"]
+		},
+		{
+			"case_id": "logs-metrics",
+			"scenario": "跨数据源相关性",
+			"expected_action": "answer",
+			"required_facts": [
+				{"fact_id": "same_time_observations", "text": "10:02和10:03的超时与线程池饱和同期出现。"},
+				{"fact_id": "no_config", "text": "本案例没有查询配置。"}
+			],
+			"acceptable_conclusions": ["说明时间相关性以及该相关性的限制。"],
+			"prohibited_inferences": ["编造超时或重试配置。", "声称已证明因果方向。"]
+		},
+		{
+			"case_id": "symptom-keywords",
+			"scenario": "筛选范围内可回答",
+			"expected_action": "answer",
+			"required_facts": [
+				{"fact_id": "matching_timeout", "text": "症状与关键词查询返回匹配的RPC超时记录。"},
+				{"fact_id": "filter_scope", "text": "结果只描述本次指定症状和关键词的筛选范围。"}
+			],
+			"acceptable_conclusions": ["描述所给筛选条件下的匹配记录。"],
+			"prohibited_inferences": ["把筛选结果当作整个时间窗口的全部错误。", "改用用户未要求的错误类型枚举替代查询。"]
+		},
+		{
+			"case_id": "empty-log-window",
+			"scenario": "资料不足",
+			"expected_action": "answer",
+			"required_facts": [
+				{"fact_id": "zero_log_matches", "text": "请求时间窗口没有返回匹配的RPC超时日志。"},
+				{"fact_id": "zero_is_not_health", "text": "零匹配不能证明服务健康或确定根因。"}
+			],
+			"acceptable_conclusions": ["说明查询没有匹配日志，如需诊断应补充其他证据。"],
+			"prohibited_inferences": ["声称服务健康。", "编造超时或线程池观察。"]
+		},
+		{
+			"case_id": "empty-log-keyword",
+			"scenario": "资料不足",
+			"expected_action": "answer",
+			"required_facts": [
+				{"fact_id": "keyword_zero_matches", "text": "payment-service关键词筛选没有返回匹配日志。"},
+				{"fact_id": "no_service_claim", "text": "空筛选结果不能证明payment-service或inventory-service发生故障。"}
+			],
+			"acceptable_conclusions": ["说明带关键词的查询没有匹配结果。"],
+			"prohibited_inferences": ["删除关键词后报告另一条查询结果。", "断言任一服务发生故障。"]
+		},
+		{
+			"case_id": "empty-metric-window",
+			"scenario": "执行契约与参数校验",
+			"expected_action": "abstain",
+			"required_facts": [{"fact_id": "no_metric_samples", "text": "指标查询无采样，证据收集返回NO_METRIC_SAMPLES。"}],
+			"acceptable_conclusions": ["报告证据收集失败，不生成成功诊断。"],
+			"prohibited_inferences": ["伪造指标证据。", "把没有采样解释成指标健康。"]
+		},
+		{
+			"case_id": "healthy-metric-sample",
+			"scenario": "单点采样范围内可回答",
+			"expected_action": "answer",
+			"required_facts": [
+				{"fact_id": "single_sample", "text": "唯一采样为active_threads=40、thread_limit=64、pending_tasks=0。"},
+				{"fact_id": "sample_scope", "text": "单个采样不能证明整个服务或之后时段健康。"}
+			],
+			"acceptable_conclusions": ["这个采样没有显示线程池饱和。"],
+			"prohibited_inferences": ["断言整个服务健康。", "从该采样推断之后的状态。"]
+		},
+		{
+			"case_id": "config-only-v1",
+			"scenario": "仅配置快照可回答",
+			"expected_action": "answer",
+			"required_facts": [
+				{"fact_id": "config_values", "text": "order-config-v1的线程池容量为64、超时1000毫秒，最多额外重试两次。"},
+				{"fact_id": "config_is_not_runtime", "text": "配置快照不能证明线程池饱和、请求超时或实际发生重试。"}
+			],
+			"acceptable_conclusions": ["说明请求时刻实际生效的配置。"],
+			"prohibited_inferences": ["声称运行时发生了重试或超时。", "声称线程池已经饱和。"]
+		},
+		{
+			"case_id": "config-switch-boundary",
+			"scenario": "配置版本切换边界",
+			"expected_action": "answer",
+			"required_facts": [
+				{"fact_id": "before_values", "text": "切换边界前v1的超时为1000毫秒、重试两次。"},
+				{"fact_id": "after_values", "text": "切换边界时v2的超时为3000毫秒、重试为零次。"},
+				{"fact_id": "left_closed_right_open", "text": "配置生效区间为左闭右开。"}
+			],
+			"acceptable_conclusions": ["描述配置版本在边界时刻的切换。"],
+			"prohibited_inferences": ["声称配置变更导致或解决了故障。", "把边界时刻归入v1。"]
+		},
+		{
+			"case_id": "config-utc-equivalence",
+			"scenario": "时区绝对时刻等价",
+			"expected_action": "answer",
+			"required_facts": [
+				{"fact_id": "utc_instant", "text": "2026-10-05T16:00:00+00:00与2026-10-06T00:00:00+08:00是同一绝对时刻。"},
+				{"fact_id": "v2_selected", "text": "该时刻生效的配置为order-config-v2。"}
+			],
+			"acceptable_conclusions": ["按绝对时刻选择版本，不按时间字符串中的日期选择。"],
+			"prohibited_inferences": ["仅按UTC日期返回v1。"]
+		},
+		{
+			"case_id": "invalid-limit",
+			"scenario": "执行契约与参数校验",
+			"expected_action": "abstain",
+			"required_facts": [{"fact_id": "zero_limit_rejected", "text": "limit=0被INVALID_ARGUMENTS拒绝，不能静默修正。"}],
+			"acceptable_conclusions": ["说明参数校验错误。"],
+			"prohibited_inferences": ["修改limit后声称原请求查询成功。"]
+		},
+		{
+			"case_id": "overlong-window",
+			"scenario": "执行契约与参数校验",
+			"expected_action": "abstain",
+			"required_facts": [{"fact_id": "window_rejected", "text": "31分钟的查询窗口被INVALID_ARGUMENTS拒绝。"}],
+			"acceptable_conclusions": ["说明查询窗口超过允许上限。"],
+			"prohibited_inferences": ["缩短或拆分窗口后声称原请求成功。"]
+		},
+		{
+			"case_id": "unknown-service",
+			"scenario": "执行契约与服务边界",
+			"expected_action": "abstain",
+			"required_facts": [{"fact_id": "unknown_service_rejected", "text": "billing-service未登记，查询返回UNKNOWN_SERVICE。"}],
+			"acceptable_conclusions": ["说明没有查询到已登记服务的数据。"],
+			"prohibited_inferences": ["改用order-service数据替代。", "返回成功诊断。"]
+		},
+		{
+			"case_id": "truncated-logs",
+			"scenario": "部分或截断数据",
+			"expected_action": "answer",
+			"required_facts": [
+				{"fact_id": "log_counts", "text": "两条日志匹配但只返回一条，因此结果被截断。"},
+				{"fact_id": "no_missing_log_inference", "text": "未返回的日志不能支持队列增长或完整趋势的结论。"}
+			],
+			"acceptable_conclusions": ["只描述已返回的日志，并说明截断限制。"],
+			"prohibited_inferences": ["把未返回的记录当成已观察到的证据。", "声称掌握完整时间窗口趋势。"]
+		},
+		{
+			"case_id": "truncated-metrics",
+			"scenario": "部分或截断数据",
+			"expected_action": "answer",
+			"required_facts": [
+				{"fact_id": "first_sample", "text": "只返回最早的10:01采样，线程活跃数为40/64，pending_tasks=0。"},
+				{"fact_id": "later_samples_unseen", "text": "结果已截断，不能确定10:02/10:03状态或整个窗口是否健康。"}
+			],
+			"acceptable_conclusions": ["陈述已返回的采样，并明确把结论限制在该采样范围内。"],
+			"prohibited_inferences": ["根据未返回的采样声称之后发生饱和。", "断言整个窗口健康。"]
+		},
+		{
+			"case_id": "disjoint-windows",
+			"scenario": "窗口错位与部分证据",
+			"expected_action": "answer",
+			"required_facts": [
+				{"fact_id": "log_window", "text": "日志覆盖10:02至10:03。"},
+				{"fact_id": "metric_window", "text": "独立指标仅覆盖10:01。"},
+				{"fact_id": "not_cross_validation", "text": "不同窗口不能被说成同一时刻的验证。"}
+			],
+			"acceptable_conclusions": ["区分日志自身字段与独立指标采样。"],
+			"prohibited_inferences": ["声称10:01指标独立确认了10:02/10:03日志。", "根据时间错位推断因果。"]
+		},
+		{
+			"case_id": "python-runtime-knowledge",
+			"scenario": "RAG排障参考资料",
+			"expected_action": "answer",
+			"required_facts": [
+				{"fact_id": "current_interpreter", "text": "ModuleNotFoundError说明当前解释器无法导入模块，但不能证明机器从未安装过该包。"},
+				{"fact_id": "bind_pip", "text": "应比较服务运行解释器与该解释器的python -m pip环境。"},
+				{"fact_id": "reference_not_incident_fact", "text": "知识手册是排障参考，不是本次故障根因的现场证据。"}
+			],
+			"acceptable_conclusions": ["解释器或环境不一致是待验证假设，不是已经确认的根因。"],
+			"prohibited_inferences": ["没有运行时证据就断言本机服务根因。", "把手册中的方法说成本次故障观察到的事实。"]
+		}
+	],
+	"coverage_gaps": [
+		{"scenario": "conflicting_evidence", "status": "not_covered", "reason": "当前固定样本没有两份相互矛盾的现场观测，避免用虚构冲突数据充当验收案例。"}
+	]
+}
